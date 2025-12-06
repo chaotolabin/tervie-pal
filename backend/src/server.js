@@ -4,8 +4,13 @@
 // su dung ESM syntax
 import express from 'express';
 
+// import routes
+import userRoutes from './routes/userRoutes.js';
+
 // Tao ung dung Express
 const app = express();
+
+app.use("/api/users", userRoutes);
 
 // Cau hinh cong lang nghe
 // Su dung bien moi truong hoac cong mac dinh 5000, bien moi truong duoc dat trong file .env
