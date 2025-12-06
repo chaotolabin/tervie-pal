@@ -1,14 +1,22 @@
 // su dung CommonJS module syntax
 // const express = require('express');
 
+// Load bien moi truong tu file .env
+import dotenv from 'dotenv';
+dotenv.config();
+
 // su dung ESM syntax
 import express from 'express';
+import connectDB from './config/database.js';
 
 // import routes
 import userRoutes from './routes/userRoutes.js';
 
 // Tao ung dung Express
 const app = express();
+
+// connect to database: MongoDB
+connectDB();
 
 app.use("/api/users", userRoutes);
 
