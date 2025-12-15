@@ -1,0 +1,1 @@
+# Authentication routes: login, signup, password reset
