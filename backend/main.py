@@ -1,6 +1,10 @@
-def main():
-    print("Hello from backend!")
+from fastapi import FastAPI
+from app.api.routes import router as api_router
 
+app = FastAPI(title="Tervie Backend")
 
-if __name__ == "__main__":
-    main()
+app.include_router(api_router)
+
+@app.get("/")
+def root():
+    return {"message": "Backend is running"}
