@@ -5,26 +5,26 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.settings import settings
 
-# BƯỚC 1: Tạo engine - đối tượng quản lý kết nối database
-# pool_pre_ping=True: Kiểm tra kết nối trước khi sử dụng (tránh lỗi khi connection timeout)
-# echo=True: In ra SQL queries (dùng khi debug, nên tắt ở production)
+# Tao engine - doi tuong quan ly ket noi database
+# pool_pre_ping=True: Kiem tra ket noi truoc khi su dung (tranh loi khi connection timeout)
+# echo=True: In ra SQL queries (dung khi debug, nen tat o production)
 engine = create_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
-    echo=False  # Đổi thành True nếu muốn xem SQL queries
+    echo=False  # Khong in SQL queries
 )
 
-# BƯỚC 2: Tạo SessionLocal - factory để tạo database sessions
-# autocommit=False: Không tự động commit, phải gọi session.commit() thủ công
-# autoflush=False: Không tự động flush changes vào DB
+# Tao SessionLocal - factory de tao database sessions, moi request se co 1 session rieng (phien lam viec voi dbs)
+# autocommit=False: Khong tu dong commit, phai goi session.commit() thu cong
+# autoflush=False: Khong tu dong flush changes vao DB
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# BƯỚC 3: Tạo Base class cho các models
-# Tất cả các models (User, Meal, Workout...) sẽ kế thừa từ Base này
+# Tao Base class cho cac models
+# Tat ca cac models (User, Meal, Workout...) se ke thua tu Base nay
 Base = declarative_base()
 
 
-# BƯỚC 4: Dependency function để inject database session vào routes
+# Dependency function de inject database session vao routes
 def get_db():
     """
     Hàm này sẽ được dùng trong FastAPI dependencies.
@@ -41,6 +41,6 @@ def get_db():
     """
     db = SessionLocal()
     try:
-        yield db  # Trả session cho route handler
+        yield db  # tra session cho route handler
     finally:
-        db.close()  # Đảm bảo luôn đóng session sau khi dùng xong
+        db.close()  # Dam bao luon dong session sau khi dung xong

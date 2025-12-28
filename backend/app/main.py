@@ -2,9 +2,10 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.core.settings import settings
-from app.utils.database import get_db, engine
+from app.core.database import get_db, engine
 
 # import routes
 from app.api.routes import auth, admin, users, meals, workouts, chatbot
@@ -30,7 +31,7 @@ async def root():
 @app.get("/health", tags=["Root"])
 async def health_check(db: Session = Depends(get_db)):
     """
-    Kiem tra tinh trang he thong va ket noi database.
+    Kiem tra ket noi database.
     
     - db: Session = Depends(get_db) nghia la:
       + FastAPI se tu dong goi get_db() de tao session
@@ -38,8 +39,9 @@ async def health_check(db: Session = Depends(get_db)):
       + Tu dong dong session sau khi xu ly xong
     """
     try:
-        # Thực hiện query đơn giản để test connection
-        db.execute("SELECT 1")
+        # Thuc hien query don gian de test connection
+        # text() bat buoc trong SQLAlchemy 2.0+ khi dung raw SQL
+        db.execute(text("SELECT 1"))
         return JSONResponse(
             status_code=200,
             content={
