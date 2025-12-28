@@ -3,9 +3,13 @@ from pydantic_settings import BaseSettings
 from typing import List
 
 class Settings(BaseSettings):
+    # Project Information
     PROJECT_NAME: str
     PROJECT_VERSION: str
-
+    
+    # Database Configuration
+    DATABASE_URL: str  # URL ket noi den PostgreSQL database
+    
     class Config:
         env_file = ".env"
 
