@@ -1,2 +1,4 @@
 alembic>=1.17.2
 fastapi[standard]>=0.125.0
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9 # PostgreSQL database adapter
