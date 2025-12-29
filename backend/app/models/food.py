@@ -17,7 +17,7 @@ class Food(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(
         BigInteger,
         primary_key=True,
-        autoincrement=True,
+        autoincrement=True,   # Tự động gán id theo thứ tự 
         comment="ID thực phẩm"
     )
     
@@ -47,14 +47,14 @@ class Food(Base, TimestampMixin):
     
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         nullable=True,
-        comment="Soft delete timestamp"
+        comment="Soft delete timestamp"     # Tránh xóa nhầm và cho phép user xem lại nhật kí món đã xóa
     )
     
-    # Relationships
+    # Relationships (Liên hệ với bảng khác)
     portions: Mapped[List["FoodPortion"]] = relationship(
         "FoodPortion",
-        back_populates="food",
-        cascade="all, delete-orphan"
+        back_populates="food",     # Mối liên hệ 2 chiều 
+        cascade="all, delete-orphan"    # Xóa liên tầng, khi xóa food thì xóa luôn portion liên quan
     )
     
     nutrients: Mapped[List["FoodNutrient"]] = relationship(
@@ -65,7 +65,7 @@ class Food(Base, TimestampMixin):
     
     # Indexes & Constraints
     __table_args__ = (
-        Index("ix_foods_owner_user_id_name", "owner_user_id", "name"),
+        Index("ix_foods_owner_user_id_name", "owner_user_id", "name"),    # Truy vấn theo 2 id này 
         # Unique source_code cho global data
         UniqueConstraint(
             "source_code",
