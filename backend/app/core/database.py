@@ -1,9 +1,9 @@
 # Quan ly ket noi voi database
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from app.core.settings import settings
+from app.models.base import Base  # Import Base tu models
 
 # Tao engine - doi tuong quan ly ket noi database
 # pool_pre_ping=True: Kiem tra ket noi truoc khi su dung (tranh loi khi connection timeout)
@@ -18,10 +18,6 @@ engine = create_engine(
 # autocommit=False: Khong tu dong commit, phai goi session.commit() thu cong
 # autoflush=False: Khong tu dong flush changes vao DB
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Tao Base class cho cac models
-# Tat ca cac models (User, Meal, Workout...) se ke thua tu Base nay
-Base = declarative_base()
 
 
 # Dependency function de inject database session vao routes
