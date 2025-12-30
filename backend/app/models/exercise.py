@@ -1,11 +1,13 @@
 # Models cho Exercises (Master Data)
+from email.mime import text
 import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Text, BigInteger, Integer, Index, UniqueConstraint
+from sqlalchemy import Text, BigInteger, Index, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import text
 
 from app.models.base import Base, TimestampMixin
 
@@ -27,8 +29,8 @@ class Exercise(Base, TimestampMixin):
         comment="NULL = global data, có giá trị = custom của user"
     )
     
-    activity_code: Mapped[Optional[int]] = mapped_column(
-        Integer,
+    activity_code: Mapped[Optional[str]] = mapped_column(
+        Text,
         nullable=True,
         comment="Mã hoạt động từ dataset"
     )
@@ -46,6 +48,7 @@ class Exercise(Base, TimestampMixin):
     )
     
     met_value: Mapped[float] = mapped_column(
+        Float,
         nullable=False,
         comment="Giá trị MET (Metabolic Equivalent) - năng lượng tiêu hao"
     )
@@ -57,11 +60,13 @@ class Exercise(Base, TimestampMixin):
     
     # Indexes & Constraints
     __table_args__ = (
-        Index("ix_exercises_owner_user_id_description", "owner_user_id", "description"),
-        # Unique activity_code cho global data
-        UniqueConstraint(
+        Index("ix_exercises_owner_user_id_description", "owner_user_id", "description", postgresql_where=text("deleted_at IS NULL")),
+        
+        # Partial UNIQUE: chỉ áp dụng cho global + chưa xóa
+        Index(
+            "uq_exercises_activity_code_global_active",
             "activity_code",
-            name="uq_exercises_activity_code_global",
-            postgresql_where="owner_user_id IS NULL"
+            unique=True,
+            postgresql_where=text("owner_user_id IS NULL AND deleted_at IS NULL AND activity_code IS NOT NULL"),
         ),
     )

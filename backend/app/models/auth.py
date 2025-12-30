@@ -4,11 +4,10 @@ import uuid
 from datetime import datetime, timezone, date
 from typing import Optional, List
 
-from sqlalchemy import String, Text, Date, DateTime, BigInteger, Index, Float, CheckConstraint
+from sqlalchemy import Text, Date, DateTime, BigInteger, Index, Float, CheckConstraint, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey
 
 from app.models.base import Base, TimestampMixin
 
@@ -111,7 +110,7 @@ class Profile(Base, TimestampMixin):
     )
     
     date_of_birth: Mapped[Optional[date]] = mapped_column(
-        Date(timezone=False),  # DATE type
+        Date,  # DATE type
         nullable=True,
         comment="Ngày sinh"
     )
@@ -220,5 +219,5 @@ class RefreshSession(Base):
     
     # Indexes
     __table_args__ = (
-        Index("ix_refresh_sessions_user_id", "user_id"),
+        Index("ix_refresh_sessions_user_id", "user_id", postgresql_where=text("revoked_at IS NULL"))
     )

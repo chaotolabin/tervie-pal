@@ -3,9 +3,10 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 
-from sqlalchemy import String, Text, BigInteger, Index, UniqueConstraint, ForeignKey
+from sqlalchemy import String, Text, BigInteger, Index, ForeignKey, Index, CheckConstraint, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import text
 
 from app.models.base import Base, TimestampMixin
 
@@ -65,17 +66,18 @@ class Food(Base, TimestampMixin):
     
     # Indexes & Constraints
     __table_args__ = (
-        Index("ix_foods_owner_user_id_name", "owner_user_id", "name"),    # Truy vấn theo 2 id này 
+        Index("ix_foods_owner_user_id_name", "owner_user_id", "name", postgresql_where=text("deleted_at IS NULL")),    # Truy vấn theo 2 id này 
         # Unique source_code cho global data
-        UniqueConstraint(
+        Index(
+            "uq_foods_source_code_global",
             "source_code",
-            name="uq_foods_source_code_global",
-            postgresql_where="owner_user_id IS NULL"
-        ),
+            unique=True,
+            postgresql_where=text("owner_user_id IS NULL")
+            ),
     )
 
 
-class FoodPortion(Base):
+class FoodPortion(Base, TimestampMixin):
     """Bảng food_portions - Định nghĩa khẩu phần ăn"""
     __tablename__ = "food_portions"
     
@@ -94,6 +96,7 @@ class FoodPortion(Base):
     )
     
     amount: Mapped[float] = mapped_column(
+        Numeric(10, 3),
         nullable=False,
         comment="Số lượng (vd: 1, 0.5)"
     )
@@ -105,6 +108,7 @@ class FoodPortion(Base):
     )
     
     grams: Mapped[float] = mapped_column(
+        Numeric(10, 3),
         nullable=False,
         comment="Quy đổi ra grams"
     )
@@ -118,10 +122,12 @@ class FoodPortion(Base):
     # Index
     __table_args__ = (
         Index("ix_food_portions_food_id", "food_id"),
+        CheckConstraint("amount > 0", name="ck_food_portions_amount_pos"),
+        CheckConstraint("grams > 0", name="ck_food_portions_grams_pos"),
     )
 
 
-class FoodNutrient(Base):
+class FoodNutrient(Base, TimestampMixin):
     """Bảng food_nutrients - Thông tin dinh dưỡng per 100g"""
     __tablename__ = "food_nutrients"
     
@@ -139,6 +145,7 @@ class FoodNutrient(Base):
     )
     
     amount_per_100g: Mapped[float] = mapped_column(
+        Numeric(14, 6),
         nullable=False,
         comment="Lượng chất dinh dưỡng trên 100g"
     )
@@ -147,4 +154,9 @@ class FoodNutrient(Base):
     food: Mapped["Food"] = relationship(
         "Food",
         back_populates="nutrients"
+    )
+    
+    __table_args__ = (
+        Index("ix_food_nutrients_food_id", "food_id"),
+        CheckConstraint("amount_per_100g >= 0", name="ck_food_nutrients_amount_nonneg"),
     )

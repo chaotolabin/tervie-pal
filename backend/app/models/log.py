@@ -4,10 +4,11 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 
-from sqlalchemy import String, Text, SmallInteger, BigInteger, Index, ForeignKey, DateTime, CheckConstraint
+from sqlalchemy import String, Text, BigInteger, Index, ForeignKey, DateTime, CheckConstraint, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.sql import text
 
 from app.models.base import Base, TimestampMixin
 
@@ -49,24 +50,28 @@ class FoodLogEntry(Base, TimestampMixin):
     )
 
     total_calories: Mapped[float] = mapped_column(
+        Numeric(12, 2),
         nullable=False,
         default=0.0,
         comment="Tổng lượng calo của bữa ăn"
     )
 
     total_protein_g: Mapped[float] = mapped_column(
+        Numeric(12, 3),
         nullable=False,
         default=0.0,
         comment="Tổng lượng protein (grams) của bữa ăn"
     )
 
     total_carbs_g: Mapped[float] = mapped_column(
+        Numeric(12, 3),
         nullable=False,
         default=0.0,
         comment="Tổng lượng carbs (grams) của bữa ăn"
     )
 
     total_fat_g: Mapped[float] = mapped_column(
+        Numeric(12, 3),
         nullable=False,
         default=0.0,
         comment="Tổng lượng fat (grams) của bữa ăn"
@@ -82,14 +87,20 @@ class FoodLogEntry(Base, TimestampMixin):
     items: Mapped[List["FoodLogItem"]] = relationship(
         "FoodLogItem",
         back_populates="entry",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
     
     # meal_type: Mapped["MealType"] = relationship("MealType")
     
     # Indexes
     __table_args__ = (
-        Index("ix_food_log_entries_user_id_logged_at", "user_id", "logged_at"),
+        Index("ix_food_log_entries_user_id_logged_at", "user_id", "logged_at", postgresql_where=text("deleted_at IS NULL")),
+        Index(
+            "ix_food_log_entries_user_logged_at_meal_active",
+            "user_id", "logged_at", "meal_type",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
 
@@ -113,19 +124,20 @@ class FoodLogItem(Base):
     
     food_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("foods.id"),
+        ForeignKey("foods.id"),      # Không cascade để giữ lịch sử dù food bị xóa
         nullable=False,
         comment="FK tới foods.id"
     )
     
     portion_id: Mapped[Optional[int]] = mapped_column(
         BigInteger,
-        ForeignKey("food_portions.id"),
+        ForeignKey("food_portions.id", ondelete="SET NULL"),
         nullable=True,
         comment="FK tới food_portions.id"
     )
     
     quantity: Mapped[float] = mapped_column(
+        Numeric(10, 3),
         nullable=False,
         comment="Số lượng (vd: 2 cups, 1.5 servings)"
     )
@@ -137,9 +149,16 @@ class FoodLogItem(Base):
     )
     
     grams: Mapped[float] = mapped_column(
+        Numeric(10, 3),
         nullable=False,
         comment="Quy đổi về grams để tính dinh dưỡng"
     )
+    
+    # Snapshot để lịch sử không đổi khi food/portion thay đổi
+    calories: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    protein_g: Mapped[Optional[float]] = mapped_column(Numeric(12, 3), nullable=True)
+    carbs_g: Mapped[Optional[float]] = mapped_column(Numeric(12, 3), nullable=True)
+    fat_g: Mapped[Optional[float]] = mapped_column(Numeric(12, 3), nullable=True)
     
     # Relationships
     entry: Mapped["FoodLogEntry"] = relationship(
@@ -152,6 +171,7 @@ class FoodLogItem(Base):
         Index("ix_food_log_items_entry_id", "entry_id"),
         Index("ix_food_log_items_food_id", "food_id"),
         CheckConstraint("quantity > 0", name="check_food_log_item_quantity_positive"),
+        CheckConstraint("grams > 0", name="check_food_log_item_grams_positive"),
     )
 
 
@@ -173,7 +193,8 @@ class ExerciseLogEntry(Base, TimestampMixin):
         comment="FK tới users.id"
     )
 
-    total_calories: Mapped[Optional[float]] = mapped_column(
+    total_calories: Mapped[float] = mapped_column(
+        Numeric(12, 2),
         nullable=False,
         default=0.0,
         comment="Tổng lượng calo tiêu hao của bài tập"
@@ -195,12 +216,13 @@ class ExerciseLogEntry(Base, TimestampMixin):
     items: Mapped[List["ExerciseLogItem"]] = relationship(
         "ExerciseLogItem",
         back_populates="entry",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
     
     # Indexes
     __table_args__ = (
-        Index("ix_exercise_log_entries_user_id_logged_at", "user_id", "logged_at"),
+        Index("ix_exercise_log_entries_user_id_logged_at", "user_id", "logged_at", postgresql_where=text("deleted_at IS NULL")),
     )
 
 
@@ -234,29 +256,39 @@ class ExerciseLogItem(Base):
     # hay minh dua vao exercises.id a :(?
 
     duration_min: Mapped[Optional[float]] = mapped_column(
+        Numeric(10, 2),
         nullable=True,
         comment="Thời gian tập (phút)"
     )
 
     # strength, condition exercises
-    sets_ex: Mapped[Optional[int]] = mapped_column(
-        nullable=True,
-        comment="Số sets"
-    )
+    # sets_ex: Mapped[Optional[int]] = mapped_column(
+    #     nullable=True,
+    #     comment="Số sets"
+    # )
 
-    reps: Mapped[Optional[int]] = mapped_column(
-        nullable=True,
-        comment="Số reps mỗi set"
-    )
+    # reps: Mapped[Optional[int]] = mapped_column(
+    #     nullable=True,
+    #     comment="Số reps mỗi set"
+    # )
 
-    weight_kg: Mapped[Optional[float]] = mapped_column(
+    # weight_kg: Mapped[Optional[float]] = mapped_column(
+    #     nullable=True,
+    #     comment="Trọng lượng tạ (kg)"
+    # )
+    
+    # snapshot
+    met_value_snapshot: Mapped[Optional[float]] = mapped_column(
+        Numeric(6, 2),
         nullable=True,
-        comment="Trọng lượng tạ (kg)"
+        comment="MET snapshot tại thời điểm log (copy từ exercises.met_value)"
     )
 
     # calories: duoc tinh
     calories: Mapped[Optional[float]] = mapped_column(
+        Numeric(12, 2),
         nullable=True,
+        default=0,
         comment="Lượng calo tiêu hao (nếu có)"
     )
     
@@ -276,4 +308,15 @@ class ExerciseLogItem(Base):
     __table_args__ = (
         Index("ix_exercise_log_items_entry_id", "entry_id"),
         Index("ix_exercise_log_items_exercise_id", "exercise_id"),
+        CheckConstraint("duration_min IS NULL OR duration_min > 0", name="ck_ex_item_duration_pos"),
+        CheckConstraint("calories >= 0", name="ck_ex_item_calories_nonneg"),
+        # CheckConstraint("sets_ex IS NULL OR sets_ex > 0", name="ck_ex_item_sets_pos"),
+        # CheckConstraint("reps IS NULL OR reps > 0", name="ck_ex_item_reps_pos"),
+        # CheckConstraint("weight_kg IS NULL OR weight_kg >= 0", name="ck_ex_item_weight_nonneg"),
+        
+        # Tuỳ chọn: bắt buộc phải có duration hoặc sets (ít nhất 1 kiểu log)
+        CheckConstraint(
+            "duration_min IS NOT NULL OR sets_ex IS NOT NULL",
+            name="ck_ex_item_has_input"
+        ),
     )

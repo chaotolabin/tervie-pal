@@ -1,0 +1,2925 @@
+openapi: 3.1.0    # Sửa lại 
+info:
+  title: Health Tracking API
+  version: 0.1.0
+  description: >
+    Draft OpenAPI contract aligned with the project's flowcharts and database models.
+    Authentication: Bearer access token. Most write/read endpoints require auth.
+servers:
+  - url: /api/v1
+tags:
+  - name: Auth
+  - name: Users
+  - name: Settings
+  - name: Foods
+  - name: Exercises
+  - name: Logs
+  - name: Biometrics
+  - name: Streak
+  - name: Support
+  - name: Blog
+  - name: Admin
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register
+      operationId: auth_register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+        '409':
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email or username and password
+      operationId: auth_login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      operationId: auth_refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          description: Invalid or revoked refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (revoke current refresh session)
+      operationId: auth_logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Invalid or revoked refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset (always returns generic success)
+      operationId: auth_forgot_password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericMessageResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password using reset token
+      operationId: auth_reset_password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: No Content
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user + profile
+      operationId: users_me
+      security:
+        - HTTPBearer: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserMeResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /profile:
+    patch:
+      tags: [Users]
+      summary: Update profile (partial)
+      operationId: profile_patch
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfilePatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /settings/password:
+    patch:
+      tags: [Settings]
+      summary: Change password (logs out all devices)
+      operationId: settings_change_password
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated or invalid current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /settings/sessions:
+    get:
+      tags: [Settings]
+      summary: List active and revoked sessions
+      operationId: settings_list_sessions
+      security:
+        - HTTPBearer: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionsListResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /settings/sessions/{session_id}:
+    delete:
+      tags: [Settings]
+      summary: Revoke a session by id
+      operationId: settings_revoke_session
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /foods/search:
+    get:
+      tags: [Foods]
+      summary: Search foods (returns global + user's custom)
+      operationId: foods_search
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodSearchResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /foods:
+    post:
+      tags: [Foods]
+      summary: Create a custom food for the current user
+      operationId: foods_create
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /foods/{food_id}:
+    get:
+      tags: [Foods]
+      summary: Get food details including portions and nutrients
+      operationId: foods_get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: food_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Food not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [Foods]
+      summary: Update a custom food (owner only)
+      operationId: foods_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: food_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (not owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Food not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags: [Foods]
+      summary: Delete a custom food (soft delete; owner only)
+      operationId: foods_delete
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: food_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (not owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Food not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /exercises/search:
+    get:
+      tags: [Exercises]
+      summary: Search exercises (returns global + user's custom)
+      operationId: exercises_search
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: major_heading
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseSearchResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /exercises:
+    post:
+      tags: [Exercises]
+      summary: Create a custom exercise for the current user
+      operationId: exercises_create
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExerciseCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /exercises/{exercise_id}:
+    get:
+      tags: [Exercises]
+      summary: Get exercise detail
+      operationId: exercises_get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: exercise_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Exercise not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [Exercises]
+      summary: Update a custom exercise (owner only)
+      operationId: exercises_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: exercise_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExercisePatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (not owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Exercise not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags: [Exercises]
+      summary: Delete a custom exercise (soft delete; owner only)
+      operationId: exercises_delete
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: exercise_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (not owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Exercise not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logs/foods:
+    get:
+      tags: [Logs]
+      summary: List food logs for a day (diary)
+      operationId: logs_foods_list
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: day
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodDiaryDayResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /logs/foods/items:
+    post:
+      tags: [Logs]
+      summary: Add a food log item (creates/uses entry by day + meal_type)
+      operationId: logs_food_item_create
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodLogItemCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodLogItemCreateResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Food or portion not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /logs/foods/items/{item_id}:
+    patch:
+      tags: [Logs]
+      summary: Update a food log item
+      operationId: logs_food_item_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FoodLogItemPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FoodLogItem'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags: [Logs]
+      summary: Delete a food log item
+      operationId: logs_food_item_delete
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /logs/exercises:
+    get:
+      tags: [Logs]
+      summary: List exercise logs for a day
+      operationId: logs_exercises_list
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: day
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseDiaryDayResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /logs/exercises/items:
+    post:
+      tags: [Logs]
+      summary: Add an exercise log item
+      operationId: logs_exercise_item_create
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExerciseLogItemCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseLogItemCreateResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Exercise not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /logs/exercises/items/{item_id}:
+    patch:
+      tags: [Logs]
+      summary: Update an exercise log item
+      operationId: logs_exercise_item_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExerciseLogItemPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseLogItem'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags: [Logs]
+      summary: Delete an exercise log item
+      operationId: logs_exercise_item_delete
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /biometrics:
+    post:
+      tags: [Biometrics]
+      summary: Create biometrics log (weight/height)
+      operationId: biometrics_create
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BiometricsCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricsLog'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags: [Biometrics]
+      summary: List biometrics logs (range)
+      operationId: biometrics_list
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            nullable: true
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            nullable: true
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 365
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricsListResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /biometrics/latest:
+    get:
+      tags: [Biometrics]
+      summary: Get latest biometrics record
+      operationId: biometrics_latest
+      security:
+        - HTTPBearer: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricsLog'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No biometrics found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /biometrics/{biometric_id}:
+    patch:
+      tags: [Biometrics]
+      summary: Patch a biometrics record
+      operationId: biometrics_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: biometric_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BiometricsPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiometricsLog'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Biometrics not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags: [Biometrics]
+      summary: Delete a biometrics record
+      operationId: biometrics_delete
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: biometric_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Biometrics not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /streak:
+    get:
+      tags: [Streak]
+      summary: Get current streak + last 7 days
+      operationId: streak_get
+      security:
+        - HTTPBearer: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreakResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /streak/week:
+    get:
+      tags: [Streak]
+      summary: Get a 7-day streak window
+      operationId: streak_week
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: end_day
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreakWeekResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /support/tickets:
+    post:
+      tags: [Support]
+      summary: Create a support ticket
+      operationId: support_ticket_create
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportTicketCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicket'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags: [Support]
+      summary: List my support tickets
+      operationId: support_ticket_list_my
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: category
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TicketCategory'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicketListResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/support/tickets:
+    get:
+      tags: [Admin]
+      summary: Admin - list support tickets
+      operationId: admin_support_ticket_list
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: category
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TicketCategory'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicketListResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized (admin only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/support/tickets/{ticket_id}:
+    patch:
+      tags: [Admin]
+      summary: Admin - update ticket status/category
+      operationId: admin_support_ticket_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: ticket_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminTicketPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportTicket'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized (admin only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /feed:
+    get:
+      tags: [Blog]
+      summary: Feed (recent/trending/hashtag/author/saved)
+      operationId: blog_feed
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [recent, trending]
+            default: recent
+        - name: hashtag
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+        - name: author_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            nullable: true
+        - name: saved
+          in: query
+          required: false
+          schema:
+            type: boolean
+            nullable: true
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /posts:
+    post:
+      tags: [Blog]
+      summary: Create post (supports media + hashtags)
+      operationId: posts_create
+      security:
+        - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+  /posts/{post_id}:
+    get:
+      tags: [Blog]
+      summary: Get post detail
+      operationId: posts_get
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [Blog]
+      summary: Patch post (author only)
+      operationId: posts_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostPatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (not author)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags: [Blog]
+      summary: Delete post (soft delete; author only)
+      operationId: posts_delete
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not allowed (not author)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /posts/{post_id}/like:
+    post:
+      tags: [Blog]
+      summary: Like a post
+      operationId: posts_like
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Blog]
+      summary: Unlike a post
+      operationId: posts_unlike
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /posts/{post_id}/save:
+    post:
+      tags: [Blog]
+      summary: Save a post
+      operationId: posts_save
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Blog]
+      summary: Unsave a post
+      operationId: posts_unsave
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: post_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hashtags/search:
+    get:
+      tags: [Blog]
+      summary: Search hashtags
+      operationId: hashtags_search
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HashtagSearchResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /hashtags/{name}/posts:
+    get:
+      tags: [Blog]
+      summary: Get posts by hashtag name
+      operationId: hashtags_posts
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Admin dashboard summary
+      operationId: admin_dashboard
+      security:
+        - HTTPBearer: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized (admin only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/users/{user_id}/role:
+    patch:
+      tags: [Admin]
+      summary: Admin - update user role
+      operationId: admin_user_role_patch
+      security:
+        - HTTPBearer: []
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRolePatchRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPublic'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Not authorized (admin only)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+
+components:
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ---- FastAPI-style validation schemas ----
+    ValidationError:
+      type: object
+      required: [loc, msg, type]
+      properties:
+        loc:
+          type: array
+          items: {}
+        msg:
+          type: string
+        type:
+          type: string
+    HTTPValidationError:
+      type: object
+      properties:
+        detail:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    # ---- Shared ----
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+
+    GenericMessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    # ---- Enums ----
+    UserRole:
+      type: string
+      enum: [user, admin]
+    Gender:
+      type: string
+      enum: [male, female, other, prefer_not_to_say]
+    MealType:
+      type: string
+      enum: [breakfast, lunch, dinner, snacks]
+    MediaType:
+      type: string
+      enum: [image, video]
+    TicketStatus:
+      type: string
+      enum: [open, in_progress, resolved, closed]
+    TicketCategory:
+      type: string
+      enum: [bug, feature, account, billing, other]
+    StreakStatus:
+      type: string
+      enum: [green, yellow, none]
+
+    # ---- Auth ----
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+
+    LoginRequest:
+      type: object
+      required: [email_or_username, password]
+      properties:
+        email_or_username:
+          type: string
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        device_label:
+          type: string
+          nullable: true
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    LogoutRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordRequest:
+      type: object
+      required: [token, new_password]
+      properties:
+        token:
+          type: string
+        new_password:
+          type: string
+          minLength: 8
+          maxLength: 128
+
+    AuthTokensResponse:
+      type: object
+      required: [user, access_token, refresh_token]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserPublic'
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    RefreshResponse:
+      type: object
+      required: [access_token, refresh_token]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+        new_password:
+          type: string
+          minLength: 8
+          maxLength: 128
+
+    # ---- Users/Profile ----
+    UserPublic:
+      type: object
+      required: [id, username, email, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    Profile:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+          nullable: true
+        gender:
+          $ref: '#/components/schemas/Gender'
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        height_cm_default:
+          type: number
+          nullable: true
+
+    ProfilePatchRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          nullable: true
+        gender:
+          $ref: '#/components/schemas/Gender'
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        height_cm_default:
+          type: number
+          nullable: true
+
+    UserMeResponse:
+      type: object
+      required: [user, profile]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserPublic'
+        profile:
+          $ref: '#/components/schemas/Profile'
+
+    Session:
+      type: object
+      required: [id, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        device_label:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        ip:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    SessionsListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+
+    # ---- Foods ----
+    FoodListItem:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        food_group:
+          type: string
+          nullable: true
+        owner_user_id:
+          type: string
+          format: uuid
+          nullable: true
+        source_code:
+          type: string
+          nullable: true
+
+    FoodSearchResponse:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodListItem'
+        next_cursor:
+          type: string
+          nullable: true
+
+    FoodPortion:
+      type: object
+      required: [id, amount, unit, grams]
+      properties:
+        id:
+          type: integer
+          format: int64
+        amount:
+          type: number
+        unit:
+          type: string
+        grams:
+          type: number
+
+    FoodNutrient:
+      type: object
+      required: [nutrient_key, amount_per_100g]
+      properties:
+        nutrient_key:
+          type: string
+        amount_per_100g:
+          type: number
+
+    FoodDetail:
+      type: object
+      required: [id, name, portions, nutrients]
+      properties:
+        id:
+          type: integer
+          format: int64
+        owner_user_id:
+          type: string
+          format: uuid
+          nullable: true
+        source_code:
+          type: string
+          nullable: true
+        name:
+          type: string
+        food_group:
+          type: string
+          nullable: true
+        portions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodPortion'
+        nutrients:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodNutrient'
+
+    FoodCreateRequest:
+      type: object
+      required: [name, nutrients]
+      properties:
+        name:
+          type: string
+        food_group:
+          type: string
+          nullable: true
+        portions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodPortionCreate'
+          default: []
+        nutrients:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodNutrient'
+        source_code:
+          type: string
+          nullable: true
+
+    FoodPortionCreate:
+      type: object
+      required: [amount, unit, grams]
+      properties:
+        amount:
+          type: number
+        unit:
+          type: string
+        grams:
+          type: number
+
+    FoodPatchRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        food_group:
+          type: string
+          nullable: true
+        portions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodPortionCreate'
+          nullable: true
+        nutrients:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodNutrient'
+          nullable: true
+
+    # ---- Exercises ----
+    Exercise:
+      type: object
+      required: [id, description, met_value]
+      properties:
+        id:
+          type: integer
+          format: int64
+        owner_user_id:
+          type: string
+          format: uuid
+          nullable: true
+        activity_code:
+          type: integer
+          nullable: true
+        major_heading:
+          type: string
+          nullable: true
+        description:
+          type: string
+        met_value:
+          type: number
+
+    ExerciseSearchResponse:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Exercise'
+        next_cursor:
+          type: string
+          nullable: true
+
+    ExerciseCreateRequest:
+      type: object
+      required: [description, met_value]
+      properties:
+        description:
+          type: string
+        major_heading:
+          type: string
+          nullable: true
+        met_value:
+          type: number
+
+    ExercisePatchRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        major_heading:
+          type: string
+          nullable: true
+        met_value:
+          type: number
+
+    # ---- Logs ----
+    FoodLogItemCreateRequest:
+      type: object
+      required: [logged_at, meal_type, food_id, quantity, grams]
+      properties:
+        logged_at:
+          type: string
+          format: date-time
+        meal_type:
+          $ref: '#/components/schemas/MealType'
+        food_id:
+          type: integer
+          format: int64
+        portion_id:
+          type: integer
+          format: int64
+          nullable: true
+        quantity:
+          type: number
+        unit:
+          type: string
+          nullable: true
+        grams:
+          type: number
+
+    FoodLogItemCreateResponse:
+      type: object
+      required: [entry_id, item_id]
+      properties:
+        entry_id:
+          type: integer
+          format: int64
+        item_id:
+          type: integer
+          format: int64
+
+    FoodLogItemPatchRequest:
+      type: object
+      properties:
+        portion_id:
+          type: integer
+          format: int64
+          nullable: true
+        quantity:
+          type: number
+          nullable: true
+        unit:
+          type: string
+          nullable: true
+        grams:
+          type: number
+          nullable: true
+
+    FoodLogItem:
+      type: object
+      required: [id, entry_id, food_id, quantity, grams]
+      properties:
+        id:
+          type: integer
+          format: int64
+        entry_id:
+          type: integer
+          format: int64
+        food_id:
+          type: integer
+          format: int64
+        portion_id:
+          type: integer
+          format: int64
+          nullable: true
+        quantity:
+          type: number
+        unit:
+          type: string
+          nullable: true
+        grams:
+          type: number
+        calories:
+          type: number
+          nullable: true
+        protein_g:
+          type: number
+          nullable: true
+        carbs_g:
+          type: number
+          nullable: true
+        fat_g:
+          type: number
+          nullable: true
+
+    FoodLogEntry:
+      type: object
+      required: [id, logged_at, meal_type]
+      properties:
+        id:
+          type: integer
+          format: int64
+        logged_at:
+          type: string
+          format: date-time
+        meal_type:
+          $ref: '#/components/schemas/MealType'
+        total_calories:
+          type: number
+          nullable: true
+        total_protein_g:
+          type: number
+          nullable: true
+        total_carbs_g:
+          type: number
+          nullable: true
+        total_fat_g:
+          type: number
+          nullable: true
+
+    FoodDiaryMeal:
+      type: object
+      required: [meal_type, entry, items]
+      properties:
+        meal_type:
+          $ref: '#/components/schemas/MealType'
+        entry:
+          $ref: '#/components/schemas/FoodLogEntry'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodLogItem'
+
+    FoodDiaryDayResponse:
+      type: object
+      required: [day, meals]
+      properties:
+        day:
+          type: string
+          format: date
+        meals:
+          type: array
+          items:
+            $ref: '#/components/schemas/FoodDiaryMeal'
+
+    ExerciseLogItemCreateRequest:
+      type: object
+      required: [logged_at, exercise_id, duration_min]
+      properties:
+        logged_at:
+          type: string
+          format: date-time
+        exercise_id:
+          type: integer
+          format: int64
+        duration_min:
+          type: number
+        notes:
+          type: string
+          nullable: true
+
+    ExerciseLogItemCreateResponse:
+      type: object
+      required: [entry_id, item_id]
+      properties:
+        entry_id:
+          type: integer
+          format: int64
+        item_id:
+          type: integer
+          format: int64
+
+    ExerciseLogItemPatchRequest:
+      type: object
+      properties:
+        duration_min:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    ExerciseLogItem:
+      type: object
+      required: [id, entry_id, exercise_id, duration_min]
+      properties:
+        id:
+          type: integer
+          format: int64
+        entry_id:
+          type: integer
+          format: int64
+        exercise_id:
+          type: integer
+          format: int64
+        duration_min:
+          type: number
+        met_value_snapshot:
+          type: number
+          nullable: true
+        calories:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    ExerciseLogEntry:
+      type: object
+      required: [id, logged_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        logged_at:
+          type: string
+          format: date-time
+        total_calories:
+          type: number
+          nullable: true
+
+    ExerciseDiaryDayResponse:
+      type: object
+      required: [day, entry, items]
+      properties:
+        day:
+          type: string
+          format: date
+        entry:
+          $ref: '#/components/schemas/ExerciseLogEntry'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseLogItem'
+
+    # ---- Biometrics ----
+    BiometricsCreateRequest:
+      type: object
+      required: [logged_at]
+      properties:
+        logged_at:
+          type: string
+          format: date-time
+        weight_kg:
+          type: number
+          nullable: true
+        height_cm:
+          type: number
+          nullable: true
+
+    BiometricsPatchRequest:
+      type: object
+      properties:
+        logged_at:
+          type: string
+          format: date-time
+          nullable: true
+        weight_kg:
+          type: number
+          nullable: true
+        height_cm:
+          type: number
+          nullable: true
+
+    BiometricsLog:
+      type: object
+      required: [id, logged_at, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        logged_at:
+          type: string
+          format: date-time
+        weight_kg:
+          type: number
+          nullable: true
+        height_cm:
+          type: number
+          nullable: true
+        bmi:
+          type: number
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    BiometricsListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BiometricsLog'
+
+    # ---- Streak ----
+    StreakDay:
+      type: object
+      required: [day, status]
+      properties:
+        day:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/StreakStatus'
+
+    StreakResponse:
+      type: object
+      required: [current_streak, longest_streak, week]
+      properties:
+        current_streak:
+          type: integer
+          minimum: 0
+        longest_streak:
+          type: integer
+          minimum: 0
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreakDay'
+
+    StreakWeekResponse:
+      type: object
+      required: [end_day, week]
+      properties:
+        end_day:
+          type: string
+          format: date
+        week:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreakDay'
+
+    # ---- Support ----
+    SupportTicketCreateRequest:
+      type: object
+      required: [subject, message]
+      properties:
+        subject:
+          type: string
+          maxLength: 200
+        message:
+          type: string
+          maxLength: 5000
+        category:
+          $ref: '#/components/schemas/TicketCategory'
+
+    SupportTicket:
+      type: object
+      required: [id, subject, message, status, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        subject:
+          type: string
+        message:
+          type: string
+        category:
+          $ref: '#/components/schemas/TicketCategory'
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    SupportTicketListResponse:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupportTicket'
+        next_cursor:
+          type: string
+          nullable: true
+
+    AdminTicketPatchRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        category:
+          $ref: '#/components/schemas/TicketCategory'
+
+    # ---- Blog ----
+    PostMediaIn:
+      type: object
+      required: [url, media_type]
+      properties:
+        url:
+          type: string
+        media_type:
+          $ref: '#/components/schemas/MediaType'
+        mime_type:
+          type: string
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        size_bytes:
+          type: integer
+          format: int64
+          nullable: true
+        sort_order:
+          type: integer
+          default: 0
+
+    PostCreateRequest:
+      type: object
+      properties:
+        content_text:
+          type: string
+          nullable: true
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostMediaIn'
+          default: []
+        hashtags:
+          type: array
+          items:
+            type: string
+          default: []
+
+    PostPatchRequest:
+      type: object
+      properties:
+        content_text:
+          type: string
+          nullable: true
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostMediaIn'
+          nullable: true
+        hashtags:
+          type: array
+          items:
+            type: string
+          nullable: true
+
+    PostMediaOut:
+      type: object
+      required: [id, url, media_type, sort_order]
+      properties:
+        id:
+          type: integer
+          format: int64
+        url:
+          type: string
+        media_type:
+          $ref: '#/components/schemas/MediaType'
+        mime_type:
+          type: string
+          nullable: true
+        width:
+          type: integer
+          nullable: true
+        height:
+          type: integer
+          nullable: true
+        size_bytes:
+          type: integer
+          format: int64
+          nullable: true
+        sort_order:
+          type: integer
+
+    PostDetail:
+      type: object
+      required: [id, user_id, like_count, save_count, created_at, media, hashtags]
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: string
+          format: uuid
+        content_text:
+          type: string
+          nullable: true
+        like_count:
+          type: integer
+          minimum: 0
+        save_count:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostMediaOut'
+        hashtags:
+          type: array
+          items:
+            type: string
+
+    FeedItem:
+      allOf:
+        - $ref: '#/components/schemas/PostDetail'
+
+    FeedResponse:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeedItem'
+        next_cursor:
+          type: string
+          nullable: true
+
+    Hashtag:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+
+    HashtagSearchResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Hashtag'
+
+    # ---- Admin ----
+    AdminDashboardResponse:
+      type: object
+      required: [users_count, posts_count, open_tickets_count]
+      properties:
+        users_count:
+          type: integer
+          minimum: 0
+        posts_count:
+          type: integer
+          minimum: 0
+        open_tickets_count:
+          type: integer
+          minimum: 0
+
+    UserRolePatchRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
