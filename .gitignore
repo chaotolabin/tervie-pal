@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+docs/flowcharts2/
 
 # Virtual environments
 .venv/
