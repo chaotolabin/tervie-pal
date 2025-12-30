@@ -4,10 +4,9 @@ import uuid
 from datetime import datetime, timezone, date
 from typing import Optional, List
 
-from sqlalchemy import Text, Date, DateTime, BigInteger, Index, Float, CheckConstraint, ForeignKey
+from sqlalchemy import Text, Date, DateTime, BigInteger, Index, Float, CheckConstraint, ForeignKey, text, String
 from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Enum as SQLEnum
 
 from app.models.base import Base, TimestampMixin
 
@@ -55,11 +54,10 @@ class User(Base, TimestampMixin):
         comment="Mật khẩu đã hash (bcrypt/argon2)"
     )
     
-    role: Mapped[UserRole] = mapped_column(
-        # String(20),
-        SQLEnum(UserRole),
+    role: Mapped[str] = mapped_column(
+        String(20),
         nullable=False,
-        default=UserRole.USER,
+        default="user",
         server_default="user",
         comment="Vai trò: user hoặc admin"
     )
@@ -102,9 +100,8 @@ class Profile(Base, TimestampMixin):
         comment="Họ và tên đầy đủ"
     )
     
-    gender: Mapped[Optional[Gender]] = mapped_column(
-        # String(30),
-        SQLEnum(Gender),
+    gender: Mapped[Optional[str]] = mapped_column(
+        String(30),
         nullable=True,
         comment="Giới tính"
     )
@@ -219,5 +216,5 @@ class RefreshSession(Base):
     
     # Indexes
     __table_args__ = (
-        Index("ix_refresh_sessions_user_id", "user_id", postgresql_where=text("revoked_at IS NULL"))
+        Index("ix_refresh_sessions_user_id", "user_id", postgresql_where=text("revoked_at IS NULL")),
     )

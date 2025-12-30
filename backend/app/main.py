@@ -13,11 +13,23 @@ from app.api.routes import auth, admin, users, meals, workouts, chatbot
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
-    description="Tervie Pal API"
+    description="Tervie Pal API",
+    openapi_url="/api/v1/openapi.json",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc"
 )
 
-# Root endpoint: dung de kiem tra tinh trang hoat dong cua he thong
-@app.get("/", tags=["Root"])    # http://127.0.0.1:8000/, tags: phan loai endpoint
+# ==================== CORS Configuration ====================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # TODO: Thay đổi thành specific origins in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ==================== Root Endpoints ====================
+@app.get("/", tags=["Root"])
 async def root():
     """Health check endpoint"""
     return {
@@ -27,7 +39,6 @@ async def root():
     }
 
 
-# Health check endpoint: kiem tra ket noi database
 @app.get("/health", tags=["Root"])
 async def health_check(db: Session = Depends(get_db)):
     """
@@ -59,3 +70,12 @@ async def health_check(db: Session = Depends(get_db)):
                 "error": str(e)
             }
         )
+
+
+# ==================== Include API Routes ====================
+app.include_router(auth.router, prefix="/api/v1")
+# app.include_router(admin.router, prefix="/api/v1")
+# app.include_router(users.router, prefix="/api/v1")
+# app.include_router(meals.router, prefix="/api/v1")
+# app.include_router(workouts.router, prefix="/api/v1")
+# app.include_router(chatbot.router, prefix="/api/v1")
