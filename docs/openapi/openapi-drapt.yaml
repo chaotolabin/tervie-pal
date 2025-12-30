@@ -8,17 +8,17 @@ info:
 servers:
   - url: /api/v1
 tags:
-  - name: Auth
-  - name: Users
-  - name: Settings
-  - name: Foods
-  - name: Exercises
-  - name: Logs
-  - name: Biometrics
-  - name: Streak
-  - name: Support
-  - name: Blog
-  - name: Admin
+  - name: Auth        # Dang ky, dang nhap, refresh token, logout, quen mat khau, dat lai mat khau
+  - name: Users       # Thong tin nguoi dung, profile
+  - name: Settings    # Thay doi mat khau, quan ly session
+  - name: Foods       # CRUD foods
+  - name: Exercises   # CRUD exercises
+  - name: Logs        # Food + Exercise logs => diary
+  - name: Biometrics  # Log weight, height
+  - name: Streak      # Streak cache and state
+  - name: Support     # Support tickets
+  - name: Blog        # feed - posts, likes, saves
+  - name: Admin       # admin-only endpoints
 
 paths:
   /auth/register:
@@ -1951,7 +1951,7 @@ components:
       enum: [user, admin]
     Gender:
       type: string
-      enum: [male, female, other, prefer_not_to_say]
+      enum: [male, female]
     MealType:
       type: string
       enum: [breakfast, lunch, dinner, snacks]
