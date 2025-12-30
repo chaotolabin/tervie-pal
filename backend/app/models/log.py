@@ -2,6 +2,7 @@
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional, List
 
 from sqlalchemy import String, Text, BigInteger, Index, ForeignKey, DateTime, CheckConstraint, Numeric
@@ -49,28 +50,28 @@ class FoodLogEntry(Base, TimestampMixin):
         comment="Loại bữa ăn"
     )
 
-    total_calories: Mapped[float] = mapped_column(
+    total_calories: Mapped[Decimal] = mapped_column(
         Numeric(12, 2),
         nullable=False,
         default=0.0,
         comment="Tổng lượng calo của bữa ăn"
     )
 
-    total_protein_g: Mapped[float] = mapped_column(
+    total_protein_g: Mapped[Decimal] = mapped_column(
         Numeric(12, 3),
         nullable=False,
         default=0.0,
         comment="Tổng lượng protein (grams) của bữa ăn"
     )
 
-    total_carbs_g: Mapped[float] = mapped_column(
+    total_carbs_g: Mapped[Decimal] = mapped_column(
         Numeric(12, 3),
         nullable=False,
         default=0.0,
         comment="Tổng lượng carbs (grams) của bữa ăn"
     )
 
-    total_fat_g: Mapped[float] = mapped_column(
+    total_fat_g: Mapped[Decimal] = mapped_column(
         Numeric(12, 3),
         nullable=False,
         default=0.0,
@@ -136,7 +137,7 @@ class FoodLogItem(Base):
         comment="FK tới food_portions.id"
     )
     
-    quantity: Mapped[float] = mapped_column(
+    quantity: Mapped[Decimal] = mapped_column(
         Numeric(10, 3),
         nullable=False,
         comment="Số lượng (vd: 2 cups, 1.5 servings)"
@@ -148,17 +149,17 @@ class FoodLogItem(Base):
         comment="Đơn vị (vd: grams, cups, servings)"
     )
     
-    grams: Mapped[float] = mapped_column(
+    grams: Mapped[Decimal] = mapped_column(
         Numeric(10, 3),
         nullable=False,
         comment="Quy đổi về grams để tính dinh dưỡng"
     )
     
     # Snapshot để lịch sử không đổi khi food/portion thay đổi
-    calories: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
-    protein_g: Mapped[Optional[float]] = mapped_column(Numeric(12, 3), nullable=True)
-    carbs_g: Mapped[Optional[float]] = mapped_column(Numeric(12, 3), nullable=True)
-    fat_g: Mapped[Optional[float]] = mapped_column(Numeric(12, 3), nullable=True)
+    calories: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    protein_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 3), nullable=True)
+    carbs_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 3), nullable=True)
+    fat_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 3), nullable=True)
     
     # Relationships
     entry: Mapped["FoodLogEntry"] = relationship(
@@ -193,7 +194,7 @@ class ExerciseLogEntry(Base, TimestampMixin):
         comment="FK tới users.id"
     )
 
-    total_calories: Mapped[float] = mapped_column(
+    total_calories: Mapped[Decimal] = mapped_column(
         Numeric(12, 2),
         nullable=False,
         default=0.0,
@@ -255,7 +256,7 @@ class ExerciseLogItem(Base):
     # vi du web Cronometer nguoi ta dung Effort Level voi duration de tinh met
     # hay minh dua vao exercises.id a :(?
 
-    duration_min: Mapped[Optional[float]] = mapped_column(
+    duration_min: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(10, 2),
         nullable=True,
         comment="Thời gian tập (phút)"
@@ -272,20 +273,20 @@ class ExerciseLogItem(Base):
     #     comment="Số reps mỗi set"
     # )
 
-    # weight_kg: Mapped[Optional[float]] = mapped_column(
+    # weight_kg: Mapped[Optional[Decimal]] = mapped_column(
     #     nullable=True,
     #     comment="Trọng lượng tạ (kg)"
     # )
     
     # snapshot
-    met_value_snapshot: Mapped[Optional[float]] = mapped_column(
+    met_value_snapshot: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(6, 2),
         nullable=True,
         comment="MET snapshot tại thời điểm log (copy từ exercises.met_value)"
     )
 
     # calories: duoc tinh
-    calories: Mapped[Optional[float]] = mapped_column(
+    calories: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(12, 2),
         nullable=True,
         default=0,
