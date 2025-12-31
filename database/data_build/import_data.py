@@ -12,8 +12,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Đường dẫn file
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-FOOD_FILE = os.path.join(CURRENT_DIR, "../data/cleaned_nutrients.json") # File JSON
-# EXERCISE_FILE = os.path.join(CURRENT_DIR, "../data/exercise_data.csv") # File CSV
+# FOOD_FILE = os.path.join(CURRENT_DIR, "../data/cleaned_nutrients.json") # File JSON
+EXERCISE_FILE = os.path.join(CURRENT_DIR, "../data/exercise_data.csv") # File CSV
 
 # ================= IMPORT FOOD (JSON) =================
 def import_foods():
