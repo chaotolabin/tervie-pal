@@ -8,13 +8,16 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, meals, workouts, chatbot
+from app.api.routes import auth, admin, users, meals, workouts, chatbot, biometric
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.PROJECT_VERSION,
     description="Tervie Pal API"
 )
+
+# Register routers
+app.include_router(biometric.router, prefix="/api/v1")
 
 # Root endpoint: dung de kiem tra tinh trang hoat dong cua he thong
 @app.get("/", tags=["Root"])    # http://127.0.0.1:8000/, tags: phan loai endpoint

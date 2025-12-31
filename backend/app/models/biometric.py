@@ -1,9 +1,10 @@
 # Models cho Biometrics Logs
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import BigInteger, Index, DateTime, Float, CheckConstraint
+from sqlalchemy import BigInteger, Index, DateTime, Numeric, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import ForeignKey
@@ -35,20 +36,20 @@ class BiometricsLog(Base):
         comment="Thời điểm đo (client gửi)"
     )
     
-    weight_kg: Mapped[Optional[float]] = mapped_column(
-        Float,
+    weight_kg: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2),
         nullable=False,
         comment="Cân nặng (kg)"
     )
     
-    height_cm: Mapped[Optional[float]] = mapped_column(
-        Float,
+    height_cm: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(5, 2),
         nullable=False,
         comment="Chiều cao (cm)"
     )
 
-    bmi: Mapped[Optional[float]] = mapped_column(
-        Float,
+    bmi: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(4, 1),
         nullable=True,
         comment="Chỉ số BMI (tính toán từ cân nặng và chiều cao)"
     )

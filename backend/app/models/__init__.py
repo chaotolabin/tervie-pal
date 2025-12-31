@@ -8,8 +8,10 @@ from app.models.auth import (
     User,
     Profile,
     RefreshSession,
+    Goal,
     UserRole,
-    Gender
+    Gender,
+    GoalType
 )
 
 # Food models

@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str  # URL ket noi den PostgreSQL database
     
+    # imagekit.io Configuration
+    IMAGEKIT_PRIVATE_KEY: str
+    IMAGEKIT_PUBLIC_KEY: str
+    IMAGEKIT_URL: str
+
     class Config:
         env_file = ".env"
 

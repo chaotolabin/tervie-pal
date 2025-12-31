@@ -265,6 +265,13 @@ class Hashtag(Base):
         nullable=False
     )
 
+    posts: Mapped[List["Post"]] = relationship(
+        "Post",
+        secondary="post_hashtags",
+        back_populates="hashtags",
+        lazy="selectin"
+    )
+
     __table_args__ = (
         Index("ix_hashtags_name", "name"),
     )
