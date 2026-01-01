@@ -78,3 +78,22 @@ class PasswordResetToken(Base):
         Index("ix_password_reset_tokens_token_hash", "token_hash", unique=True),
         Index("ix_password_reset_tokens_expires_at", "expires_at"),
     )
+
+    def is_valid(self) -> bool:
+        """
+        Check if token is still valid
+        
+        Token is valid if:
+        - Not expired (expires_at > now)
+        - Not used (used_at IS NULL)
+        - Not revoked (revoked_at IS NULL)
+        
+        Returns:
+            True if token is valid, False otherwise
+        """
+        now = datetime.now(timezone.utc)
+        return (
+            self.expires_at > now
+            and self.used_at is None
+            and self.revoked_at is None
+        )
