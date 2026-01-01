@@ -12,3 +12,4 @@ backend/alembic/versions/
 .venv/
 venv/
 .env
+backend/alembic/versions/004_update_goals_macros_to_grams.py
