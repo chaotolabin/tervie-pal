@@ -1,7 +1,7 @@
 # Settings routes: change password, manage sessions
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, update
 from datetime import datetime, timezone
 
 from app.core.database import get_db
@@ -14,6 +14,7 @@ from app.api.deps import (
     hash_password,
     verify_password,
     get_current_user,
+    update_user_password_and_revoke_sessions,
 )
 
 
@@ -82,22 +83,12 @@ async def change_password(
                 detail="New password must be different from current password"
             )
         
-        # ===== Step 3: Update password hash =====
-        user.password_hash = hash_password(req.new_password)
-        user.password_changed_at = datetime.now(timezone.utc)
-        db.add(user)
-        
-        # ===== Step 4: Revoke ALL refresh sessions =====
-        # All tokens with iat < password_changed_at will be rejected in refresh endpoint
-        db.execute(
-            select(RefreshSession)
-            .where(RefreshSession.user_id == user.id)
-            .update({RefreshSession.revoked_at: datetime.now(timezone.utc)}, synchronize_session=False)
-        )
-        
+        # ===== Step 3: Update password + revoke sessions =====
+        # Uses shared helper: update password_hash + revoke ALL refresh sessions
+        update_user_password_and_revoke_sessions(user, req.new_password, db)
         db.commit()
         
-        # ===== Step 5: Return 204 No Content =====
+        # ===== Step 4: Return 204 No Content =====
         
     except HTTPException:
         db.rollback()

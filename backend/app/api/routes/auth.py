@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, or_
 from sqlalchemy.exc import IntegrityError
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app.core.database import get_db
 from app.models.auth import User, Profile, RefreshSession, UserRole, Gender
@@ -18,6 +18,9 @@ from app.api.schemas import (
     Profile as ProfileSchema,
     ErrorResponse,
     LogoutRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    GenericMessageResponse,
 )
 from app.api.deps import (
     hash_password,
@@ -26,8 +29,14 @@ from app.api.deps import (
     create_refresh_token,
     decode_token,
     hash_refresh_token,
+    create_password_reset_token,
+    decode_password_reset_token,
+    update_user_password_and_revoke_sessions,
 )
 from app.models.auth import GoalType
+from app.models.password_reset import PasswordResetToken
+import hmac
+import hashlib
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -539,3 +548,162 @@ async def logout(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+# ==================== PASSWORD RESET ENDPOINTS ====================
+
+@router.post(
+    "/forgot-password",
+    response_model=dict,
+    status_code=200,
+)
+async def forgot_password(
+    req: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Step 1: Send password reset token to user's email
+    
+    Security:
+    - Always return 200 OK (no email enumeration)
+    - Generic success message regardless of email existence
+    - Token stored as hash (not plaintext)
+    - 15-minute expiry
+    
+    Workflow:
+    1. Find user by email (if not exists, still return 200)
+    2. Create password reset token (JWT, 15 min)
+    3. Hash token: token_hash = HMAC-SHA256(token)
+    4. Save to DB: PasswordResetToken(user_id, token_hash, expires_at)
+    5. Send email: user_email + reset link (TODO: integrate email service)
+    6. Return generic message
+    """
+    try:
+        # ===== Step 1: Find user =====
+        stmt = select(User).where(User.email == req.email)
+        user = db.execute(stmt).scalars().first()
+        
+        if user:
+            # ===== Step 2: Create token =====
+            token = create_password_reset_token(user.id)
+            
+            # ===== Step 3: Hash token =====
+            token_hash = hmac.new(
+                b"password_reset_salt",
+                token.encode(),
+                hashlib.sha256
+            ).hexdigest()
+            
+            # ===== Step 4: Save to DB =====
+            reset_token = PasswordResetToken(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=datetime.now(timezone.utc).replace(microsecond=0) + timedelta(minutes=15),
+            )
+            db.add(reset_token)
+            db.commit()
+            
+            # ===== Step 5: Send email =====
+            # TODO: Integrate email service (SendGrid, AWS SES, etc.)
+            # email_service.send_password_reset(
+            #     to=user.email,
+            #     reset_url=f"https://app.tervie.pal/reset-password?token={token}",
+            #     username=user.username,
+            # )
+            print(f"[DEV MODE] Password reset token for {user.email}: {token}")
+        
+        # ===== Step 6: Always return generic success =====
+        return {"message": "If email exists, password reset link has been sent"}
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Forgot password error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        # Still return 200 OK for security
+        return {"message": "If email exists, password reset link has been sent"}
+
+
+@router.post(
+    "/reset-password",
+    status_code=204,
+)
+async def reset_password(
+    req: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> None:
+    """
+    Step 2: Reset password using reset token
+    
+    Security:
+    - Verify token signature & expiry
+    - Verify token not used (one-time use)
+    - Generic error messages
+    - Revoke ALL refresh sessions
+    
+    Workflow:
+    1. Decode password reset token
+    2. Find token_hash in DB
+    3. Verify token validity (not used, not revoked, not expired)
+    4. Find user by token.user_id
+    5. Update password + revoke sessions (shared helper)
+    6. Mark token as used
+    7. Return 204 No Content
+    """
+    try:
+        # ===== Step 1: Decode token =====
+        payload = decode_password_reset_token(req.token)
+        user_id = uuid.UUID(payload.get("sub"))
+        
+        # ===== Step 2: Hash token for DB lookup =====
+        token_hash = hmac.new(
+            b"password_reset_salt",
+            req.token.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        # ===== Step 3: Find token in DB =====
+        stmt = select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == token_hash
+        )
+        reset_token = db.execute(stmt).scalars().first()
+        
+        if not reset_token or not reset_token.is_valid():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired token"
+            )
+        
+        # ===== Step 4: Find user =====
+        user = db.execute(
+            select(User).where(User.id == user_id)
+        ).scalars().first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired token"
+            )
+        
+        # ===== Step 5: Update password + revoke sessions =====
+        update_user_password_and_revoke_sessions(user, req.new_password, db)
+        
+        # ===== Step 6: Mark token as used =====
+        reset_token.used_at = datetime.now(timezone.utc)
+        db.add(reset_token)
+        db.commit()
+        
+        # ===== Step 7: Return 204 =====
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Reset password error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired token"
+        )

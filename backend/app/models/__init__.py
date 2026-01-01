@@ -13,6 +13,9 @@ from app.models.auth import (
     Goal
 )
 
+# Password Reset models
+from app.models.password_reset import PasswordResetToken
+
 # Food models
 from app.models.food import (
     Food,

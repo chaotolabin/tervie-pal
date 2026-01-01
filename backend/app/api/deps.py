@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import os
@@ -19,6 +20,9 @@ from app.models.auth import User, RefreshSession
 
 
 # ==================== Configuration ====================
+# HTTPBearer for automatic Authorization: Bearer token extraction
+security = HTTPBearer()
+
 # Password hashing - Argon2 (OWASP recommended)
 # Cấu hình an toàn tối đa:
 # - time_cost=3: 3 iterations (đủ an toàn, ~0.5s)
@@ -37,6 +41,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+PASSWORD_RESET_TOKEN_EXPIRE_MINUTES = 15
 
 # Pepper riêng cho refresh token hashing (khuyến nghị khác SECRET_KEY)
 REFRESH_TOKEN_PEPPER = os.getenv("REFRESH_TOKEN_PEPPER", SECRET_KEY)
@@ -200,9 +205,85 @@ def decode_token(token: str) -> dict:
         )
 
 
+def create_password_reset_token(user_id: uuid.UUID) -> str:
+    """
+    Create JWT password reset token (15 minutes expiry)
+    
+    Args:
+        user_id: User UUID
+    
+    Returns:
+        JWT token string
+    """
+    expires_delta = timedelta(minutes=PASSWORD_RESET_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode = {
+        "sub": str(user_id),
+        "exp": expire,
+        "type": "password_reset",
+        "iat": int(datetime.now(timezone.utc).timestamp()),
+    }
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def decode_password_reset_token(token: str) -> dict:
+    """
+    Decode password reset token
+    
+    Args:
+        token: JWT token string
+    
+    Returns:
+        Token payload
+    
+    Raises:
+        Exception: If token is invalid or expired
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "password_reset":
+            raise InvalidTokenError("Invalid token type")
+        return payload
+    except (ExpiredSignatureError, InvalidTokenError) as e:
+        raise e
+
+
+def update_user_password_and_revoke_sessions(
+    user: User,
+    new_password: str,
+    db: Session
+) -> None:
+    """
+    Utility: Update user password + revoke ALL refresh sessions
+    
+    Sử dụng cho:
+    - Change password (verify current password trước)
+    - Reset password (verify reset token trước)
+    
+    Args:
+        user: User object
+        new_password: Plain text password
+        db: Database session
+    """
+    from sqlalchemy import update
+    
+    # Update password
+    user.password_hash = hash_password(new_password)
+    user.password_changed_at = datetime.now(timezone.utc)
+    db.add(user)
+    
+    # Revoke ALL refresh sessions (logout all devices)
+    db.execute(
+        update(RefreshSession)
+        .where(RefreshSession.user_id == user.id)
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+
+
 # ==================== User Dependencies ====================
 async def get_current_user(
-    token: str = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
     """
@@ -213,9 +294,14 @@ async def get_current_user(
         async def get_me(current_user: User = Depends(get_current_user)):
             return current_user
     
+    Requires: Authorization: Bearer <token>
+    
     Raises:
         HTTPException: If token is missing, invalid, or user not found
     """
+    # HTTPBearer automatically extracts token from "Authorization: Bearer <token>"
+    token = credentials.credentials
+    
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
