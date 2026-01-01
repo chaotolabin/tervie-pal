@@ -2,6 +2,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
+from decimal import Decimal
 
 from sqlalchemy import String, Text, BigInteger, Index, ForeignKey, CheckConstraint, Numeric
 from sqlalchemy.dialects.postgresql import UUID
@@ -95,7 +96,7 @@ class FoodPortion(Base, TimestampMixin):
         comment="FK tới foods.id"
     )
     
-    amount: Mapped[float] = mapped_column(
+    amount: Mapped[Decimal] = mapped_column(
         Numeric(10, 3),
         nullable=False,
         comment="Số lượng (vd: 1, 0.5)"
@@ -107,7 +108,7 @@ class FoodPortion(Base, TimestampMixin):
         comment="Đơn vị (vd: cup, tbsp, piece)"
     )
     
-    grams: Mapped[float] = mapped_column(
+    grams: Mapped[Decimal] = mapped_column(
         Numeric(10, 3),
         nullable=False,
         comment="Quy đổi ra grams"
@@ -138,13 +139,19 @@ class FoodNutrient(Base, TimestampMixin):
         comment="FK tới foods.id"
     )
     
-    nutrient_key: Mapped[str] = mapped_column(
+    nutrient_name: Mapped[str] = mapped_column(
         Text,
         primary_key=True,
-        comment="Tên chất dinh dưỡng (vd: calories_kcal, protein_g)"
+        comment="Tên chất dinh dưỡng (vd: calories, protein)"
+    )
+
+    unit: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        comment="Đơn vị của chất dinh dưỡng (vd: kcal, g, mg)"
     )
     
-    amount_per_100g: Mapped[float] = mapped_column(
+    amount_per_100g: Mapped[Decimal] = mapped_column(
         Numeric(14, 6),
         nullable=False,
         comment="Lượng chất dinh dưỡng trên 100g"

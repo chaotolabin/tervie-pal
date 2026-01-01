@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.api.deps import CurrentUserID
+from app.api.deps import get_current_user
+from app.models.auth import User
 from app.services.biometric_service import BiometricService
 from app.schemas.biometric_schema import (
     BiometricsCreateRequest,
@@ -36,7 +37,7 @@ router = APIRouter(
 def create_biometrics_log(
     data: BiometricsCreateRequest,
     db: Annotated[Session, Depends(get_db)],
-    user_id: CurrentUserID
+    current_user: Annotated[User, Depends(get_current_user)]
 ) -> BiometricsLogResponse:
     """
     POST /biometrics - Tạo biometrics log mới
@@ -44,7 +45,7 @@ def create_biometrics_log(
     Args:
         data: Request body với logged_at, weight_kg, height_cm
         db: Database session (auto-injected)
-        user_id: UUID của user hiện tại (auto-injected từ JWT)
+        current_user: User hiện tại (auto-injected từ JWT)
     
     Returns:
         BiometricsLogResponse: Log vừa tạo, bao gồm BMI đã tính
@@ -53,7 +54,7 @@ def create_biometrics_log(
         401 Unauthorized: Nếu chưa login
         422 Validation Error: Nếu dữ liệu không hợp lệ
     """
-    db_log = BiometricService.create_biometrics_log(db, user_id, data)
+    db_log = BiometricService.create_biometrics_log(db, current_user.id, data)
     return BiometricsLogResponse.model_validate(db_log)
 
 
@@ -65,7 +66,7 @@ def create_biometrics_log(
 )
 def list_biometrics_logs(
     db: Annotated[Session, Depends(get_db)],
-    user_id: CurrentUserID,
+    current_user: Annotated[User, Depends(get_current_user)],
     from_date: Annotated[Optional[date], Query(
         alias="from",
         description="Ngày bắt đầu (YYYY-MM-DD)"
@@ -85,7 +86,7 @@ def list_biometrics_logs(
     
     Args:
         db: Database session
-        user_id: UUID của user hiện tại
+        current_user: User hiện tại
         from_date: Ngày bắt đầu (optional, inclusive)
         to_date: Ngày kết thúc (optional, inclusive)
         limit: Số records tối đa (default 100, max 365)
@@ -99,7 +100,7 @@ def list_biometrics_logs(
     """
     logs = BiometricService.get_biometrics_logs(
         db=db,
-        user_id=user_id,
+        user_id=current_user.id,
         from_date=from_date,
         to_date=to_date,
         limit=limit
@@ -118,14 +119,14 @@ def list_biometrics_logs(
 )
 def get_latest_biometrics(
     db: Annotated[Session, Depends(get_db)],
-    user_id: CurrentUserID
+    current_user: Annotated[User, Depends(get_current_user)]
 ) -> BiometricsLogResponse:
     """
     GET /biometrics/latest
     
     Args:
         db: Database session
-        user_id: UUID của user hiện tại
+        current_user: User hiện tại
     
     Returns:
         BiometricsLogResponse: Log mới nhất
@@ -135,7 +136,7 @@ def get_latest_biometrics(
     """
     from fastapi import HTTPException
     
-    db_log = BiometricService.get_latest_biometrics(db, user_id)
+    db_log = BiometricService.get_latest_biometrics(db, current_user.id)
     
     if not db_log:
         raise HTTPException(
@@ -156,7 +157,7 @@ def update_biometrics_log(
     biometric_id: int,
     data: BiometricsPatchRequest,
     db: Annotated[Session, Depends(get_db)],
-    user_id: CurrentUserID
+    current_user: Annotated[User, Depends(get_current_user)]
 ) -> BiometricsLogResponse:
     """
     PATCH /biometrics/{biometric_id}
@@ -165,7 +166,7 @@ def update_biometrics_log(
         biometric_id: ID của log cần update
         data: Dữ liệu cần update (partial - chỉ gửi fields cần thay đổi)
         db: Database session
-        user_id: UUID của user hiện tại
+        current_user: User hiện tại
     
     Returns:
         BiometricsLogResponse: Log sau khi update
@@ -183,7 +184,7 @@ def update_biometrics_log(
     db_log = BiometricService.update_biometrics_log(
         db=db,
         biometric_id=biometric_id,
-        user_id=user_id,
+        user_id=current_user.id,
         data=data
     )
     
@@ -199,7 +200,7 @@ def update_biometrics_log(
 def delete_biometrics_log(
     biometric_id: int,
     db: Annotated[Session, Depends(get_db)],
-    user_id: CurrentUserID
+    current_user: Annotated[User, Depends(get_current_user)]
 ) -> None:
     """
     DELETE /biometrics/{biometric_id}
@@ -207,7 +208,7 @@ def delete_biometrics_log(
     Args:
         biometric_id: ID của log cần xóa
         db: Database session
-        user_id: UUID của user hiện tại
+        current_user: User hiện tại
     
     Returns:
         None: Status 204 No Content (không có response body)
@@ -222,7 +223,7 @@ def delete_biometrics_log(
     BiometricService.delete_biometrics_log(
         db=db,
         biometric_id=biometric_id,
-        user_id=user_id
+        user_id=current_user.id
     )
     # FastAPI tự động trả về 204 No Content
 
@@ -232,13 +233,13 @@ def delete_biometrics_log(
 )
 def biometrics_summary(
     db: Annotated[Session, Depends(get_db)],
-    user_id: CurrentUserID,
+    current_user: Annotated[User, Depends(get_current_user)],
     from_date: Annotated[date, Query(alias="from")],
     to_date: Annotated[date, Query(alias="to")],
 ):
     return BiometricService.get_summary(
         db=db,
-        user_id=user_id,
+        user_id=current_user.id,
         from_date=from_date,
         to_date=to_date
     )
