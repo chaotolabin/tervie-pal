@@ -5,8 +5,13 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-import jwt
 import os
+import hmac
+import hashlib
+
+import jwt
+from jwt import ExpiredSignatureError, InvalidTokenError
+
 from passlib.context import CryptContext
 
 from app.core.database import get_db
@@ -14,14 +19,27 @@ from app.models.auth import User, RefreshSession
 
 
 # ==================== Configuration ====================
-# Password hashing
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+# Password hashing - Argon2 (OWASP recommended)
+# Cấu hình an toàn tối đa:
+# - time_cost=3: 3 iterations (đủ an toàn, ~0.5s)
+# - memory_cost=65536: 64MB memory (kháng brute-force)
+# - parallelism=4: 4 cores parallel
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto",
+    argon2__time_cost=3,
+    argon2__memory_cost=65536,
+    argon2__parallelism=4
+)
 
 # JWT configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+# Pepper riêng cho refresh token hashing (khuyến nghị khác SECRET_KEY)
+REFRESH_TOKEN_PEPPER = os.getenv("REFRESH_TOKEN_PEPPER", SECRET_KEY)
 
 
 # ==================== Password Management ====================
@@ -33,6 +51,19 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
     return pwd_context.verify(plain_password, hashed_password)
+
+
+# ==================== Refresh Token Hashing (Deterministic & Secure) ====================
+def hash_refresh_token(token: str) -> str:
+    """
+    Hash refresh token for storage (deterministic, lookup-friendly).
+    Use HMAC-SHA256(pepper, token).
+    """
+    return hmac.new(
+        REFRESH_TOKEN_PEPPER.encode("utf-8"),
+        token.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
 
 
 # ==================== Token Management ====================
@@ -54,13 +85,14 @@ def create_access_token(user_id: uuid.UUID, expires_delta: Optional[timedelta] =
     to_encode = {
         "sub": str(user_id),
         "exp": expire,
-        "type": "access"
+        "type": "access",
+        "iat": int(datetime.now(timezone.utc).timestamp()),
     }
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-def create_refresh_token() -> tuple[str, str]:
+def create_refresh_token(user_id: uuid.UUID) -> tuple[str, str]:
     """
     Create JWT refresh token
     
@@ -69,12 +101,74 @@ def create_refresh_token() -> tuple[str, str]:
     """
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {
+        "sub": str(user_id),
         "exp": expire,
         "type": "refresh",
-        "jti": str(uuid.uuid4())  # unique identifier
+        "jti": str(uuid.uuid4()),  # unique identifier
+        "iat": int(datetime.now(timezone.utc).timestamp()),
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    token_hash = hash_password(token)  # store hash for security
+    token_hash = hash_refresh_token(token)
+    return token, token_hash
+
+
+def create_signup_token(session_id: uuid.UUID, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    Create JWT signup token (short-lived, 24 hours)
+    
+    Args:
+        session_id: Signup session UUID
+        expires_delta: Token expiration time (default: 24 hours)
+    
+    Returns:
+        JWT token string
+    """
+    if expires_delta is None:
+        expires_delta = timedelta(hours=24)
+    
+    expire = datetime.now(timezone.utc) + expires_delta
+    to_encode = {
+        "sub": str(session_id),
+        "exp": expire,
+        "type": "signup",
+        "iat": int(datetime.now(timezone.utc).timestamp()),
+    }
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def decode_signup_token(token: str) -> dict:
+    """
+    Decode signup token
+    
+    Args:
+        token: JWT token string
+    
+    Returns:
+        Token payload
+    
+    Raises:
+        HTTPException: If token is invalid or expired
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "signup":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid signup token"
+            )
+        return payload
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired"
+        )
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    token_hash = hash_refresh_token(token)  # store deterministic hash for lookup
     return token, token_hash
 
 
@@ -94,12 +188,12 @@ def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except jwt.ExpiredSignatureError:
+    except ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired"
         )
-    except jwt.InvalidTokenError:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
@@ -178,7 +272,7 @@ async def get_current_admin_user(
     Raises:
         HTTPException: If user is not admin
     """
-    if current_user.role.value != "admin":
+    if str(current_user.role) != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized (admin only)"

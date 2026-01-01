@@ -9,7 +9,8 @@ from app.models.auth import (
     Profile,
     RefreshSession,
     UserRole,
-    Gender
+    Gender,
+    Goal
 )
 
 # Food models
@@ -69,6 +70,10 @@ __all__ = [
     "RefreshSession",
     "UserRole",
     "Gender",
+    "Goal",
+    
+    # Signup
+    "SignupSession",
     
     # Food
     "Food",
