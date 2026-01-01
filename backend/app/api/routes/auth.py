@@ -18,10 +18,6 @@ from app.api.schemas import (
 )
 from app.api.deps import get_current_user
 from app.services import AuthService, PasswordService
-from app.models.auth import User, Goal, Profile
-from app.models.biometric import BiometricsLog
-from datetime import datetime, timezone, date
-from decimal import Decimal
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -43,90 +39,26 @@ async def register(
 ) -> AuthTokensResponse:
     """Register new user"""
     try:
-        # Create user via AuthService
+        # Create user via AuthService (which orchestrates all repositories)
         user, access_token, refresh_token = AuthService.register(
             db=db,
             username=req.username,
             email=req.email,
             password=req.password,
-            role="user"
-        )
-        
-        # Create Profile
-        profile = Profile(
-            user_id=user.id,
             full_name=req.full_name,
-            gender=str(req.gender).lower(),
+            gender=req.gender,
             date_of_birth=req.date_of_birth,
-            height_cm_default=float(req.height_cm)
-        )
-        db.add(profile)
-        
-        # Calculate BMR & TDEE
-        today = date.today()
-        age_years = (today - req.date_of_birth).days / 365.25
-        
-        if str(req.gender).lower() == "male":
-            bmr = 10 * float(req.weight_kg) + 6.25 * float(req.height_cm) - 5 * age_years + 5
-        else:
-            bmr = 10 * float(req.weight_kg) + 6.25 * float(req.height_cm) - 5 * age_years - 161
-        
-        activity_multipliers = {
-            "sedentary": 1.2,
-            "low_active": 1.375,
-            "moderately_active": 1.55,
-            "very_active": 1.725,
-            "extremely_active": 1.9,
-        }
-        baseline_activity = str(req.baseline_activity).lower() if req.baseline_activity else "low_active"
-        activity_multiplier = activity_multipliers.get(baseline_activity, 1.375)
-        tdee = bmr * activity_multiplier
-        
-        # Calculate daily calorie
-        weekly_goal = float(req.weekly_goal or 0)
-        calorie_adjustment = weekly_goal * 1000
-        
-        goal_type = str(req.goal_type)
-        if goal_type == "lose_weight":
-            daily_calorie = tdee - calorie_adjustment
-        elif goal_type == "gain_weight":
-            daily_calorie = tdee + calorie_adjustment
-        elif goal_type == "build_muscle":
-            daily_calorie = tdee + calorie_adjustment
-        else:
-            daily_calorie = tdee
-        
-        if daily_calorie < 1200:
-            raise HTTPException(status_code=400, detail="Calorie target too low")
-        
-        # Calculate macros in grams
-        protein_grams = float(daily_calorie) * 0.20 / 4
-        fat_grams = float(daily_calorie) * 0.30 / 9
-        carb_grams = float(daily_calorie) * 0.50 / 4
-        
-        goal = Goal(
-            user_id=user.id,
+            height_cm=req.height_cm,
+            weight_kg=req.weight_kg,
+            baseline_activity=req.baseline_activity,
             goal_type=req.goal_type,
-            target_weight_kg=req.goal_weight_kg,
-            daily_calorie_target=Decimal(str(round(daily_calorie, 2))),
-            protein_grams=Decimal(str(round(protein_grams, 2))),
-            fat_grams=Decimal(str(round(fat_grams, 2))),
-            carb_grams=Decimal(str(round(carb_grams, 2))),
-            weekly_exercise_min=req.weekly_exercise_min or 150
+            weekly_goal=req.weekly_goal,
+            goal_weight_kg=req.goal_weight_kg,
+            weekly_exercise_min=req.weekly_exercise_min,
+            device_label="Web Registration",
+            user_agent=request.headers.get("user-agent") if request else "Unknown",
+            ip_address=request.client.host if request and request.client else "0.0.0.0"
         )
-        db.add(goal)
-        
-        # Create biometrics log
-        bmi = float(req.weight_kg) / ((float(req.height_cm) / 100) ** 2)
-        biometric = BiometricsLog(
-            user_id=user.id,
-            logged_at=datetime.now(timezone.utc),
-            weight_kg=float(req.weight_kg),
-            height_cm=float(req.height_cm),
-            bmi=bmi
-        )
-        db.add(biometric)
-        db.commit()
         
         return AuthTokensResponse(
             user=UserPublic(id=user.id, username=user.username, email=user.email, role=user.role),
@@ -135,7 +67,6 @@ async def register(
             token_type="Bearer"
         )
     except HTTPException:
-        db.rollback()
         raise
     except Exception as e:
         db.rollback()

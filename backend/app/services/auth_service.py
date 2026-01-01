@@ -3,8 +3,12 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 import uuid
+import hashlib
 
-from app.repositories import UserRepository, RefreshTokenRepository
+from app.repositories import (
+    UserRepository, RefreshTokenRepository, ProfileRepository,
+    GoalRepository, BiometricsRepository
+)
 from app.api.deps import (
     hash_password,
     verify_password,
@@ -28,7 +32,7 @@ class AuthService:
         **user_data
     ) -> tuple[User, str, str]:
         """
-        Register new user and return user with tokens
+        Register new user with profile and initial goal
         
         Returns:
             (user, access_token, refresh_token)
@@ -46,28 +50,100 @@ class AuthService:
                 detail="Username already taken"
             )
         
+        # Extract profile and goal parameters
+        full_name = user_data.get("full_name")
+        gender = user_data.get("gender")
+        date_of_birth = user_data.get("date_of_birth")
+        height_cm = user_data.get("height_cm")
+        weight_kg = user_data.get("weight_kg")
+        baseline_activity = user_data.get("baseline_activity", "sedentary")
+        goal_type = user_data.get("goal_type")
+        weekly_goal = user_data.get("weekly_goal")
+        goal_weight_kg = user_data.get("goal_weight_kg", weight_kg)
+        weekly_exercise_min = user_data.get("weekly_exercise_min", 150)
+        device_label = user_data.get("device_label", "Web Registration")
+        user_agent = user_data.get("user_agent", "Unknown")
+        ip_address = user_data.get("ip_address", "0.0.0.0")
+        
         # Create user
         user = UserRepository.create(
             db,
             username=username,
             email=email,
             password_hash=hash_password(password),
-            **user_data
         )
         db.add(user)
         db.flush()  # Generate user.id
         
-        # Create tokens
+        # Create profile
+        ProfileRepository.create(
+            db=db,
+            user_id=user.id,
+            full_name=full_name,
+            gender=gender,
+            date_of_birth=date_of_birth,
+            height_cm_default=height_cm
+        )
+        
+        # Calculate daily calorie target using GoalService
+        from app.services.goal_service import GoalService
+        daily_calorie = GoalService.calculate_daily_calorie(
+            weight_kg=float(weight_kg),
+            height_cm=float(height_cm),
+            gender=gender,
+            date_of_birth=date_of_birth,
+            baseline_activity=baseline_activity,
+            goal_type=goal_type,
+            weekly_goal=weekly_goal
+        )
+        
+        # Validate minimum calorie
+        if daily_calorie < 1200:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Calculated daily calorie target is too low. Adjust goal parameters."
+            )
+        
+        # Calculate macros
+        macros = GoalService.calculate_macros(daily_calorie)
+        
+        # Create goal
+        GoalRepository.create(
+            db=db,
+            user_id=user.id,
+            goal_type=goal_type,
+            target_weight_kg=goal_weight_kg,
+            daily_calorie_target=daily_calorie,
+            protein_grams=macros["protein_grams"],
+            fat_grams=macros["fat_grams"],
+            carb_grams=macros["carb_grams"],
+            weekly_exercise_min=weekly_exercise_min
+        )
+        
+        # Create initial biometrics log
+        BiometricsRepository.create(
+            db=db,
+            user_id=user.id,
+            weight_kg=weight_kg,
+            height_cm=height_cm
+        )
+        
+        # Generate tokens
         access_token = create_access_token(user.id)
         refresh_token, refresh_token_hash = create_refresh_token(user.id)
         
-        # Store refresh token
+        # Store refresh token session
         RefreshTokenRepository.create(
-            db,
+            db=db,
             user_id=user.id,
-            token_hash=refresh_token_hash
+            token_hash=refresh_token_hash,
+            device_label=device_label,
+            user_agent=user_agent,
+            ip=ip_address
         )
         
+        # Commit all changes
         db.commit()
         db.refresh(user)
         

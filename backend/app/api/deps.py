@@ -26,10 +26,7 @@ from app.models.auth import User, RefreshSession
 security = HTTPBearer()
 
 # Password hashing - Argon2 (OWASP recommended)
-# Cấu hình an toàn tối đa:
-# - time_cost=3: 3 iterations (đủ an toàn, ~0.5s)
-# - memory_cost=65536: 64MB memory (kháng brute-force)
-# - parallelism=4: 4 cores parallel
+
 pwd_context = CryptContext(
     schemes=["argon2"],
     deprecated="auto",
@@ -41,7 +38,7 @@ pwd_context = CryptContext(
 # JWT configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 0  # DEV MODE: 0 để test token hết hạn ngay
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  # 30p token hết hạn
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 PASSWORD_RESET_TOKEN_EXPIRE_MINUTES = 15
 
