@@ -1,4 +1,6 @@
 # Authentication & dependency utilities
+# Security functions: password hashing, token generation/verification
+# Used by: routes (thin layer), services (business logic), repositories
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -39,7 +41,7 @@ pwd_context = CryptContext(
 # JWT configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 0  # DEV MODE: 0 để test token hết hạn ngay
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 PASSWORD_RESET_TOKEN_EXPIRE_MINUTES = 15
 

@@ -1,42 +1,27 @@
-# Authentication routes: register, login, refresh, logout, password reset
+# Authentication routes - thin layer: request → service → response
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import select, or_
-from sqlalchemy.exc import IntegrityError
-import uuid
-from datetime import datetime, timezone, timedelta
 
 from app.core.database import get_db
-from app.models.auth import User, Profile, RefreshSession, UserRole, Gender
 from app.api.schemas import (
     RegisterRequest,
     LoginRequest,
     RefreshRequest,
     RefreshResponse,
     AuthTokensResponse,
-    UserPublic,
-    Profile as ProfileSchema,
     ErrorResponse,
     LogoutRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     GenericMessageResponse,
+    UserPublic,
 )
-from app.api.deps import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-    decode_token,
-    hash_refresh_token,
-    create_password_reset_token,
-    decode_password_reset_token,
-    update_user_password_and_revoke_sessions,
-)
-from app.models.auth import GoalType
-from app.models.password_reset import PasswordResetToken
-import hmac
-import hashlib
+from app.api.deps import get_current_user
+from app.services import AuthService, PasswordService
+from app.models.auth import User, Goal, Profile
+from app.models.biometric import BiometricsLog
+from datetime import datetime, timezone, date
+from decimal import Decimal
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -56,71 +41,36 @@ async def register(
     db: Session = Depends(get_db),
     request: Request = None
 ) -> AuthTokensResponse:
-    """
-    Đăng ký tài khoản
-    
-    Tạo User + Profile + Goal + BiometricsLog
-    
-    Args:
-        req: RegisterRequest với tất cả thông tin từ flowchart
-        db: Database session
-        request: HTTP request (lấy user agent, IP)
-    
-    Returns:
-        AuthTokensResponse
-    
-    Raises:
-        HTTPException 409: Username/email đã tồn tại
-    """
+    """Register new user"""
     try:
-        from app.models.auth import Goal
-        from app.models.biometric import BiometricsLog
-        from decimal import Decimal
-        from datetime import date as date_class
-        
-        # ===== Validate: Username & Email =====
-        if db.execute(select(User).where(User.username == req.username)).scalar_one_or_none():
-            raise HTTPException(status_code=409, detail="Username already exists")
-        
-        if db.execute(select(User).where(User.email == req.email)).scalar_one_or_none():
-            raise HTTPException(status_code=409, detail="Email already exists")
-        
-        # ===== Create: User =====
-        user = User(
-            id=uuid.uuid4(),
+        # Create user via AuthService
+        user, access_token, refresh_token = AuthService.register(
+            db=db,
             username=req.username,
             email=req.email,
-            password_hash=hash_password(req.password),
-            role=UserRole.USER.value,
-            password_changed_at=None
+            password=req.password,
+            role="user"
         )
-        db.add(user)
-        db.flush()
         
-        # ===== Create: Profile (Step 1) =====
-        # Convert gender string to lowercase for enum
-        gender_str = str(req.gender).lower()
-        
+        # Create Profile
         profile = Profile(
             user_id=user.id,
             full_name=req.full_name,
-            gender=gender_str,  # Pass string directly
+            gender=str(req.gender).lower(),
             date_of_birth=req.date_of_birth,
-            height_cm_default=req.height_cm
+            height_cm_default=float(req.height_cm)
         )
         db.add(profile)
         
-        # ===== Create: Goal (Step 2+3) =====
-        # Tính BMR (Basal Metabolic Rate) - Mifflin-St Jeor formula
-        today = date_class.today()
+        # Calculate BMR & TDEE
+        today = date.today()
         age_years = (today - req.date_of_birth).days / 365.25
         
         if str(req.gender).lower() == "male":
             bmr = 10 * float(req.weight_kg) + 6.25 * float(req.height_cm) - 5 * age_years + 5
         else:
             bmr = 10 * float(req.weight_kg) + 6.25 * float(req.height_cm) - 5 * age_years - 161
-    
-    # Tính TDEE (Total Daily Energy Expenditure) dựa trên baseline_activity
+        
         activity_multipliers = {
             "sedentary": 1.2,
             "low_active": 1.375,
@@ -132,11 +82,10 @@ async def register(
         activity_multiplier = activity_multipliers.get(baseline_activity, 1.375)
         tdee = bmr * activity_multiplier
         
-        # Tính daily_calorie_target dựa trên goal_type và weekly_goal
-        # weekly_goal: 0.25kg/week = 250 kcal deficit/surplus, 0.5kg/week = 500 kcal
+        # Calculate daily calorie
         weekly_goal = float(req.weekly_goal or 0)
-        calorie_adjustment = weekly_goal * 1000  # Convert kg to kcal (roughly 1000 per week)
-    
+        calorie_adjustment = weekly_goal * 1000
+        
         goal_type = str(req.goal_type)
         if goal_type == "lose_weight":
             daily_calorie = tdee - calorie_adjustment
@@ -144,20 +93,13 @@ async def register(
             daily_calorie = tdee + calorie_adjustment
         elif goal_type == "build_muscle":
             daily_calorie = tdee + calorie_adjustment
-        else:  # maintain_weight, improve_health
+        else:
             daily_calorie = tdee
         
-        # ===== Validate: daily_calorie phải > 0 =====
         if daily_calorie < 1200:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Calorie target is invalid (minimum 1200 kcal/day, current: {round(daily_calorie, 2)} kcal)"
-            )
+            raise HTTPException(status_code=400, detail="Calorie target too low")
         
-        # Tính macro grams từ daily_calorie_target
-        # Công thức: Protein = daily_calorie × 20% ÷ 4 kcal/g
-        #            Fat = daily_calorie × 30% ÷ 9 kcal/g
-        #            Carbs = daily_calorie × 50% ÷ 4 kcal/g
+        # Calculate macros in grams
         protein_grams = float(daily_calorie) * 0.20 / 4
         fat_grams = float(daily_calorie) * 0.30 / 9
         carb_grams = float(daily_calorie) * 0.50 / 4
@@ -174,7 +116,7 @@ async def register(
         )
         db.add(goal)
         
-        # ===== Create: BiometricsLog (Step 4) =====
+        # Create biometrics log
         bmi = float(req.weight_kg) / ((float(req.height_cm) / 100) ** 2)
         biometric = BiometricsLog(
             user_id=user.id,
@@ -184,39 +126,10 @@ async def register(
             bmi=bmi
         )
         db.add(biometric)
-        
-        # ===== Create: Token & Refresh Session =====
-        access_token = create_access_token(user.id)
-        refresh_token, refresh_token_hash = create_refresh_token(user.id)
-        
-        user_agent = request.headers.get("user-agent") if request else None
-        client_ip = None
-        if request and request.client:
-            client_ip = request.client.host
-        
-        refresh_session = RefreshSession(
-            user_id=user.id,
-            refresh_token_hash=refresh_token_hash,
-            device_label=None,
-            user_agent=user_agent,
-            ip=client_ip,
-            created_at=datetime.now(timezone.utc),
-            last_used_at=datetime.now(timezone.utc),
-            revoked_at=None
-        )
-        db.add(refresh_session)
-        
-        # ===== Commit All Changes =====
         db.commit()
         
-        # ===== Response =====
         return AuthTokensResponse(
-            user=UserPublic(
-                id=user.id,
-                username=user.username,
-                email=user.email,
-                role=user.role
-            ),
+            user=UserPublic(id=user.id, username=user.username, email=user.email, role=user.role),
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="Bearer"
@@ -224,486 +137,114 @@ async def register(
     except HTTPException:
         db.rollback()
         raise
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Username or email already exists")
     except Exception as e:
         db.rollback()
-        print(f"Registration error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail="Internal Server Error"
-        )
+        print(f"Register error: {e}")
+        raise HTTPException(status_code=500, detail="Internal error")
 
 
 @router.post(
     "/login",
     response_model=AuthTokensResponse,
     status_code=200,
-    responses={
-        401: {"model": ErrorResponse, "description": "Invalid credentials"},
-        422: {"description": "Validation Error"},
-    }
+    responses={401: {"model": ErrorResponse, "description": "Invalid credentials"}}
 )
 async def login(
     req: LoginRequest,
     db: Session = Depends(get_db),
     request: Request = None
 ) -> AuthTokensResponse:
-    """
-    ===== POST /auth/login =====
-    Đăng nhập tài khoản với email hoặc username
-    
-    **Workflow:**
-    1. Tìm user by email hoặc username (case-insensitive)
-    2. Verify password (Argon2 hash)
-    3. Tạo access_token (30 phút) + refresh_token (7 ngày)
-    4. Lưu refresh session + track device (user-agent, IP)
-    5. Trả về tokens + user info
-    
-    **Security:**
-    - Generic error message "Invalid credentials" (không reveal username exists)
-    - Constant-time password verification (argon2)
-    - Refresh token được hash trước lưu (HMAC-SHA256)
-    - Track device/IP cho security audit
-    
-    Args:
-        req: LoginRequest {email_or_username, password, device_label?}
-        db: Database session
-        request: HTTP request (extract user-agent, IP)
-    
-    Returns:
-        AuthTokensResponse {user, access_token, refresh_token, token_type}
-    
-    Raises:
-        401: Sai email/username hoặc password
-        500: Internal server error
-    """
+    """Login user"""
     try:
-        # ===== Step 1: Tìm user by email hoặc username =====
-        user = db.execute(
-            select(User).where(
-                or_(
-                    User.email == req.email_or_username,
-                    User.username == req.email_or_username
-                )
-            )
-        ).scalar_one_or_none()
-
-        # ===== Step 2: Verify password (constant-time) =====
-        # Generic message để tránh username enumeration attack
-        if not user or not verify_password(req.password, user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email or password is incorrect"
-            )
-
-        # ===== Step 3: Tạo tokens =====
-        access_token = create_access_token(user.id)  # 30 phút
-        refresh_token, refresh_token_hash = create_refresh_token(user.id)  # 7 ngày
-
-        # ===== Step 4: Extract device info (tracking) =====
-        user_agent = request.headers.get("user-agent") if request else None
-        client_ip = request.client.host if request and request.client else None
-
-        # ===== Step 5: Lưu refresh session (track device) =====
-        refresh_session = RefreshSession(
-            user_id=user.id,
-            refresh_token_hash=refresh_token_hash,  # Hash token trước lưu
-            device_label=req.device_label,  # "iPhone 12", "Chrome/Windows", v.v.
-            user_agent=user_agent,  # Mozilla/5.0...
-            ip=client_ip,  # 192.168.1.1
-            created_at=datetime.now(timezone.utc),
-            last_used_at=datetime.now(timezone.utc),
-            revoked_at=None  # Chưa bị revoke
+        user, access_token, refresh_token = AuthService.login(
+            db=db,
+            email_or_username=req.email_or_username,
+            password=req.password,
+            device_label=req.device_label,
+            user_agent=request.headers.get("user-agent") if request else None,
+            ip=request.client.host if request and request.client else None
         )
-        db.add(refresh_session)
-        db.commit()
-
-        # ===== Step 6: Trả về response =====
+        
         return AuthTokensResponse(
-            user=UserPublic(
-                id=user.id,
-                username=user.username,
-                email=user.email,
-                role=user.role
-            ),
+            user=UserPublic(id=user.id, username=user.username, email=user.email, role=user.role),
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="Bearer"  # Standard OAuth2 type
+            token_type="Bearer"
         )
-
     except HTTPException:
-        db.rollback()
         raise
     except Exception as e:
-        db.rollback()
-        print(f"Login error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail="Internal Server Error"
-        )
+        print(f"Login error: {e}")
+        raise HTTPException(status_code=500, detail="Internal error")
 
 
 @router.post(
     "/refresh",
     response_model=RefreshResponse,
     status_code=200,
-    responses={
-        401: {"model": ErrorResponse, "description": "Invalid refresh token"},
-        422: {"description": "Validation Error"},
-    }
+    responses={401: {"model": ErrorResponse, "description": "Invalid refresh token"}}
 )
-async def refresh(
-    req: RefreshRequest,
-    db: Session = Depends(get_db),
-    request: Request = None
-) -> RefreshResponse:
-    """
-    Làm mới access token
-    
-    Xác thực refresh token trong refresh_sessions (revoked_at IS NULL)
-    Rotate refresh token (trả về refresh mới, revoke refresh cũ)
-    
-    Args:
-        req: RefreshRequest
-        db: Database session
-        request: HTTP request (lấy user agent, IP)
-    
-    Returns:
-        RefreshResponse
-    
-    Raises:
-        HTTPException 401: Refresh token không hợp lệ / đã bị revoke
-    """
+async def refresh(req: RefreshRequest, db: Session = Depends(get_db)) -> RefreshResponse:
+    """Refresh access token"""
     try:
-        payload = decode_token(req.refresh_token)
-
-        if payload.get("type") != "refresh":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-        user_id_str = payload.get("sub")
-        if not user_id_str:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-        try:
-            user_id = uuid.UUID(user_id_str)
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-        # Lookup session by deterministic hash
-        token_hash = hash_refresh_token(req.refresh_token)
-
-        session = db.execute(
-            select(RefreshSession).where(
-                RefreshSession.refresh_token_hash == token_hash,
-                RefreshSession.revoked_at.is_(None),
-            )
-        ).scalar_one_or_none()
-
-        if not session:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-        user = db.execute(select(User).where(User.id == user_id)).scalar_one_or_none()
-        if not user:
-            # revoke session defensively
-            session.revoked_at = datetime.now(timezone.utc)
-            db.commit()
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-        # Check password_changed_at vs token iat for "logout all devices on password change"
-        token_iat = payload.get("iat")
-        if user.password_changed_at and token_iat:
-            pwd_changed_ts = int(user.password_changed_at.timestamp())
-            if int(token_iat) < pwd_changed_ts:
-                session.revoked_at = datetime.now(timezone.utc)
-                db.commit()
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-
-        # Rotate: revoke old session + create new token/session
-        session.revoked_at = datetime.now(timezone.utc)
-
-        access_token = create_access_token(user.id)
-        new_refresh_token, new_refresh_hash = create_refresh_token(user.id)
-
-        user_agent = request.headers.get("user-agent") if request else session.user_agent
-        client_ip = None
-        if request and request.client:
-            client_ip = request.client.host
-        else:
-            client_ip = session.ip
-
-        new_session = RefreshSession(
-            user_id=user.id,
-            refresh_token_hash=new_refresh_hash,
-            device_label=session.device_label,
-            user_agent=user_agent,
-            ip=client_ip,
-            created_at=datetime.now(timezone.utc),
-            last_used_at=datetime.now(timezone.utc),
-            revoked_at=None
+        access_token, refresh_token = AuthService.refresh_access_token(
+            db=db,
+            refresh_token=req.refresh_token
         )
-        db.add(new_session)
-
-        db.commit()
-
-        return RefreshResponse(
-            access_token=access_token,
-            refresh_token=new_refresh_token
-        )
-
+        return RefreshResponse(access_token=access_token, refresh_token=refresh_token)
     except HTTPException:
-        db.rollback()
         raise
     except Exception as e:
-        db.rollback()
-        print(f"Refresh error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        print(f"Refresh error: {e}")
+        raise HTTPException(status_code=500, detail="Internal error")
 
 
 @router.post(
     "/logout",
     status_code=204,
-    responses={
-        401: {"model": ErrorResponse, "description": "Invalid or revoked refresh token"},
-        422: {"description": "Validation Error"},
-    }
+    responses={401: {"model": ErrorResponse, "description": "Invalid refresh token"}}
 )
-async def logout(
-    req: LogoutRequest,
-    db: Session = Depends(get_db),
-) -> None:
-    """
-    ===== POST /auth/logout =====
-    Đăng xuất khỏi thiết bị hiện tại (revoke refresh session này)
-    
-    **Workflow:**
-    1. Decode refresh token
-    2. Verify token type = "refresh"
-    3. Tìm refresh session by token hash
-    4. Revoke session (set revoked_at = now)
-    5. Trả 204 No Content (logout thành công)
-    
-    **Security:**
-    - Only revoke current device, other devices stay active
-    - Constant-time token verification
-    - Generic error message (không leak user info)
-    
-    Args:
-        req: LogoutRequest {refresh_token}
-        db: Database session
-    
-    Returns:
-        204 No Content
-    
-    Raises:
-        401: Invalid/revoked refresh token
-        500: Internal server error
-    """
+async def logout(req: LogoutRequest, db: Session = Depends(get_db)) -> None:
+    """Logout user"""
     try:
-        # ===== Step 1: Decode token =====
-        payload = decode_token(req.refresh_token)
-        
-        # ===== Step 2: Verify token type =====
-        if payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token"
-            )
-        
-        # ===== Step 3: Find session by token hash =====
-        token_hash = hash_refresh_token(req.refresh_token)
-        session = db.execute(
-            select(RefreshSession).where(
-                RefreshSession.refresh_token_hash == token_hash,
-                RefreshSession.revoked_at.is_(None)  # Only active sessions
-            )
-        ).scalar_one_or_none()
-        
-        if not session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token"
-            )
-        
-        # ===== Step 4: Revoke this device only =====
-        session.revoked_at = datetime.now(timezone.utc)
-        db.commit()
-        
-        # ===== Step 5: Return 204 No Content =====
-        # (FastAPI auto-returns None as 204)
-        
+        AuthService.logout(db=db, refresh_token=req.refresh_token)
     except HTTPException:
-        db.rollback()
         raise
     except Exception as e:
-        db.rollback()
-        print(f"Logout error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        print(f"Logout error: {e}")
+        raise HTTPException(status_code=500, detail="Internal error")
 
-
-# ==================== PASSWORD RESET ENDPOINTS ====================
 
 @router.post(
     "/forgot-password",
-    response_model=dict,
+    response_model=GenericMessageResponse,
     status_code=200,
 )
-async def forgot_password(
-    req: ForgotPasswordRequest,
-    db: Session = Depends(get_db),
-) -> dict:
-    """
-    Step 1: Send password reset token to user's email
-    
-    Security:
-    - Always return 200 OK (no email enumeration)
-    - Generic success message regardless of email existence
-    - Token stored as hash (not plaintext)
-    - 15-minute expiry
-    
-    Workflow:
-    1. Find user by email (if not exists, still return 200)
-    2. Create password reset token (JWT, 15 min)
-    3. Hash token: token_hash = HMAC-SHA256(token)
-    4. Save to DB: PasswordResetToken(user_id, token_hash, expires_at)
-    5. Send email: user_email + reset link (TODO: integrate email service)
-    6. Return generic message
-    """
+async def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)) -> GenericMessageResponse:
+    """Request password reset token"""
     try:
-        # ===== Step 1: Find user =====
-        stmt = select(User).where(User.email == req.email)
-        user = db.execute(stmt).scalars().first()
+        token_record, jwt_token = PasswordService.request_password_reset(db=db, email=req.email)
         
-        if user:
-            # ===== Step 2: Create token =====
-            token = create_password_reset_token(user.id)
-            
-            # ===== Step 3: Hash token =====
-            token_hash = hmac.new(
-                b"password_reset_salt",
-                token.encode(),
-                hashlib.sha256
-            ).hexdigest()
-            
-            # ===== Step 4: Save to DB =====
-            reset_token = PasswordResetToken(
-                user_id=user.id,
-                token_hash=token_hash,
-                expires_at=datetime.now(timezone.utc).replace(microsecond=0) + timedelta(minutes=15),
-            )
-            db.add(reset_token)
-            db.commit()
-            
-            # ===== Step 5: Send email =====
-            # TODO: Integrate email service (SendGrid, AWS SES, etc.)
-            # email_service.send_password_reset(
-            #     to=user.email,
-            #     reset_url=f"https://app.tervie.pal/reset-password?token={token}",
-            #     username=user.username,
-            # )
-            print(f"[DEV MODE] Password reset token for {user.email}: {token}")
+        if jwt_token:
+            print(f"[DEV MODE] Password reset token for {req.email}: {jwt_token}")
         
-        # ===== Step 6: Always return generic success =====
-        return {"message": "If email exists, password reset link has been sent"}
-        
+        return GenericMessageResponse(message="If email exists, password reset link has been sent")
     except Exception as e:
-        db.rollback()
-        print(f"Forgot password error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        # Still return 200 OK for security
-        return {"message": "If email exists, password reset link has been sent"}
+        print(f"Forgot password error: {e}")
+        return GenericMessageResponse(message="If email exists, password reset link has been sent")
 
 
 @router.post(
     "/reset-password",
     status_code=204,
+    responses={400: {"model": ErrorResponse, "description": "Invalid or expired token"}}
 )
-async def reset_password(
-    req: ResetPasswordRequest,
-    db: Session = Depends(get_db),
-) -> None:
-    """
-    Step 2: Reset password using reset token
-    
-    Security:
-    - Verify token signature & expiry
-    - Verify token not used (one-time use)
-    - Generic error messages
-    - Revoke ALL refresh sessions
-    
-    Workflow:
-    1. Decode password reset token
-    2. Find token_hash in DB
-    3. Verify token validity (not used, not revoked, not expired)
-    4. Find user by token.user_id
-    5. Update password + revoke sessions (shared helper)
-    6. Mark token as used
-    7. Return 204 No Content
-    """
+async def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)) -> None:
+    """Reset password using token"""
     try:
-        # ===== Step 1: Decode token =====
-        payload = decode_password_reset_token(req.token)
-        user_id = uuid.UUID(payload.get("sub"))
-        
-        # ===== Step 2: Hash token for DB lookup =====
-        token_hash = hmac.new(
-            b"password_reset_salt",
-            req.token.encode(),
-            hashlib.sha256
-        ).hexdigest()
-        
-        # ===== Step 3: Find token in DB =====
-        stmt = select(PasswordResetToken).where(
-            PasswordResetToken.token_hash == token_hash
-        )
-        reset_token = db.execute(stmt).scalars().first()
-        
-        if not reset_token or not reset_token.is_valid():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired token"
-            )
-        
-        # ===== Step 4: Find user =====
-        user = db.execute(
-            select(User).where(User.id == user_id)
-        ).scalars().first()
-        
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired token"
-            )
-        
-        # ===== Step 5: Update password + revoke sessions =====
-        update_user_password_and_revoke_sessions(user, req.new_password, db)
-        
-        # ===== Step 6: Mark token as used =====
-        reset_token.used_at = datetime.now(timezone.utc)
-        db.add(reset_token)
-        db.commit()
-        
-        # ===== Step 7: Return 204 =====
-        
+        PasswordService.reset_password(db=db, token=req.token, new_password=req.new_password)
     except HTTPException:
-        db.rollback()
         raise
     except Exception as e:
-        db.rollback()
-        print(f"Reset password error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired token"
-        )
+        print(f"Reset password error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
