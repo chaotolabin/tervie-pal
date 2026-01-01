@@ -71,11 +71,12 @@ def import_foods():
                 for nutrient_key, nutrient_data in nutrients.items():
                     # Chuyển key thành dạng: calories_kcal, protein_g, fat_g, ...
                     unit = nutrient_data.get('unit', '')
-                    nutrient_name = f"{nutrient_key}_{unit}"
+                    # nutrient_name = f"{nutrient_key}_{unit}"
                     
                     nutrient_record = {
                         "food_id": None,  # Sẽ cập nhật sau khi có food_id
-                        "nutrient_key": nutrient_name,
+                        "nutrient_name": nutrient_key,
+                        "unit": unit,
                         "amount_per_100g": nutrient_data.get('value', 0.0),
                         "created_at": now,
                         "updated_at": now

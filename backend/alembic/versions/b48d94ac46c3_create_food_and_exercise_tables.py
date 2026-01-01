@@ -52,13 +52,14 @@ def upgrade() -> None:
     
     op.create_table('food_nutrients',
     sa.Column('food_id', sa.BigInteger(), nullable=False, comment='FK tới foods.id'),
-    sa.Column('nutrient_key', sa.Text(), nullable=False, comment='Tên chất dinh dưỡng (vd: calories_kcal, protein_g)'),
+    sa.Column('nutrient_name', sa.Text(), nullable=False, comment='Tên chất dinh dưỡng (vd: calories, protein)'),
+    sa.Column('unit', sa.String(length=20), nullable=False, comment='Đơn vị của chất dinh dưỡng (vd: kcal, g, mg)'),
     sa.Column('amount_per_100g', sa.Numeric(precision=14, scale=6), nullable=False, comment='Lượng chất dinh dưỡng trên 100g'),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, comment='Thời điểm tạo record'),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, comment='Thời điểm cập nhật record'),
     sa.CheckConstraint('amount_per_100g >= 0', name='ck_food_nutrients_amount_nonneg'),
     sa.ForeignKeyConstraint(['food_id'], ['foods.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('food_id', 'nutrient_key')
+    sa.PrimaryKeyConstraint('food_id', 'nutrient_name')
     )
     op.create_index('ix_food_nutrients_food_id', 'food_nutrients', ['food_id'], unique=False)
     op.create_table('food_portions',
