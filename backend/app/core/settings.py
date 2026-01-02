@@ -1,6 +1,6 @@
 # Quan ly tat ca cac cau hinh cua web tu file .env
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 
 class Settings(BaseSettings):
     # Project Information
@@ -10,10 +10,10 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str  # URL ket noi den PostgreSQL database
     
-    # imagekit.io Configuration
-    IMAGEKIT_PRIVATE_KEY: str
-    IMAGEKIT_PUBLIC_KEY: str
-    IMAGEKIT_URL: str
+    # imagekit.io Configuration (optional)
+    IMAGEKIT_PRIVATE_KEY: Optional[str] = None
+    IMAGEKIT_PUBLIC_KEY: Optional[str] = None
+    IMAGEKIT_URL: Optional[str] = None
 
     SMTP_ENABLED: bool = True
     SMTP_SERVER: Optional[str] = "smtp.gmail.com"
