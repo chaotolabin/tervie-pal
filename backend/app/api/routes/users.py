@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.deps import get_current_user
-from app.api.schemas.users import UserMeResponse, Profile as ProfileSchema, UserPublic
+from app.schemas.users import UserMeResponse, Profile as ProfileSchema, UserPublic
 from app.models.auth import User
 
 
