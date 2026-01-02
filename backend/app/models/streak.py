@@ -17,7 +17,7 @@ from app.models.base import Base
 class StreakStatus(str, enum.Enum):
     GREEN = "green"  # Hoàn thành mục tiêu đúng hạn
     YELLOW = "yellow"  # Hoàn thành trễ
-    #NONE = "none"  # Không hoạt động  --> không cần lưu để tránh phình
+    NONE = "none"  # Không hoàn thành (không lưu vào DB, chỉ tính runtime)
 
 
 class StreakDayCache(Base):

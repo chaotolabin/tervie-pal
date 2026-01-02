@@ -129,7 +129,7 @@ class PostMedia(Base):
     media_type: Mapped[MediaType] = mapped_column(
         String(20),
         nullable=False,
-        comment="Loại media: image hoặc video"
+        comment="Loại media: image"
     )
     
     mime_type: Mapped[Optional[str]] = mapped_column(

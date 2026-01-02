@@ -20,6 +20,7 @@ from .users import (
 )
 from .settings import ChangePasswordRequest
 from .common import ErrorResponse, GenericMessageResponse
+from .streak import StreakStatus, StreakDayResponse, StreakResponse, StreakWeekResponse
 
 __all__ = [
     # Auth schemas
@@ -44,4 +45,9 @@ __all__ = [
     # Common schemas
     "ErrorResponse",
     "GenericMessageResponse",
+    # Streak schemas
+    "StreakStatus",
+    "StreakDayResponse",
+    "StreakResponse",
+    "StreakWeekResponse",
 ]

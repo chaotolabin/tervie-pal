@@ -56,6 +56,7 @@ class LogoutRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     """Request body for forgot password"""
     email: EmailStr
+    
 
 
 class ResetPasswordRequest(BaseModel):

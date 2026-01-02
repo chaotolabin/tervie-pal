@@ -1,4 +1,4 @@
 # Import routes for easier access
-from . import auth
+from . import auth, streak
 
-__all__ = ["auth"]
+__all__ = ["auth", "streak"]
