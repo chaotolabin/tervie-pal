@@ -1,10 +1,10 @@
 # Models cho Exercises (Master Data)
-from email.mime import text
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Text, BigInteger, Index, Float
+from sqlalchemy import Text, BigInteger, Index, Float, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import text
@@ -47,8 +47,8 @@ class Exercise(Base, TimestampMixin):
         comment="Mô tả bài tập"
     )
     
-    met_value: Mapped[float] = mapped_column(
-        Float,
+    met_value: Mapped[Decimal] = mapped_column(
+        Numeric(6, 2),
         nullable=False,
         comment="Giá trị MET (Metabolic Equivalent) - năng lượng tiêu hao"
     )

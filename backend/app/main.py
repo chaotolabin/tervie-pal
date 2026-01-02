@@ -8,7 +8,7 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak, goals, biometric, blog
+from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak, goals, biometric, blog, chatbot, food, exercise, logs
 from app.api.routes import settings as settings_routes
 
 app = FastAPI(
@@ -18,6 +18,9 @@ app = FastAPI(
     openapi_url="/api/v1/openapi.json",
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc"
+    description="Tervie Pal API"
+    # openapi_url="/api/v1/openapi.json",
+    # docs_url="/api/v1/docs"
 )
 
 # ==================== CORS Configuration ====================
@@ -31,6 +34,19 @@ app.add_middleware(
 
 # ==================== Root Endpoints ====================
 @app.get("/", tags=["Root"])
+# Register routers
+app.include_router(biometric.router, prefix="/api/v1")
+app.include_router(food.router, prefix="/api/v1")
+app.include_router(exercise.router, prefix="/api/v1")
+app.include_router(logs.router, prefix="/api/v1/logs")
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(settings_routes.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(streak.router, prefix="/api/v1")
+app.include_router(goals.router, prefix="/api/v1")
+
+# Root endpoint: dung de kiem tra tinh trang hoat dong cua he thong
+@app.get("/", tags=["Root"])    # http://127.0.0.1:8000/, tags: phan loai endpoint
 async def root():
     """Health check endpoint"""
     return {
@@ -71,17 +87,3 @@ async def health_check(db: Session = Depends(get_db)):
                 "error": str(e)
             }
         )
-
-
-# ==================== Include API Routes ====================
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(settings_routes.router, prefix="/api/v1")
-app.include_router(streak.router, prefix="/api/v1")
-app.include_router(goals.router, prefix="/api/v1")
-app.include_router(biometric.router, prefix="/api/v1")
-app.include_router(blog.router, prefix="/api/v1")
-app.include_router(users.router, prefix="/api/v1")
-# app.include_router(admin.router, prefix="/api/v1")
-# app.include_router(meals.router, prefix="/api/v1")
-# app.include_router(workouts.router, prefix="/api/v1")
-# app.include_router(chatbot.router, prefix="/api/v1")

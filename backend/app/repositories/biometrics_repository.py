@@ -24,6 +24,3 @@ class BiometricsRepository:
         )
         db.add(biometric)
         return biometric
-    
-    
-

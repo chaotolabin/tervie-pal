@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     
     FRONTEND_URL: Optional[str] = "http://testUrl.com"  # URL frontend
     # ImageKit Configuration (optional)
+    # imagekit.io Configuration (optional)
     IMAGEKIT_PRIVATE_KEY: Optional[str] = None
     IMAGEKIT_PUBLIC_KEY: Optional[str] = None
     IMAGEKIT_URL: Optional[str] = None

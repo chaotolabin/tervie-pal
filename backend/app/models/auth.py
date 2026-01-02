@@ -118,6 +118,7 @@ class Profile(Base, TimestampMixin):
     )
     
     gender: Mapped[Optional[str]] = mapped_column(
+        # String(30),
         Text,
         nullable=True,
         comment="Giới tính: male, female"

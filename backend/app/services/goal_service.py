@@ -53,7 +53,7 @@ class GoalService:
         else:
             bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age_years - 161
         
-        return round(bmr, 2)
+        return bmr
     
     @staticmethod
     def calculate_tdee(bmr: float, baseline_activity: str) -> float:

@@ -8,17 +8,17 @@ info:
 servers:
   - url: /api/v1
 tags:
-  - name: Auth
-  - name: Users
-  - name: Settings
-  - name: Foods
-  - name: Exercises
-  - name: Logs
-  - name: Biometrics
-  - name: Streak
-  - name: Support
-  - name: Blog
-  - name: Admin
+  - name: Auth        # Dang ky, dang nhap, refresh token, logout, quen mat khau, dat lai mat khau
+  - name: Users       # Thong tin nguoi dung, profile
+  - name: Settings    # Thay doi mat khau, quan ly session
+  - name: Foods       # CRUD foods
+  - name: Exercises   # CRUD exercises
+  - name: Logs        # Food + Exercise logs => diary
+  - name: Biometrics  # Log weight, height
+  - name: Streak      # Streak cache and state
+  - name: Support     # Support tickets
+  - name: Blog        # feed - posts, likes, saves
+  - name: Admin       # admin-only endpoints
 
 paths:
   /auth/register:
@@ -1951,7 +1951,7 @@ components:
       enum: [user, admin]
     Gender:
       type: string
-      enum: [male, female, other, prefer_not_to_say]
+      enum: [male, female]
     MealType:
       type: string
       enum: [breakfast, lunch, dinner, snacks]
@@ -2210,9 +2210,11 @@ components:
 
     FoodNutrient:
       type: object
-      required: [nutrient_key, amount_per_100g]
+      required: [nutrient_name, amount_per_100g]
       properties:
-        nutrient_key:
+        nutrient_name:
+          type: string
+        unit:
           type: string
         amount_per_100g:
           type: number
@@ -2297,63 +2299,63 @@ components:
             $ref: '#/components/schemas/FoodNutrient'
           nullable: true
 
-    # ---- Exercises ----
-    Exercise:
-      type: object
-      required: [id, description, met_value]
-      properties:
-        id:
-          type: integer
-          format: int64
-        owner_user_id:
-          type: string
-          format: uuid
-          nullable: true
-        activity_code:
-          type: integer
-          nullable: true
-        major_heading:
-          type: string
-          nullable: true
-        description:
-          type: string
-        met_value:
-          type: number
+      # ---- Exercises ----
+      Exercise:
+        type: object
+        required: [id, description, met_value]
+        properties:
+          id:
+            type: integer
+            format: int64
+          owner_user_id:
+            type: string
+            format: uuid
+            nullable: true
+          activity_code:
+            type: integer
+            nullable: true
+          major_heading:
+            type: string
+            nullable: true
+          description:
+            type: string
+          met_value:
+            type: number
 
-    ExerciseSearchResponse:
-      type: object
-      required: [items, next_cursor]
-      properties:
-        items:
-          type: array
+      ExerciseSearchResponse:
+        type: object
+        required: [items, next_cursor]
+        properties:
           items:
-            $ref: '#/components/schemas/Exercise'
-        next_cursor:
-          type: string
-          nullable: true
+            type: array
+            items:
+              $ref: '#/components/schemas/Exercise'
+          next_cursor:
+            type: string
+            nullable: true
 
-    ExerciseCreateRequest:
-      type: object
-      required: [description, met_value]
-      properties:
-        description:
-          type: string
-        major_heading:
-          type: string
-          nullable: true
-        met_value:
-          type: number
+      ExerciseCreateRequest:
+        type: object
+        required: [description, met_value]
+        properties:
+          description:
+            type: string
+          major_heading:
+            type: string
+            nullable: true
+          met_value:
+            type: number
 
-    ExercisePatchRequest:
-      type: object
-      properties:
-        description:
-          type: string
-        major_heading:
-          type: string
-          nullable: true
-        met_value:
-          type: number
+      ExercisePatchRequest:
+        type: object
+        properties:
+          description:
+            type: string
+          major_heading:
+            type: string
+            nullable: true
+          met_value:
+            type: number
 
     # ---- Logs ----
     FoodLogItemCreateRequest:
