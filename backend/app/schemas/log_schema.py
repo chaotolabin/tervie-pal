@@ -6,6 +6,7 @@ Pydantic schemas cho Daily Logs (Food & Exercise tracking)
 from typing import Optional, List
 import uuid
 from datetime import datetime
+from datetime import date as date_type
 from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
 
@@ -310,7 +311,7 @@ class ExerciseLogEntryPatch(BaseModel):
 
 class DailyNutritionSummary(BaseModel):
     """Tổng hợp dinh dưỡng trong ngày"""
-    date: datetime.date = Field(..., description="Ngày (YYYY-MM-DD)", example="2023-10-27")
+    date: date_type = Field(..., description="Ngày (YYYY-MM-DD)", example="2023-10-27")
     total_calories_consumed: Decimal = Field(..., description="Tổng calo ăn vào")
     total_calories_burned: Decimal = Field(..., description="Tổng calo tiêu hao")
     net_calories: Decimal = Field(..., description="Calo ròng (consumed - burned)")
@@ -321,7 +322,7 @@ class DailyNutritionSummary(BaseModel):
 
 class DailyLogsResponse(BaseModel):
     """Response cho tất cả logs trong 1 ngày"""
-    date: datetime.date = Field(..., description="Ngày (YYYY-MM-DD)")
+    date: date_type = Field(..., description="Ngày (YYYY-MM-DD)")
     food_logs: List[FoodLogEntryResponse] = Field(default_factory=list, description="Các bữa ăn")
     exercise_logs: List[ExerciseLogEntryResponse] = Field(default_factory=list, description="Các buổi tập")
     summary: DailyNutritionSummary = Field(..., description="Tổng kết dinh dưỡng ngày")
