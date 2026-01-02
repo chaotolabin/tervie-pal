@@ -83,12 +83,29 @@ class FoodLogService:
                     detail=f"Food ID {item_data.food_id} not found or deleted"
                 )
             
+            # lay thong tin portion tu database, su dung portion_id
+            portion = db.query(FoodPortion).filter(
+                FoodPortion.id == item_data.portion_id,
+                FoodPortion.food_id == item_data.food_id
+            ).first()
+
+            if not portion:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Portion ID {item_data.portion_id} not found or not belong to Food ID {item_data.food_id}"
+                )
+            
+            # cap nhat lai grams va unit theo portion
+            grams = portion.grams * item_data.quantity
+            unit = portion.unit
+
             # 2.2. Lấy nutrients của food (calories, protein, carbs, fat)
             nutrients = FoodLogService._get_food_nutrients(db, item_data.food_id)
             
             # 2.3. Tính dinh dưỡng theo grams thực tế
             # Formula: (grams / 100) * amount_per_100g
-            multiplier = item_data.grams / Decimal(100)
+            multiplier = grams / Decimal(100)
             
             item_calories = nutrients.get('calories', Decimal(0)) * multiplier
             item_protein = nutrients.get('protein', Decimal(0)) * multiplier
@@ -101,8 +118,8 @@ class FoodLogService:
                 food_id=item_data.food_id,
                 portion_id=item_data.portion_id,
                 quantity=item_data.quantity,
-                unit=item_data.unit,
-                grams=item_data.grams,
+                unit=unit,
+                grams=grams,
                 calories=round(item_calories, 6),
                 protein_g=round(item_protein, 7),
                 carbs_g=round(item_carbs, 7),

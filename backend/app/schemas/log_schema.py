@@ -23,8 +23,8 @@ class FoodLogItemCreate(BaseModel):
         description="ID của food từ bảng foods",
         example=1
     )
-    portion_id: Optional[int] = Field(
-        None,
+    portion_id: int = Field(
+        ...,
         gt=0,
         description="ID của portion (nếu dùng portion có sẵn)",
         example=5
@@ -35,21 +35,8 @@ class FoodLogItemCreate(BaseModel):
         description="Số lượng (vd: 2 cups, 1.5 servings)",
         example=2.0
     )
-    unit: str = Field(
-        ...,
-        min_length=1,
-        max_length=20,
-        description="Đơn vị (vd: grams, cups, servings)",
-        example="cup"
-    )
-    grams: Decimal = Field(
-        ...,
-        gt=0,
-        description="Quy đổi về grams để tính dinh dưỡng",
-        example=200.0
-    )
 
-    @field_validator('quantity', 'grams')
+    @field_validator('quantity')
     @classmethod
     def validate_positive(cls, v: Decimal) -> Decimal:
         if v <= 0:

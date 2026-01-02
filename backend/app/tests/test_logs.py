@@ -152,8 +152,48 @@ def test_biometric(db_session: Session, test_user):
 class TestFoodLogService:
     """Test cases cho FoodLogService"""
 
-    def test_create_food_log_success(self, db_session, test_user, test_food):
+    @pytest.fixture
+    def test_food_with_portions(db_session: Session):
+        """Tạo test food với portions"""
+        food = Food(
+            id=1,
+            name="Bánh mỳ",
+            food_group="Grains"
+        )
+        db_session.add(food)
+        db_session.flush()
+        
+        # Thêm nutrients (giữ nguyên như cũ)
+        nutrients = [...]
+        for nutrient in nutrients:
+            db_session.add(nutrient)
+        
+        # THÊM: Portions
+        portions = [
+            FoodPortion(
+                food_id=food.id,
+                amount=Decimal("1"),
+                unit="slice",
+                grams=Decimal("50")  # 1 slice = 50g
+            ),
+            FoodPortion(
+                food_id=food.id,
+                amount=Decimal("1"),
+                unit="cup",
+                grams=Decimal("158")  # 1 cup = 158g
+            )
+        ]
+        for portion in portions:
+            db_session.add(portion)
+        
+        db_session.commit()
+        db_session.refresh(food)
+        return food, portions
+
+    def test_create_food_log_success(self, db_session, test_user, test_food_with_portions):
         """Test tạo food log thành công"""
+        test_food, portions = test_food_with_portions
+        slice_portion = portions[0]  # portion_id tương ứng với slice
         # Arrange
         data = FoodLogEntryCreate(
             logged_at=datetime.now(timezone.utc),
@@ -161,9 +201,10 @@ class TestFoodLogService:
             items=[
                 FoodLogItemCreate(
                     food_id=test_food.id,
-                    quantity=Decimal("2"),
-                    unit="slice",
-                    grams=Decimal("100")  # 100g
+                    portion_id=slice_portion.id,
+                    quantity=Decimal("2")
+                    # unit="slice",
+                    # grams=Decimal("100")  # 100g
                 )
             ]
         )
@@ -180,6 +221,11 @@ class TestFoodLogService:
         # Kiểm tra tính toán dinh dưỡng
         # 100g bánh mỳ = 265 kcal (từ fixture)
         item = entry.items[0]
+        assert item.portion_id == slice_portion.id
+        assert item.quantity == Decimal("2")
+        assert item.unit == "slice"  # Server tự set
+        assert item.grams == Decimal("100")  # 2 × 50g = 100g
+        
         assert item.calories == Decimal("265.00")
         assert item.protein_g == Decimal("9.000")
         assert item.carbs_g == Decimal("49.000")
@@ -243,6 +289,30 @@ class TestFoodLogService:
         
         assert exc_info.value.status_code == 400
         assert "not found" in str(exc_info.value.detail).lower()
+
+    def test_create_food_log_invalid_portion(self, db_session, test_user, test_food_with_portions):
+        """Test lỗi khi portion_id không thuộc food"""
+        food, portions = test_food_with_portions
+        
+        # Arrange - Gửi portion_id của food khác
+        data = FoodLogEntryCreate(
+            logged_at=datetime.now(timezone.utc),
+            meal_type=MealType.BREAKFAST,
+            items=[
+                FoodLogItemCreate(
+                    food_id=food.id,
+                    portion_id=9999,  # Không tồn tại hoặc không thuộc food này
+                    quantity=Decimal("1")
+                )
+            ]
+        )
+        
+        # Act & Assert
+        with pytest.raises(HTTPException) as exc_info:
+            FoodLogService.create_food_log(db_session, test_user.id, data)
+        
+        assert exc_info.value.status_code == 400
+        assert "portion" in str(exc_info.value.detail).lower()
 
     def test_get_daily_food_logs(self, db_session, test_user, test_food):
         """Test lấy food logs trong ngày"""

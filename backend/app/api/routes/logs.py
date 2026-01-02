@@ -45,14 +45,18 @@ router = APIRouter(tags=["Logs"])
     Tạo log bữa ăn mới với danh sách món ăn.
     
     **Business Logic:**
+    - Client chỉ cần gửi `portion_id` + `quantity`, Server tự động query portion từ database
+    - Server tự tính: `grams = quantity × portion.grams`
+    - Server tự set `unit = portion.unit`
     - Server sẽ tự động tính toán dinh dưỡng (calories, protein, carbs, fat) dựa trên grams
     - Lưu snapshot để giữ nguyên lịch sử dù food gốc có thay đổi
     - Tổng hợp dinh dưỡng của tất cả items vào entry
     
     **Validation:**
+    - Portion ID phải tồn tại và thuộc đúng food_id
     - Bữa ăn phải có ít nhất 1 món
     - Food ID phải tồn tại và chưa bị xóa
-    - Grams và quantity phải > 0
+    - Quantity phải > 0
     """
 )
 def create_food_log(
