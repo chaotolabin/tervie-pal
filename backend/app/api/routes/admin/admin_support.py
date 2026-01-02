@@ -16,13 +16,13 @@ from app.schemas.support_schema import (
 from app.services.support_service import SupportTicketService
 
 
-router = APIRouter(tags=["Admin"])
+router = APIRouter()
 
 
 # ==================== ADMIN SUPPORT ENDPOINTS ====================
 
 @router.get(
-    "/support/tickets",
+    "/tickets",
     response_model=SupportTicketListResponse,
     summary="Admin - Xem tất cả tickets",
     description="""
@@ -68,7 +68,7 @@ def admin_list_all_tickets(
 
 
 @router.patch(
-    "/support/tickets/{ticket_id}",
+    "/tickets/{ticket_id}",
     response_model=SupportTicketResponse,
     summary="Admin - Cập nhật ticket",
     description="""

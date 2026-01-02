@@ -8,8 +8,9 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, chatbot, biometric, food, exercise, logs
+from app.api.routes import auth, users, chatbot, biometric, food, exercise, logs, support
 from app.api.routes import settings as settings_routes
+from app.api.routes.admin import router as admin_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -33,6 +34,8 @@ app.include_router(biometric.router, prefix="/api/v1")
 app.include_router(food.router, prefix="/api/v1")
 app.include_router(exercise.router, prefix="/api/v1")
 app.include_router(logs.router, prefix="/api/v1/logs")
+app.include_router(support.router, prefix="/api/v1/support")
+app.include_router(admin_router, prefix="/api/v1/admin")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(settings_routes.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
