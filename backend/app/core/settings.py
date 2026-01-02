@@ -10,11 +10,17 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str  # URL ket noi den PostgreSQL database
     
+    FRONTEND_URL: Optional[str] = "http://testUrl.com"  # URL frontend
     # ImageKit Configuration (optional)
     IMAGEKIT_PRIVATE_KEY: Optional[str] = None
     IMAGEKIT_PUBLIC_KEY: Optional[str] = None
     IMAGEKIT_URL: Optional[str] = None
-    
+
+    SMTP_ENABLED: bool = True
+    SMTP_SERVER: Optional[str] = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None  # your-email@gmail.com
+    SMTP_PASSWORD: Optional[str] = None  # App Password (16 chars)
     class Config:
         env_file = ".env"
 

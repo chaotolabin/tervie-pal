@@ -151,15 +151,20 @@ async def logout(req: LogoutRequest, db: Session = Depends(get_db)) -> None:
     response_model=GenericMessageResponse,
     status_code=200,
 )
-async def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)) -> GenericMessageResponse:
+async def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db), request: Request = None) -> GenericMessageResponse:
     """Request password reset token"""
     try:
-        token_record, jwt_token = PasswordService.request_password_reset(db=db, email=req.email)
-        
-        if jwt_token:
-            print(f"[DEV MODE] Password reset token for {req.email}: {jwt_token}")
-        
+        await PasswordService.forgot_password(
+            db=db,
+            email=req.email,
+            frontend_url=req.frontend_url
+        )
         return GenericMessageResponse(message="If email exists, password reset link has been sent")
+    except HTTPException as e:
+        # Handle HTTPException (bao gồm cả status 200)
+        if e.status_code == 200:
+            return GenericMessageResponse(message=e.detail)
+        raise  # Re-raise nếu status khác
     except Exception as e:
         print(f"Forgot password error: {e}")
         return GenericMessageResponse(message="If email exists, password reset link has been sent")

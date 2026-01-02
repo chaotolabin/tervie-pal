@@ -13,18 +13,17 @@ from app.api.deps import (
     update_user_password_and_revoke_sessions,
 )
 from app.models.password_reset import PasswordResetToken
+from app.services.send_mail_smtp import send_password_reset_email
 
 
 class PasswordService:
     """Service layer for password operations"""
     
     @staticmethod
-    def request_password_reset(db: Session, email: str) -> tuple[PasswordResetToken, str]:
+    async def forgot_password(db: Session, email: str, frontend_url: str = None) -> None:
         """
         Request password reset - create token
-        
-        Returns:
-            (password_reset_token_record, jwt_token_plaintext)
+        Send email with reset token
         """
         from app.api.deps import PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
         
@@ -32,7 +31,14 @@ class PasswordService:
         
         # Always return generic message (security: don't reveal if email exists)
         if not user:
-            return None, None
+            import time
+            time.sleep(0.1)  # Small delay to prevent timing analysis
+            
+            # Raise generic error (don't reveal email exists)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="If email exists, password reset link has been sent"
+            )
         
         # Create JWT token
         jwt_token = create_password_reset_token(user.id)
@@ -61,7 +67,31 @@ class PasswordService:
         
         db.commit()
         
-        return token_record, jwt_token
+              # Send email
+        try:
+            await send_password_reset_email(
+                to_email=email,
+                username=user.username,
+                frontend_url=frontend_url,
+                reset_token=jwt_token
+            )
+            print(f"[DEV MODE] Password reset token for {email}: {jwt_token}")
+        except Exception as email_error:
+            # Log error but don't reveal to user
+            print(f"Failed to send password reset email: {str(email_error)}")
+            # Still raise generic error (security: don't reveal email sending failed)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="If email exists, password reset link has been sent"
+            )
+        
+        # Success - but still return generic message for security
+        # (Don't reveal that email was actually sent)
+        raise HTTPException(
+            status_code=status.HTTP_200_OK,
+            detail="If email exists, password reset link has been sent"
+        )
+        # return token_record, jwt_token
     
     @staticmethod
     def reset_password(db: Session, token: str, new_password: str) -> None:
