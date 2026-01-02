@@ -14,6 +14,9 @@ from app.models.auth import (
     GoalType
 )
 
+# Password Reset models
+from app.models.password_reset import PasswordResetToken
+
 # Food models
 from app.models.food import (
     Food,
@@ -69,8 +72,13 @@ __all__ = [
     "User",
     "Profile",
     "RefreshSession",
+    "Goal",
     "UserRole",
     "Gender",
+    "GoalType",
+    
+    # Signup
+    "SignupSession",
     
     # Food
     "Food",
