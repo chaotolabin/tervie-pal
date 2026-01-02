@@ -21,6 +21,21 @@ from .users import (
 from .settings import ChangePasswordRequest
 from .common import ErrorResponse, GenericMessageResponse
 from .streak import StreakStatus, StreakDayResponse, StreakResponse, StreakWeekResponse
+from .goals import (
+    GoalType,
+    ActivityLevel,
+    GoalCreateRequest,
+    GoalPatchRequest,
+    GoalResponse,
+    GoalCalculateRequest,
+    GoalCalculateResponse,
+)
+from .biometric import (
+    BiometricsCreateRequest,
+    BiometricsPatchRequest,
+    BiometricsLogResponse,
+    BiometricsListResponse,
+)
 
 __all__ = [
     # Auth schemas
@@ -50,4 +65,17 @@ __all__ = [
     "StreakDayResponse",
     "StreakResponse",
     "StreakWeekResponse",
+    # Goals schemas
+    "GoalType",
+    "ActivityLevel",
+    "GoalCreateRequest",
+    "GoalPatchRequest",
+    "GoalResponse",
+    "GoalCalculateRequest",
+    "GoalCalculateResponse",
+    # Biometric schemas
+    "BiometricsCreateRequest",
+    "BiometricsPatchRequest",
+    "BiometricsLogResponse",
+    "BiometricsListResponse",
 ]

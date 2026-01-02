@@ -8,7 +8,7 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak
+from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak, goals, biometric
 from app.api.routes import settings as settings_routes
 
 app = FastAPI(
@@ -77,8 +77,10 @@ async def health_check(db: Session = Depends(get_db)):
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(settings_routes.router, prefix="/api/v1")
 app.include_router(streak.router, prefix="/api/v1")
-# app.include_router(admin.router, prefix="/api/v1")
+app.include_router(goals.router, prefix="/api/v1")
+app.include_router(biometric.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
+# app.include_router(admin.router, prefix="/api/v1")
 # app.include_router(meals.router, prefix="/api/v1")
 # app.include_router(workouts.router, prefix="/api/v1")
 # app.include_router(chatbot.router, prefix="/api/v1")
