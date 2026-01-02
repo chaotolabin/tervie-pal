@@ -64,11 +64,10 @@ class User(Base, TimestampMixin):
         comment="Mật khẩu đã hash (bcrypt/argon2)"
     )
     
-    role: Mapped[UserRole] = mapped_column(
-        # String(20),
-        SQLEnum(UserRole),
+    role: Mapped[str] = mapped_column(
+        Text,
         nullable=False,
-        default=UserRole.USER,
+        default="user",
         server_default="user",
         comment="Vai trò: user hoặc admin"
     )
@@ -118,11 +117,11 @@ class Profile(Base, TimestampMixin):
         comment="Họ và tên đầy đủ"
     )
     
-    gender: Mapped[Optional[Gender]] = mapped_column(
+    gender: Mapped[Optional[str]] = mapped_column(
         # String(30),
-        SQLEnum(Gender),
+        Text,
         nullable=True,
-        comment="Giới tính"
+        comment="Giới tính: male, female"
     )
     
     date_of_birth: Mapped[Optional[date]] = mapped_column(
@@ -250,8 +249,8 @@ class Goal(Base, TimestampMixin):
         comment="FK tới users.id, đồng thời là PK (1 user = 1 goal active)"
     )
     
-    goal_type: Mapped[GoalType] = mapped_column(
-        SQLEnum(GoalType),
+    goal_type: Mapped[str] = mapped_column(
+        Text,
         nullable=False,
         comment="Loại mục tiêu: lose_weight, gain_weight, maintain_weight, build_muscle, improve_health"
     )
@@ -268,22 +267,22 @@ class Goal(Base, TimestampMixin):
         comment="Tổng năng lượng mục tiêu mỗi ngày (kcal)"
     )
     
-    protein_ratio: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(3, 2),
+    protein_grams: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(6, 2),
         nullable=True,
-        comment="Tỉ lệ protein (0-1), ví dụ: 0.30 = 30%"
+        comment="Lượng protein mục tiêu (grams) - tính từ daily_calorie × ratio ÷ 4"
     )
     
-    fat_ratio: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(3, 2),
+    fat_grams: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(6, 2),
         nullable=True,
-        comment="Tỉ lệ fat (0-1), ví dụ: 0.25 = 25%"
+        comment="Lượng fat mục tiêu (grams) - tính từ daily_calorie × ratio ÷ 9"
     )
     
-    carb_ratio: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(3, 2),
+    carb_grams: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(6, 2),
         nullable=True,
-        comment="Tỉ lệ carbs (0-1), ví dụ: 0.45 = 45%"
+        comment="Lượng carbs mục tiêu (grams) - tính từ daily_calorie × ratio ÷ 4"
     )
     
     weekly_exercise_min: Mapped[Optional[int]] = mapped_column(
@@ -309,16 +308,16 @@ class Goal(Base, TimestampMixin):
             name="check_calorie_positive"
         ),
         CheckConstraint(
-            "protein_ratio IS NULL OR (protein_ratio >= 0 AND protein_ratio <= 1)",
-            name="check_protein_ratio_range"
+            "protein_grams IS NULL OR protein_grams >= 0",
+            name="check_protein_grams_positive"
         ),
         CheckConstraint(
-            "fat_ratio IS NULL OR (fat_ratio >= 0 AND fat_ratio <= 1)",
-            name="check_fat_ratio_range"
+            "fat_grams IS NULL OR fat_grams >= 0",
+            name="check_fat_grams_positive"
         ),
         CheckConstraint(
-            "carb_ratio IS NULL OR (carb_ratio >= 0 AND carb_ratio <= 1)",
-            name="check_carb_ratio_range"
+            "carb_grams IS NULL OR carb_grams >= 0",
+            name="check_carb_grams_positive"
         ),
         CheckConstraint(
             "weekly_exercise_min IS NULL OR weekly_exercise_min >= 0",
