@@ -15,3 +15,6 @@ venv/
 node_modules/
 dist/
 build/
+
+# database files
+data_food_exercise/
