@@ -8,7 +8,7 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak, goals, biometric
+from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak, goals, biometric, blog
 from app.api.routes import settings as settings_routes
 
 app = FastAPI(
@@ -79,6 +79,7 @@ app.include_router(settings_routes.router, prefix="/api/v1")
 app.include_router(streak.router, prefix="/api/v1")
 app.include_router(goals.router, prefix="/api/v1")
 app.include_router(biometric.router, prefix="/api/v1")
+app.include_router(blog.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 # app.include_router(admin.router, prefix="/api/v1")
 # app.include_router(meals.router, prefix="/api/v1")

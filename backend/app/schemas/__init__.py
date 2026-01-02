@@ -36,6 +36,20 @@ from .biometric import (
     BiometricsLogResponse,
     BiometricsListResponse,
 )
+from .blog import (
+    MediaType,
+    FeedSort,
+    PostMediaIn,
+    PostMediaOut,
+    PostCreateRequest,
+    PostPatchRequest,
+    PostDetail,
+    FeedItem,
+    FeedResponse,
+    HashtagOut,
+    HashtagSearchResponse,
+    FeedQueryParams,
+)
 
 __all__ = [
     # Auth schemas
@@ -78,4 +92,17 @@ __all__ = [
     "BiometricsPatchRequest",
     "BiometricsLogResponse",
     "BiometricsListResponse",
+    # Blog schemas
+    "MediaType",
+    "FeedSort",
+    "PostMediaIn",
+    "PostMediaOut",
+    "PostCreateRequest",
+    "PostPatchRequest",
+    "PostDetail",
+    "FeedItem",
+    "FeedResponse",
+    "HashtagOut",
+    "HashtagSearchResponse",
+    "FeedQueryParams",
 ]

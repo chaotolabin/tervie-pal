@@ -36,6 +36,12 @@ class Post(Base, TimestampMixin):
         comment="FK tới users.id"
     )
     
+    title: Mapped[Optional[str]] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="Tiêu đề bài viết (tối đa 200 ký tự)"
+    )
+    
     content_text: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=False,
