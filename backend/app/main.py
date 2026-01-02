@@ -8,7 +8,7 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak, goals, biometric, blog, chatbot, food, exercise, logs
+from app.api.routes import auth, admin, users, meals, workouts, chatbot, streak, goals, biometric, blog, food, exercise, logs
 from app.api.routes import settings as settings_routes
 
 app = FastAPI(
@@ -18,9 +18,6 @@ app = FastAPI(
     openapi_url="/api/v1/openapi.json",
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc"
-    description="Tervie Pal API"
-    # openapi_url="/api/v1/openapi.json",
-    # docs_url="/api/v1/docs"
 )
 
 # ==================== CORS Configuration ====================
@@ -32,9 +29,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==================== Root Endpoints ====================
-@app.get("/", tags=["Root"])
-# Register routers
+# ==================== Register Routers ====================
+
 app.include_router(biometric.router, prefix="/api/v1")
 app.include_router(food.router, prefix="/api/v1")
 app.include_router(exercise.router, prefix="/api/v1")
