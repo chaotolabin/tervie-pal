@@ -227,6 +227,7 @@ def delete_biometrics_log(
     )
     # FastAPI tự động trả về 204 No Content
 
+
 @router.get(
     "/summary",
     summary="Biometrics summary",
