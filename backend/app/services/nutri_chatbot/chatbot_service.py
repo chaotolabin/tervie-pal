@@ -289,7 +289,7 @@ Nhiệm vụ của bạn là phản hồi các câu giao tiếp xã hội của 
         
         if not food_name:
             return {
-                "response": "Bạn muốn tra cứu món ăn nào? Hãy cho mình biết tên món nhé! 😊",
+                "response": "Xin gửi thông tin tới bạn nhé nhé! 😊",
                 "intent": "FOOD_NUTRITION_INQUIRY",
                 "data": []
             }
@@ -328,7 +328,7 @@ Nhiệm vụ của bạn là phản hồi các câu giao tiếp xã hội của 
             
             response_text += "\n\n"
         
-        response_text += "Bạn muốn biết thêm chi tiết về món nào không?"
+        response_text += "Xin gửi thôn tin tới bạn nhé?"
         
         return {
             "response": response_text,
