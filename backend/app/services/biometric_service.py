@@ -4,6 +4,7 @@ Chịu trách nhiệm:
 - CRUD operations với database
 - Business logic (tính BMI, validation)
 - Error handling
+- Trigger goal recalculation when biometrics change
 """
 import uuid
 from datetime import datetime, date
@@ -14,7 +15,7 @@ from sqlalchemy import func
 from fastapi import HTTPException, status
 
 from app.models.biometric import BiometricsLog
-from app.schemas.biometric_schema import (
+from app.schemas.biometric import (
     BiometricsCreateRequest,
     BiometricsPatchRequest,
     BiometricsLogResponse
@@ -50,6 +51,36 @@ class BiometricService:
         return round(bmi, 2)
 
     @staticmethod
+    def _try_recalculate_goal(db: Session, user_id: uuid.UUID) -> None:
+        """
+        Thử recalculate goal nếu user đã có goal.
+        Gọi silent - không raise error nếu không có goal.
+        
+        Args:
+            db: Database session
+            user_id: User UUID
+        """
+        try:
+            from app.services.goal_service import GoalService
+            
+            # Kiểm tra xem user có goal không
+            existing_goal = GoalService.get_goal(db, user_id)
+            if existing_goal:
+                # Recalculate với các giá trị hiện tại
+                GoalService.recalculate_goal(
+                    db=db,
+                    user_id=user_id,
+                    commit=False  # Sẽ commit cùng với biometrics
+                )
+        except HTTPException:
+            # Ignore errors (e.g., missing profile data)
+            # Goal sẽ được recalculate khi user có đủ data
+            pass
+        except Exception:
+            # Log error but don't fail biometrics operation
+            pass
+
+    @staticmethod
     def create_biometrics_log(
         db: Session,
         user_id: uuid.UUID, 
@@ -68,6 +99,9 @@ class BiometricService:
 
         Rules: Mỗi user chỉ được tạo một log cho mỗi thời điểm logged_at.
         Nếu đã có log cho thời điểm đó, trả về lỗi 400.
+
+        Side Effects:
+        - Nếu user có goal, goal sẽ được recalculate với weight/height mới
         """
         # Tính BMI tự động
         bmi = BiometricService.calculate_bmi(data.weight_kg, data.height_cm)
@@ -99,6 +133,10 @@ class BiometricService:
         )
         
         db.add(db_log)
+
+        # Recalculate goal nếu có (với biometrics mới nhất)
+        BiometricService._try_recalculate_goal(db, user_id)
+
         db.commit()
         db.refresh(db_log)
         
@@ -244,11 +282,17 @@ class BiometricService:
             setattr(db_log, field, value)
         
         # Recalculate BMI nếu weight hoặc height thay đổi
+        needs_goal_recalc = False
         if 'weight_kg' in update_data or 'height_cm' in update_data:
             db_log.bmi = BiometricService.calculate_bmi(
                 db_log.weight_kg,
                 db_log.height_cm
             )
+            needs_goal_recalc = True
+        
+        # Recalculate goal nếu biometrics thay đổi
+        if needs_goal_recalc:
+            BiometricService._try_recalculate_goal(db, user_id)
         
         db.commit()
         db.refresh(db_log)

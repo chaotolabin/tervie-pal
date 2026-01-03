@@ -106,7 +106,7 @@ class AuthService:
             )
         
         # Calculate macros
-        macros = GoalService.calculate_macros(daily_calorie)
+        macros = GoalService.calculate_macros(daily_calorie, goal_type, baseline_activity, float(weight_kg))
         
         # Create goal
         GoalRepository.create(

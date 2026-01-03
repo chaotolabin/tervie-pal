@@ -16,7 +16,6 @@ class Settings(BaseSettings):
     # ChromaDB Configuration
     CHROMA_DB_PATH: str = "./chroma_db"
     
-    
     # imagekit.io Configuration (optional)
     IMAGEKIT_PRIVATE_KEY: Optional[str] = None
     IMAGEKIT_PUBLIC_KEY: Optional[str] = None

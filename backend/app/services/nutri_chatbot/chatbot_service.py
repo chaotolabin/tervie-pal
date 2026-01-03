@@ -313,22 +313,22 @@ Nhiệm vụ của bạn là phản hồi các câu giao tiếp xã hội của 
             
             # Hiển thị chất dinh dưỡng theo yêu cầu
             if nutrient == 'calories':
-                response_text += f"📊 {food['calories']} kcal"
+                response_text += f" {food['calories']} kcal"
             elif nutrient == 'protein':
-                response_text += f"🥩 {food['protein']}g protein"
+                response_text += f" {food['protein']}g protein"
             elif nutrient == 'carbs':
-                response_text += f"🍞 {food['carbs']}g carbs"
+                response_text += f" {food['carbs']}g carbs"
             elif nutrient == 'fat':
-                response_text += f"🧈 {food['fat']}g fat"
+                response_text += f" {food['fat']}g fat"
             else:  # all - hiển thị đầy đủ
-                response_text += f"📊 {food['calories']} kcal | "
-                response_text += f"🥩 {food['protein']}g protein | "
-                response_text += f"🍞 {food['carbs']}g carbs | "
-                response_text += f"🧈 {food['fat']}g fat"
+                response_text += f" {food['calories']} kcal | "
+                response_text += f" {food['protein']}g protein | "
+                response_text += f" {food['carbs']}g carbs | "
+                response_text += f" {food['fat']}g fat"
             
             response_text += "\n\n"
         
-        response_text += "Xin gửi thôn tin tới bạn nhé?"
+        response_text += "Xin gửi thông tin tới bạn nhé?"
         
         return {
             "response": response_text,

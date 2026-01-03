@@ -44,35 +44,35 @@ class FoodLogEntry(Base, TimestampMixin):
         comment="Thời điểm người dùng log bữa ăn (client gửi)"
     )
     
-    meal_type: Mapped[MealType] = mapped_column(
-        SQLEnum(MealType, name="meal_type_enum"),
+    meal_type: Mapped[str] = mapped_column(
+        String(20),
         nullable=False,
         comment="Loại bữa ăn"
     )
 
     total_calories: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2),
+        Numeric(12, 6),
         nullable=False,
         default=0.0,
         comment="Tổng lượng calo của bữa ăn"
     )
 
     total_protein_g: Mapped[Decimal] = mapped_column(
-        Numeric(12, 3),
+        Numeric(12, 7),
         nullable=False,
         default=0.0,
         comment="Tổng lượng protein (grams) của bữa ăn"
     )
 
     total_carbs_g: Mapped[Decimal] = mapped_column(
-        Numeric(12, 3),
+        Numeric(12, 7),
         nullable=False,
         default=0.0,
         comment="Tổng lượng carbs (grams) của bữa ăn"
     )
 
     total_fat_g: Mapped[Decimal] = mapped_column(
-        Numeric(12, 3),
+        Numeric(12, 7),
         nullable=False,
         default=0.0,
         comment="Tổng lượng fat (grams) của bữa ăn"
@@ -156,10 +156,10 @@ class FoodLogItem(Base):
     )
     
     # Snapshot để lịch sử không đổi khi food/portion thay đổi
-    calories: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
-    protein_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 3), nullable=True)
-    carbs_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 3), nullable=True)
-    fat_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 3), nullable=True)
+    calories: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
+    protein_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 7), nullable=True)
+    carbs_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 7), nullable=True)
+    fat_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 7), nullable=True)
     
     # Relationships
     entry: Mapped["FoodLogEntry"] = relationship(
@@ -195,7 +195,7 @@ class ExerciseLogEntry(Base, TimestampMixin):
     )
 
     total_calories: Mapped[Decimal] = mapped_column(
-        Numeric(12, 2),
+        Numeric(12, 6),
         nullable=False,
         default=0.0,
         comment="Tổng lượng calo tiêu hao của bài tập"
@@ -287,7 +287,7 @@ class ExerciseLogItem(Base):
 
     # calories: duoc tinh
     calories: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(12, 2),
+        Numeric(12, 6),
         nullable=True,
         default=0,
         comment="Lượng calo tiêu hao (nếu có)"

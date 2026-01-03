@@ -93,4 +93,5 @@ def downgrade() -> None:
     op.drop_index('uq_exercises_activity_code_global_active', table_name='exercises', postgresql_where=sa.text('owner_user_id IS NULL AND deleted_at IS NULL AND activity_code IS NOT NULL'))
     op.drop_index('ix_exercises_owner_user_id_description', table_name='exercises', postgresql_where=sa.text('deleted_at IS NULL'))
     op.drop_table('exercises')
+
     # ### end Alembic commands ###
