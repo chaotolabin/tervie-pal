@@ -1,3 +1,3 @@
-from . import auth, biometric, exercise, food, logs, settings, streak, support, users, goals, blog
+from . import auth, biometric, blog, exercise, food, goals, logs, settings, streak, support, users
 
-__all__ = ["auth", "biometric", "exercise", "food", "logs", "settings", "streak", "support", "users", "goals", "blog"]
+__all__ = ["auth", "biometric", "blog", "exercise", "food", "goals", "logs", "settings", "streak", "support", "users"]
