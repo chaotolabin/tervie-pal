@@ -36,6 +36,12 @@ class Post(Base, TimestampMixin):
         comment="FK tới users.id"
     )
     
+    title: Mapped[Optional[str]] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="Tiêu đề bài viết (tối đa 200 ký tự)"
+    )
+    
     content_text: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=False,
@@ -129,7 +135,7 @@ class PostMedia(Base):
     media_type: Mapped[MediaType] = mapped_column(
         String(20),
         nullable=False,
-        comment="Loại media: image hoặc video"
+        comment="Loại media: image"
     )
     
     mime_type: Mapped[Optional[str]] = mapped_column(
@@ -263,6 +269,14 @@ class Hashtag(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         nullable=False
+    )
+
+    # Relationships
+    posts: Mapped[List["Post"]] = relationship(
+        "Post",
+        secondary="post_hashtags",
+        back_populates="hashtags",
+        lazy="selectin"
     )
 
     __table_args__ = (

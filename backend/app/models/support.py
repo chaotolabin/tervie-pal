@@ -58,18 +58,17 @@ class SupportTicket(Base, TimestampMixin):
         comment="Nội dung chi tiết"
     )
     
-    category: Mapped[TicketCategory] = mapped_column(
-        SQLEnum(TicketCategory, name="ticket_category_enum"),
-        nullable=True,
+    category: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
         comment="Phân loại ticket"
     )
     
-    status: Mapped[TicketStatus] = mapped_column(
-        # String(20),
-        SQLEnum(TicketStatus, name="ticket_status_enum"),
+    status: Mapped[str] = mapped_column(
+        String(20),
         nullable=False,
-        default=TicketStatus.OPEN,
-        server_default=TicketStatus.OPEN.value,
+        default="open",
+        server_default="open",
         comment="Trạng thái xử lý"
     )
 

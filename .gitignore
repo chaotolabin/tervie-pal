@@ -6,8 +6,18 @@ dist/
 wheels/
 *.egg-info
 docs/flowcharts2/
+backend/alembic/versions/
 
 # Virtual environments
 .venv/
 venv/
 .env
+backend/alembic/versions/004_update_goals_macros_to_grams.py
+
+# frontend node modules
+node_modules/
+dist/
+build/
+
+# database files
+data_food_exercise/
