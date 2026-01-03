@@ -1,4 +1,3 @@
-# Import routes for easier access
-from . import auth, streak, goals
+from . import auth, biometric, exercise, food, logs, settings, streak, support, users, goals, blog
 
-__all__ = ["auth", "streak", "goals"]
+__all__ = ["auth", "biometric", "exercise", "food", "logs", "settings", "streak", "support", "users", "goals", "blog"]
