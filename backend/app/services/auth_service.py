@@ -18,6 +18,8 @@ from app.api.deps import (
     decode_token,
 )
 from app.models.auth import User
+from app.services.biometric_service import BiometricService
+
 
 
 class AuthService:
@@ -130,12 +132,15 @@ class AuthService:
             weekly_exercise_min=weekly_exercise_min
         )
         
-        # Create initial biometrics log
+        # Tính BMI trước
+        bmi = BiometricService.calculate_bmi(weight_kg, height_cm)
+
         BiometricsRepository.create(
             db=db,
             user_id=user.id,
             weight_kg=weight_kg,
-            height_cm=height_cm
+            height_cm=height_cm,
+            bmi=bmi 
         )
         
         # Generate tokens
