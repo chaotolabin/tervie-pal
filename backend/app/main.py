@@ -8,7 +8,7 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, chatbot, streak, goals, biometric, blog, food, exercise, logs, support
+from app.api.routes import auth, admin, users, streak, goals, biometric, blog, food, exercise, logs, support
 from app.api.routes import settings as settings_routes
 from app.api.routes.admin import router as admin_router
 
