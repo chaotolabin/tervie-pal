@@ -140,7 +140,7 @@ async def upload_multiple_media(
     - author_id: Lọc theo tác giả
     - saved: true để chỉ lấy bài đã lưu
     
-    Cursor-based pagination cho infinite scroll.
+    Offset/Limit pagination - 15 bài viết mỗi trang.
     """
 )
 async def get_feed(
@@ -148,8 +148,8 @@ async def get_feed(
     hashtag: Optional[str] = Query(None, description="Lọc theo hashtag"),
     author_id: Optional[uuid.UUID] = Query(None, description="Lọc theo tác giả"),
     saved: Optional[bool] = Query(None, description="Chỉ bài đã lưu"),
-    limit: int = Query(20, ge=1, le=100, description="Số lượng items"),
-    cursor: Optional[str] = Query(None, description="Cursor pagination"),
+    limit: int = Query(15, ge=1, le=100, description="Số lượng items mỗi trang"),
+    page: int = Query(1, ge=1, description="Số trang (bắt đầu từ 1)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> FeedResponse:
@@ -161,7 +161,7 @@ async def get_feed(
         author_id=author_id,
         saved_only=saved or False,
         limit=limit,
-        cursor=cursor
+        page=page
     )
 
 

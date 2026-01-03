@@ -321,23 +321,27 @@ class BlogRepository:
         hashtag: Optional[str] = None,
         author_id: Optional[uuid.UUID] = None,
         saved_only: bool = False,
-        limit: int = 20,
-        cursor: Optional[str] = None
-    ) -> Tuple[List[Post], Optional[str]]:
+        limit: int = 15,
+        page: int = 1
+    ) -> Tuple[List[Post], int]:
         """
-        Lấy feed với filters và cursor pagination.
+        Lấy feed với filters và offset/limit pagination.
         
         Args:
             sort: "recent" hoặc "trending"
             hashtag: Lọc theo hashtag name
             author_id: Lọc theo tác giả
             saved_only: Chỉ lấy bài đã save
-            limit: Số lượng posts
-            cursor: Cursor string (post_id cho recent, score:post_id cho trending)
+            limit: Số lượng posts mỗi trang (mặc định 15)
+            page: Số trang (bắt đầu từ 1)
         
         Returns:
-            (posts, next_cursor)
+            (posts, total_count) - danh sách posts và tổng số bài viết
         """
+        # Base query cho đếm tổng
+        base_query = select(Post).where(Post.deleted_at.is_(None))
+        
+        # Query lấy dữ liệu với eager loading
         query = (
             select(Post)
             .options(
@@ -357,57 +361,42 @@ class BlogRepository:
         # Filter: author
         if author_id:
             query = query.where(Post.user_id == author_id)
+            base_query = base_query.where(Post.user_id == author_id)
         
         # Filter: saved only
         if saved_only:
             query = query.join(PostSave).where(PostSave.user_id == user_id)
+            base_query = base_query.join(PostSave).where(PostSave.user_id == user_id)
         
-        # Sorting & Cursor
+        # Filter: hashtag (áp dụng cho cả count query)
+        if hashtag:
+            normalized_hashtag = BlogRepository._normalize_hashtag(hashtag)
+            base_query = base_query.join(PostHashtag).join(Hashtag).where(
+                Hashtag.name == normalized_hashtag
+            )
+        
+        # Đếm tổng số bài viết (cho pagination info)
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_count = db.execute(count_query).scalar() or 0
+        
+        # Sorting - luôn áp dụng ORDER BY trước OFFSET/LIMIT
         if sort == "trending":
-            # Trending: (like_count + save_count) DESC, created_at DESC
+            # Trending: (like_count + save_count) DESC, sau đó created_at DESC
             score_expr = Post.like_count + Post.save_count
-            
-            if cursor:
-                # Cursor format: "score:post_id"
-                parts = cursor.split(":")
-                if len(parts) == 2:
-                    cursor_score = int(parts[0])
-                    cursor_id = int(parts[1])
-                    query = query.where(
-                        or_(
-                            score_expr < cursor_score,
-                            and_(score_expr == cursor_score, Post.id < cursor_id)
-                        )
-                    )
-            
-            query = query.order_by(score_expr.desc(), Post.id.desc())
+            query = query.order_by(score_expr.desc(), Post.created_at.desc(), Post.id.desc())
         else:
-            # Recent: created_at DESC (hoặc id DESC cho đơn giản)
-            if cursor:
-                cursor_id = int(cursor)
-                query = query.where(Post.id < cursor_id)
-            
-            query = query.order_by(Post.id.desc())
+            # Recent: created_at DESC (mới nhất trước)
+            query = query.order_by(Post.created_at.desc(), Post.id.desc())
         
-        # Limit + 1 để check có trang tiếp không
-        query = query.limit(limit + 1)
+        # Offset/Limit pagination
+        # page=1 → offset=0, page=2 → offset=15, page=3 → offset=30...
+        offset = (page - 1) * limit
+        query = query.offset(offset).limit(limit)
         
         result = db.execute(query)
         posts = result.scalars().all()
         
-        # Tính next_cursor
-        next_cursor = None
-        if len(posts) > limit:
-            posts = posts[:limit]
-            last_post = posts[-1]
-            
-            if sort == "trending":
-                score = last_post.like_count + last_post.save_count
-                next_cursor = f"{score}:{last_post.id}"
-            else:
-                next_cursor = str(last_post.id)
-        
-        return posts, next_cursor
+        return posts, total_count
     
     @staticmethod
     def get_user_interactions(

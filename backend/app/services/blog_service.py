@@ -246,14 +246,14 @@ class BlogService:
         hashtag: Optional[str] = None,
         author_id: Optional[uuid.UUID] = None,
         saved_only: bool = False,
-        limit: int = 20,
-        cursor: Optional[str] = None
+        limit: int = 15,
+        page: int = 1
     ) -> FeedResponse:
         """
         Lấy feed với các filters.
-        Cursor-based pagination cho infinite scroll.
+        Offset/Limit pagination cho infinite scroll hoặc load more.
         """
-        posts, next_cursor = BlogRepository.get_feed(
+        posts, total_count = BlogRepository.get_feed(
             db=db,
             user_id=user_id,
             sort=sort,
@@ -261,7 +261,7 @@ class BlogService:
             author_id=author_id,
             saved_only=saved_only,
             limit=limit,
-            cursor=cursor
+            page=page
         )
         
         # Lấy user interactions cho batch posts
@@ -280,7 +280,18 @@ class BlogService:
             for p in posts
         ]
         
-        return FeedResponse(items=items, next_cursor=next_cursor)
+        # Tính pagination info
+        total_pages = (total_count + limit - 1) // limit  # ceil division
+        has_next = page < total_pages
+        
+        return FeedResponse(
+            items=items,
+            page=page,
+            limit=limit,
+            total_count=total_count,
+            total_pages=total_pages,
+            has_next=has_next
+        )
     
     # ==================== HASHTAGS ====================
     @staticmethod
