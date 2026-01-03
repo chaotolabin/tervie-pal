@@ -3,20 +3,18 @@ Pydantic schemas cho Daily Logs (Food & Exercise tracking)
 - Request schemas: Validate dữ liệu từ client
 - Response schemas: Format dữ liệu trả về client
 """
-from typing import Optional, List
+from typing import Optional, List, Union
 import uuid
 from datetime import datetime
 from datetime import date as date_type
 from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
 
-from app.models.log import MealType
-
 
 # ==================== FOOD LOG SCHEMAS ====================
 
-class FoodLogItemCreate(BaseModel):
-    """Schema để tạo 1 món ăn trong bữa ăn"""
+class FoodLogItemCreateByPortion(BaseModel):
+    """Tạo món ăn bằng cách chọn portion có sẵn"""
     food_id: int = Field(
         ...,
         gt=0,
@@ -26,11 +24,11 @@ class FoodLogItemCreate(BaseModel):
     portion_id: int = Field(
         ...,
         gt=0,
-        description="ID của portion (nếu dùng portion có sẵn)",
+        description="ID của portion có sẵn",
         example=5
     )
     quantity: Decimal = Field(
-        ...,
+        default=1.0,
         gt=0,
         description="Số lượng (vd: 2 cups, 1.5 servings)",
         example=2.0
@@ -40,7 +38,30 @@ class FoodLogItemCreate(BaseModel):
     @classmethod
     def validate_positive(cls, v: Decimal) -> Decimal:
         if v <= 0:
-            raise ValueError("Giá trị phải lớn hơn 0")
+            raise ValueError("Quantity phải lớn hơn 0")
+        return v
+
+
+class FoodLogItemCreateByGrams(BaseModel):
+    """Tạo món ăn bằng cách nhập grams trực tiếp"""
+    food_id: int = Field(
+        ...,
+        gt=0,
+        description="ID của food từ bảng foods",
+        example=1
+    )
+    grams: Decimal = Field(
+        ...,
+        gt=0,
+        description="Số grams trực tiếp",
+        example=100.0
+    )
+
+    @field_validator('grams')
+    @classmethod
+    def validate_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Grams phải lớn hơn 0")
         return v
 
 
@@ -71,28 +92,31 @@ class FoodLogEntryCreate(BaseModel):
         description="Thời điểm log bữa ăn (client gửi với timezone)",
         example="2023-10-27T08:00:00+07:00"
     )
-    meal_type: MealType = Field(
+    meal_type: str = Field(
         ...,
         description="Loại bữa ăn: breakfast, lunch, dinner, snacks",
         example="breakfast"
     )
-    items: List[FoodLogItemCreate] = Field(
+    items: List[Union[FoodLogItemCreateByPortion, FoodLogItemCreateByGrams]] = Field(
         ...,
         min_length=1,
-        description="Danh sách món ăn trong bữa",
+        description="Danh sách món ăn (dùng portion hoặc grams trực tiếp)",
         example=[
             {
                 "food_id": 1,
-                "quantity": 2,
-                "unit": "slice",
-                "grams": 60
+                "portion_id": 5,
+                "quantity": 2.0
+            },
+            {
+                "food_id": 2,
+                "grams": 150.0
             }
         ]
     )
 
     @field_validator('items')
     @classmethod
-    def validate_items_not_empty(cls, v: List[FoodLogItemCreate]) -> List[FoodLogItemCreate]:
+    def validate_items_not_empty(cls, v: List) -> List:
         if not v:
             raise ValueError("Bữa ăn phải có ít nhất 1 món")
         return v
@@ -103,7 +127,7 @@ class FoodLogEntryResponse(BaseModel):
     id: int = Field(..., description="ID của entry")
     user_id: uuid.UUID = Field(..., description="UUID của user")
     logged_at: datetime = Field(..., description="Thời điểm log")
-    meal_type: MealType = Field(..., description="Loại bữa ăn")
+    meal_type: str = Field(..., description="Loại bữa ăn")
     
     # Tổng hợp dinh dưỡng của cả bữa
     total_calories: Decimal = Field(..., description="Tổng calo của bữa ăn")
@@ -155,7 +179,7 @@ class FoodLogEntryPatch(BaseModel):
         None,
         description="Thời điểm log bữa ăn mới"
     )
-    meal_type: Optional[MealType] = Field(
+    meal_type: Optional[str] = Field(
         None,
         description="Loại bữa ăn mới"
     )

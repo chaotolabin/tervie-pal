@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session, selectinload
 from fastapi import HTTPException, status
 
 from app.models.log import FoodLogEntry, FoodLogItem
-from app.models.food import Food, FoodNutrient
+from app.models.food import Food, FoodNutrient, FoodPortion
 from app.schemas.log_schema import (
     FoodLogEntryCreate,
     FoodLogEntryPatch,
-    FoodLogItemUpdate
+    FoodLogItemUpdate,
+    FoodLogItemCreateByPortion,
+    FoodLogItemCreateByGrams
 )
 
 
@@ -83,27 +85,36 @@ class FoodLogService:
                     detail=f"Food ID {item_data.food_id} not found or deleted"
                 )
             
-            # lay thong tin portion tu database, su dung portion_id
-            portion = db.query(FoodPortion).filter(
-                FoodPortion.id == item_data.portion_id,
-                FoodPortion.food_id == item_data.food_id
-            ).first()
+            # 2.2. Xác định grams và unit dựa trên loại item
+            if isinstance(item_data, FoodLogItemCreateByPortion):
+                # Loại 1: Dùng portion_id
+                portion = db.query(FoodPortion).filter(
+                    FoodPortion.id == item_data.portion_id,
+                    FoodPortion.food_id == item_data.food_id
+                ).first()
 
-            if not portion:
-                db.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Portion ID {item_data.portion_id} not found or not belong to Food ID {item_data.food_id}"
-                )
-            
-            # cap nhat lai grams va unit theo portion
-            grams = portion.grams * item_data.quantity
-            unit = portion.unit
+                if not portion:
+                    db.rollback()
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Portion ID {item_data.portion_id} not found or not belong to Food ID {item_data.food_id}"
+                    )
+                
+                grams = portion.grams * item_data.quantity
+                unit = portion.unit
+                portion_id = item_data.portion_id
+                quantity = item_data.quantity
+            else:
+                # Loại 2: Dùng grams trực tiếp
+                grams = item_data.grams
+                unit = "g"
+                portion_id = None
+                quantity = Decimal(1.0)
 
-            # 2.2. Lấy nutrients của food (calories, protein, carbs, fat)
+            # 2.3. Lấy nutrients của food (calories, protein, carbs, fat)
             nutrients = FoodLogService._get_food_nutrients(db, item_data.food_id)
             
-            # 2.3. Tính dinh dưỡng theo grams thực tế
+            # 2.4. Tính dinh dưỡng theo grams thực tế
             # Formula: (grams / 100) * amount_per_100g
             multiplier = grams / Decimal(100)
             
@@ -112,12 +123,12 @@ class FoodLogService:
             item_carbs = nutrients.get('carbs', Decimal(0)) * multiplier
             item_fat = nutrients.get('fat', Decimal(0)) * multiplier
             
-            # 2.4. Tạo FoodLogItem với snapshot
+            # 2.5. Tạo FoodLogItem với snapshot
             log_item = FoodLogItem(
                 entry_id=entry.id,
                 food_id=item_data.food_id,
-                portion_id=item_data.portion_id,
-                quantity=item_data.quantity,
+                portion_id=portion_id,
+                quantity=quantity,
                 unit=unit,
                 grams=grams,
                 calories=round(item_calories, 6),
@@ -127,7 +138,7 @@ class FoodLogService:
             )
             db.add(log_item)
             
-            # 2.5. Cộng dồn vào tổng
+            # 2.6. Cộng dồn vào tổng
             total_calories += item_calories
             total_protein += item_protein
             total_carbs += item_carbs

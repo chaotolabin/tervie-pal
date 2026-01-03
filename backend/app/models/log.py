@@ -44,8 +44,8 @@ class FoodLogEntry(Base, TimestampMixin):
         comment="Thời điểm người dùng log bữa ăn (client gửi)"
     )
     
-    meal_type: Mapped[MealType] = mapped_column(
-        SQLEnum(MealType, name="meal_type_enum"),
+    meal_type: Mapped[str] = mapped_column(
+        String(20),
         nullable=False,
         comment="Loại bữa ăn"
     )

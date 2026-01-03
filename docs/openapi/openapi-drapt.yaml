@@ -7,18 +7,8 @@ info:
     Authentication: Bearer access token. Most write/read endpoints require auth.
 servers:
   - url: /api/v1
-tags:
-  - name: Auth        # Dang ky, dang nhap, refresh token, logout, quen mat khau, dat lai mat khau
-  - name: Users       # Thong tin nguoi dung, profile
-  - name: Settings    # Thay doi mat khau, quan ly session
-  - name: Foods       # CRUD foods
-  - name: Exercises   # CRUD exercises
-  - name: Logs        # Food + Exercise logs => diary
-  - name: Biometrics  # Log weight, height
-  - name: Streak      # Streak cache and state
-  - name: Support     # Support tickets
-  - name: Blog        # feed - posts, likes, saves
-  - name: Admin       # admin-only endpoints
+
+
 
 paths:
   /auth/register:
