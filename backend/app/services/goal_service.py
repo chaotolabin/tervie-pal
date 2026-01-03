@@ -133,29 +133,132 @@ class GoalService:
         return round(daily_calorie, 2)
     
     @staticmethod
-    def calculate_macros(daily_calorie: float) -> Dict[str, Decimal]:
+    def calculate_macros(
+        daily_calorie: float,
+        goal_type: str,
+        baseline_activity: str,
+        weight_kg: float
+    ) -> Dict[str, Decimal]:
         """
-        Calculate macro grams from daily calorie target
+        Calculate macro grams from daily calorie target with physiological floor anchoring, and based on goal type and activity level.
         
-        Fixed Ratios:
-        - Protein: 20% (4 kcal/g)
-        - Fat: 30% (9 kcal/g)
-        - Carbs: 50% (4 kcal/g)
+        Logic:
+        1. Calculate initial macros based on ratios (protein%, fat%, carb%)
+        2. Apply physiological floor (minimum g/kg body weight) for Protein and Fat
+        3. Rebalance Carbs with remaining calories
+        
+        Ratios are optimized for:
+        - Goal type: lose_weight, gain_weight, build_muscle, maintain_weight, improve_health
+        - Activity level: sedentary, low_active, moderately_active, very_active, extremely_active
         
         Args:
             daily_calorie: Daily calorie target
+            goal_type: User's fitness goal
+            baseline_activity: User's activity level
+            weight_kg: Body weight in kg (for floor calculation)
         
         Returns:
             {"protein_grams": X, "fat_grams": Y, "carb_grams": Z}
+            
+        Raises:
+            HTTPException 400: If calories too low to meet physiological floors
         """
-        protein_grams = float(daily_calorie) * 0.20 / 4
-        fat_grams = float(daily_calorie) * 0.30 / 9
-        carb_grams = float(daily_calorie) * 0.50 / 4
+        # Map goal_type to standard categories
+        goal_map = {
+            "build_muscle": "build_muscle",
+            "gain_weight": "gain_weight",
+            "lose_weight": "lose_weight",
+            "maintain_weight": "maintain",
+            "improve_health": "maintain"
+        }
+        
+        # Map activity to activity group
+        activity_map = {
+            "sedentary": "sedentary",
+            "low_active": "light",
+            "moderately_active": "moderate",
+            "very_active": "athlete",
+            "extremely_active": "athlete"
+        }
+        
+        goal_category = goal_map.get(goal_type.lower(), "maintain")
+        activity_group = activity_map.get(baseline_activity.lower(), "light")
+        
+        # Macro ratios: (protein%, fat%, carb%)
+        # Average values from provided tables, normalized to sum 100%
+        macro_ratios = {
+            "sedentary": {
+                "build_muscle": (0.225, 0.275, 0.500),  # 22.5%, 27.5%, 50% → sum=100%
+                "gain_weight": (0.175, 0.275, 0.550),   # 17.5%, 27.5%, 55% → sum=100%
+                "lose_weight": (0.290, 0.237, 0.473),   # 29%, 23.7%, 47.3% → normalized from 27.5/22.5/45
+                "maintain": (0.185, 0.289, 0.526)       # 18.5%, 28.9%, 52.6% → normalized from 17.5/27.5/50
+            },
+            "light": {
+                "build_muscle": (0.258, 0.232, 0.510),  # 25.8%, 23.2%, 51% → normalized from 25/22.5/50
+                "gain_weight": (0.200, 0.275, 0.525),   # 20%, 27.5%, 52.5% → sum=100%
+                "lose_weight": (0.324, 0.243, 0.433),   # 32.4%, 24.3%, 43.3% → normalized from 30/22.5/40
+                "maintain": (0.211, 0.289, 0.500)       # 21.1%, 28.9%, 50% → normalized from 20/27.5/50
+            },
+            "moderate": {
+                "build_muscle": (0.275, 0.225, 0.500),  # 27.5%, 22.5%, 50% → sum=100%
+                "gain_weight": (0.220, 0.268, 0.512),   # 22%, 26.8%, 51.2% → normalized from 22.5/27.5/52.5
+                "lose_weight": (0.351, 0.216, 0.433),   # 35.1%, 21.6%, 43.3% → normalized from 32.5/20/40
+                "maintain": (0.225, 0.275, 0.500)       # 22.5%, 27.5%, 50% → sum=100%
+            },
+            "athlete": {
+                "build_muscle": (0.265, 0.217, 0.518),  # 26.5%, 21.7%, 51.8% → normalized from 27.5/22.5/52.5
+                "gain_weight": (0.220, 0.268, 0.512),   # 22%, 26.8%, 51.2% → normalized from 22.5/27.5/55
+                "lose_weight": (0.349, 0.199, 0.452),   # 34.9%, 19.9%, 45.2% → normalized from 32.5/18.5/40
+                "maintain": (0.221, 0.233, 0.546)       # 22.1%, 23.3%, 54.6% → normalized from 22.5/23.75/55
+            }
+        }
+        
+        # Physiological floors (g/kg body weight)
+        physiological_floors = {
+            "lose_weight": {"protein": 1.8, "fat": 0.5},
+            "build_muscle": {"protein": 1.6, "fat": 0.6},
+            "gain_weight": {"protein": 1.2, "fat": 0.8},
+            "maintain": {"protein": 1.0, "fat": 0.6}
+        }
+        
+        # Step 1: Calculate initial macros based on ratios
+        ratios = macro_ratios.get(activity_group, {}).get(goal_category, (0.20, 0.30, 0.50))
+        protein_ratio, fat_ratio, carb_ratio = ratios  # khong dung carb_ratio directly
+        
+        initial_protein_grams = float(daily_calorie) * protein_ratio / 4
+        initial_fat_grams = float(daily_calorie) * fat_ratio / 9
+        
+        # Step 2: Apply physiological floors
+        floors = physiological_floors.get(goal_category, {"protein": 1.0, "fat": 0.6})
+        min_protein_grams = weight_kg * floors["protein"]
+        min_fat_grams = weight_kg * floors["fat"]
+        
+        # Take the maximum of calculated and floor values
+        final_protein_grams = max(initial_protein_grams, min_protein_grams)
+        final_fat_grams = max(initial_fat_grams, min_fat_grams)
+        
+        # Step 3: Calculate calories used by protein and fat
+        protein_calories = final_protein_grams * 4
+        fat_calories = final_fat_grams * 9
+        used_calories = protein_calories + fat_calories
+        
+        # Step 4: Rebalance carbs with remaining calories
+        remaining_calories = daily_calorie - used_calories
+        
+        if remaining_calories < 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Calorie target ({round(daily_calorie)} kcal) is too low to meet physiological requirements. "
+                       f"Minimum needed: {round(used_calories)} kcal for protein ({round(final_protein_grams)}g) and fat ({round(final_fat_grams)}g). "
+                       f"Please increase daily calorie target or adjust your goal."
+            )
+        
+        final_carb_grams = max(0, remaining_calories / 4)
         
         return {
-            "protein_grams": Decimal(str(round(protein_grams, 2))),
-            "fat_grams": Decimal(str(round(fat_grams, 2))),
-            "carb_grams": Decimal(str(round(carb_grams, 2)))
+            "protein_grams": Decimal(str(round(final_protein_grams, 2))),
+            "fat_grams": Decimal(str(round(final_fat_grams, 2))),
+            "carb_grams": Decimal(str(round(final_carb_grams, 2)))
         }
 
     @staticmethod
@@ -315,7 +418,7 @@ class GoalService:
         daily_calorie = GoalService.calculate_daily_calorie(
             tdee, final_goal_type, final_weekly_goal
         )
-        macros = GoalService.calculate_macros(daily_calorie)
+        macros = GoalService.calculate_macros(daily_calorie, final_goal_type, final_baseline_activity, weight_kg)
         
         # Step 5: Upsert Goal using PostgreSQL INSERT ... ON CONFLICT
         stmt = pg_insert(Goal).values(
@@ -420,7 +523,7 @@ class GoalService:
         bmr = GoalService.calculate_bmr(weight_kg, height_cm, gender, date_of_birth)
         tdee = GoalService.calculate_tdee(bmr, baseline_activity)
         daily_calorie = GoalService.calculate_daily_calorie(tdee, goal_type, weekly_goal)
-        macros = GoalService.calculate_macros(daily_calorie)
+        macros = GoalService.calculate_macros(daily_calorie, goal_type, baseline_activity, weight_kg)
         
         return {
             "goal_type": goal_type,
