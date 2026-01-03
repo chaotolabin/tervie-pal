@@ -172,8 +172,6 @@ def decode_signup_token(token: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
-    token_hash = hash_refresh_token(token)  # store deterministic hash for lookup
-    return token, token_hash
 
 
 def decode_token(token: str) -> dict:
