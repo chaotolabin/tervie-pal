@@ -12,7 +12,6 @@ from app.models.auth import (
     UserRole,
     Gender,
     GoalType,
-    Goal
 )
 
 # Password Reset models
@@ -78,7 +77,6 @@ __all__ = [
     "UserRole",
     "Gender",
     "GoalType",
-    "Goal",
     
     # Password Reset
     "PasswordResetToken",

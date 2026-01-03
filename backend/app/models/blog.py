@@ -141,7 +141,7 @@ class PostMedia(Base):
     mime_type: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=True,
-        comment="MIME type (vd: image/jpeg, video/mp4)"
+        comment="MIME type (vd: image/jpeg)"
     )
     
     width: Mapped[Optional[int]] = mapped_column(

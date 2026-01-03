@@ -99,7 +99,7 @@ class BiometricService:
 
         Rules: Mỗi user chỉ được tạo một log cho mỗi thời điểm logged_at.
         Nếu đã có log cho thời điểm đó, trả về lỗi 400.
-        
+
         Side Effects:
         - Nếu user có goal, goal sẽ được recalculate với weight/height mới
         """
@@ -133,10 +133,10 @@ class BiometricService:
         )
         
         db.add(db_log)
-        
+
         # Recalculate goal nếu có (với biometrics mới nhất)
         BiometricService._try_recalculate_goal(db, user_id)
-        
+
         db.commit()
         db.refresh(db_log)
         

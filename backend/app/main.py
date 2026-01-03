@@ -8,7 +8,7 @@ from app.core.settings import settings
 from app.core.database import get_db, engine
 
 # import routes
-from app.api.routes import auth, admin, users, streak, goals, biometric, blog, food, exercise, logs, support
+from app.api.routes import auth, users, biometric, food, exercise, logs, support, streak, goals, blog
 from app.api.routes import settings as settings_routes
 from app.api.routes.admin import router as admin_router
 
@@ -56,6 +56,7 @@ async def root():
     }
 
 
+# Health check endpoint: kiem tra ket noi database
 @app.get("/health", tags=["Root"])
 async def health_check(db: Session = Depends(get_db)):
     """

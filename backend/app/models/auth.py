@@ -284,19 +284,19 @@ class Goal(Base, TimestampMixin):
     protein_grams: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(6, 2),
         nullable=True,
-        comment="Lượng protein mục tiêu (grams) - tính từ daily_calorie × 20% ÷ 4"
+        comment="Lượng protein mục tiêu (grams) - tính từ daily_calorie × ratio ÷ 4"
     )
     
     fat_grams: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(6, 2),
         nullable=True,
-        comment="Lượng fat mục tiêu (grams) - tính từ daily_calorie × 30% ÷ 9"
+        comment="Lượng fat mục tiêu (grams) - tính từ daily_calorie × ratio ÷ 9"
     )
     
     carb_grams: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(6, 2),
         nullable=True,
-        comment="Lượng carbs mục tiêu (grams) - tính từ daily_calorie × 50% ÷ 4"
+        comment="Lượng carbs mục tiêu (grams) - tính từ daily_calorie × ratio ÷ 4"
     )
     
     weekly_exercise_min: Mapped[Optional[int]] = mapped_column(
