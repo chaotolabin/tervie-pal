@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.auth import User
 from app.models.support import TicketStatus, TicketCategory
-from app.schemas.support_schema import (
+from app.schemas.support import (
     SupportTicketCreateRequest,
     SupportTicketResponse,
     SupportTicketListResponse

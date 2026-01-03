@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_admin_user
 from app.models.support import TicketStatus, TicketCategory
-from app.schemas.support_schema import (
+from app.schemas.support import (
     AdminTicketPatchRequest,
     SupportTicketResponse,
     SupportTicketListResponse

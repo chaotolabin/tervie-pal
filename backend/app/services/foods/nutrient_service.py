@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.models.food import FoodNutrient
-from app.schemas.food_schema import FoodNutrientCreate
+from app.schemas.food import FoodNutrientCreate
 from app.services.foods.permissions import get_food_for_modify, get_food_for_view
 
 

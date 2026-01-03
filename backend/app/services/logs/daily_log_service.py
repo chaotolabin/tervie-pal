@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 from sqlalchemy.orm import Session
 
-from app.schemas.log_schema import DailyNutritionSummary
+from app.schemas.log import DailyNutritionSummary
 from app.services.logs.food_log_service import FoodLogService
 from app.services.logs.exercise_log_service import ExerciseLogService
 

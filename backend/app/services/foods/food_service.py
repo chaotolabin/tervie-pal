@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 
 from app.models.food import Food, FoodPortion, FoodNutrient
-from app.schemas.food_schema import (
+from app.schemas.food import (
     FoodCreateRequest,
     FoodPatchRequest
 )
