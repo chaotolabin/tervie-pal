@@ -14,7 +14,7 @@ from sqlalchemy import func
 from fastapi import HTTPException, status
 
 from app.models.biometric import BiometricsLog
-from app.schemas.biometric_schema import (
+from app.schemas.biometric import (
     BiometricsCreateRequest,
     BiometricsPatchRequest,
     BiometricsLogResponse
