@@ -3,6 +3,8 @@ Blog Routes - API Endpoints cho Blog module.
 Tuân theo OpenAPI spec: /feed, /posts, /posts/{id}, /posts/{id}/like, /posts/{id}/save, /hashtags
 
 Endpoints:
+- POST /media/upload: Upload single file lên ImageKit
+- POST /media/upload-multiple: Upload nhiều files lên ImageKit
 - GET /feed: Feed (recent/trending/hashtag/author/saved)
 - POST /posts: Tạo bài viết
 - GET /posts/{post_id}: Chi tiết bài viết
@@ -16,15 +18,16 @@ Endpoints:
 - GET /hashtags/{name}/posts: Bài viết theo hashtag
 """
 import uuid
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.auth import User
 from app.services.blog_service import BlogService
+from app.services.media_service import MediaService
 from app.schemas.blog import (
     PostCreateRequest,
     PostPatchRequest,
@@ -32,12 +35,97 @@ from app.schemas.blog import (
     FeedResponse,
     HashtagSearchResponse,
     FeedSort,
+    MediaUploadResponse,
+    MultipleMediaUploadResponse,
 )
 from app.schemas.common import ErrorResponse
 
 
 # ==================== Router Setup ====================
 router = APIRouter(tags=["Blog"])
+
+
+# ==================== MEDIA UPLOAD ====================
+@router.post(
+    "/media/upload",
+    response_model=MediaUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload single file to ImageKit",
+    description="""
+    Upload một file (ảnh/video) lên ImageKit.
+    
+    **Supported formats:**
+    - Images: JPEG, PNG, GIF, WebP (max 10MB)
+    - Videos: MP4, MOV, AVI, WebM (max 100MB)
+    
+    **Response:** URL và metadata của file đã upload.
+    Sử dụng URL này trong media array khi tạo/cập nhật post.
+    """,
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid file type"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        413: {"model": ErrorResponse, "description": "File too large (image max 10MB, video max 100MB)"},
+        503: {"model": ErrorResponse, "description": "ImageKit not configured"}
+    }
+)
+async def upload_media(
+    file: UploadFile = File(..., description="File ảnh hoặc video cần upload"),
+    current_user: User = Depends(get_current_user)
+) -> MediaUploadResponse:
+    """
+    Upload file lên ImageKit để lấy URL.
+    
+    Flow:
+    1. Client chọn file → gọi API này
+    2. Nhận về URL từ ImageKit
+    3. Dùng URL này trong request tạo/cập nhật post
+    """
+    result = await MediaService.upload_file(
+        file=file,
+        user_id=current_user.id,
+        folder="blog"
+    )
+    return MediaUploadResponse(**result)
+
+
+@router.post(
+    "/media/upload-multiple",
+    response_model=MultipleMediaUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload multiple files to ImageKit",
+    description="""
+    Upload nhiều files (tối đa 10) lên ImageKit cùng lúc.
+    
+    **Supported formats:**
+    - Images: JPEG, PNG, GIF, WebP (max 10MB mỗi file)
+    - Videos: MP4, MOV, AVI, WebM (max 100MB mỗi file)
+    
+    **Response:** Danh sách URLs và metadata của các files đã upload.
+    """,
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid file type or too many files (max 10)"},
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+        413: {"model": ErrorResponse, "description": "File too large (image max 10MB, video max 100MB)"},
+        503: {"model": ErrorResponse, "description": "ImageKit not configured"}
+    }
+)
+async def upload_multiple_media(
+    files: List[UploadFile] = File(..., description="Danh sách files cần upload (tối đa 10)"),
+    current_user: User = Depends(get_current_user)
+) -> MultipleMediaUploadResponse:
+    """
+    Upload nhiều files lên ImageKit.
+    
+    Mỗi file sẽ có sort_order tự động theo thứ tự upload.
+    """
+    results = await MediaService.upload_multiple_files(
+        files=files,
+        user_id=current_user.id,
+        folder="blog"
+    )
+    return MultipleMediaUploadResponse(
+        items=[MediaUploadResponse(**r) for r in results]
+    )
 
 
 # ==================== FEED ====================

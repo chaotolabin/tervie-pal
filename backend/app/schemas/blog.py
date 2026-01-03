@@ -173,3 +173,22 @@ class FeedQueryParams(BaseModel):
     saved: Optional[bool] = Field(None, description="Chỉ lấy bài đã lưu")
     limit: int = Field(20, ge=1, le=100, description="Số lượng items")
     cursor: Optional[str] = Field(None, description="Cursor pagination")
+
+
+# ==================== Media Upload Schemas ====================
+class MediaUploadResponse(BaseModel):
+    """Response sau khi upload file lên ImageKit"""
+    url: str = Field(..., description="URL của file trên ImageKit")
+    file_id: str = Field(..., description="ImageKit file ID (dùng để xóa)")
+    file_name: str = Field(..., description="Tên file trên ImageKit")
+    media_type: MediaType = Field(..., description="Loại media: image hoặc video")
+    mime_type: Optional[str] = Field(None, description="MIME type của file")
+    width: Optional[int] = Field(None, description="Chiều rộng (pixels) - chỉ có với ảnh")
+    height: Optional[int] = Field(None, description="Chiều cao (pixels) - chỉ có với ảnh")
+    size_bytes: int = Field(..., description="Kích thước file (bytes)")
+    sort_order: int = Field(0, description="Thứ tự sắp xếp (khi upload nhiều file)")
+
+
+class MultipleMediaUploadResponse(BaseModel):
+    """Response khi upload nhiều files"""
+    items: List[MediaUploadResponse] = Field(..., description="Danh sách files đã upload")
