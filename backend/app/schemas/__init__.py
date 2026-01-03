@@ -50,6 +50,22 @@ from .blog import (
     HashtagSearchResponse,
     FeedQueryParams,
 )
+from .admin import (
+    AdminDashboardStatsResponse,
+    AdminSimpleDashboardResponse,
+    UserStatsResponse,
+    LogStatsResponse,
+    RetentionMetricsResponse,
+    BlogStatsResponse,
+    StreakStatsResponse,
+    AdminUserListResponse,
+    AdminUserDetailResponse,
+    UserRolePatchRequest as AdminUserRolePatchRequest,
+    StreakAdjustRequest,
+    AdminPostListResponse,
+    PostDeleteRequest,
+    AdminActionResponse,
+)
 
 __all__ = [
     # Auth schemas
@@ -62,6 +78,7 @@ __all__ = [
     "UserPublic",
     "AuthTokensResponse",
     "RefreshResponse",
+
     # User schemas
     "Profile",
     "ProfilePatchRequest",
@@ -69,16 +86,20 @@ __all__ = [
     "Session",
     "SessionsListResponse",
     "UserRolePatchRequest",
+
     # Settings schemas
     "ChangePasswordRequest",
+
     # Common schemas
     "ErrorResponse",
     "GenericMessageResponse",
+
     # Streak schemas
     "StreakStatus",
     "StreakDayResponse",
     "StreakResponse",
     "StreakWeekResponse",
+
     # Goals schemas
     "GoalType",
     "ActivityLevel",
@@ -87,11 +108,13 @@ __all__ = [
     "GoalResponse",
     "GoalCalculateRequest",
     "GoalCalculateResponse",
+
     # Biometric schemas
     "BiometricsCreateRequest",
     "BiometricsPatchRequest",
     "BiometricsLogResponse",
     "BiometricsListResponse",
+
     # Blog schemas
     "MediaType",
     "FeedSort",
@@ -105,4 +128,20 @@ __all__ = [
     "HashtagOut",
     "HashtagSearchResponse",
     "FeedQueryParams",
+
+    # Admin schemas
+    "AdminDashboardStatsResponse",
+    "AdminSimpleDashboardResponse",
+    "UserStatsResponse",
+    "LogStatsResponse",
+    "RetentionMetricsResponse",
+    "BlogStatsResponse",
+    "StreakStatsResponse",
+    "AdminUserListResponse",
+    "AdminUserDetailResponse",
+    "AdminUserRolePatchRequest",
+    "StreakAdjustRequest",
+    "AdminPostListResponse",
+    "PostDeleteRequest",
+    "AdminActionResponse",
 ]
