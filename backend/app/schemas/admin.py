@@ -93,6 +93,29 @@ class AdminDashboardStatsResponse(BaseModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class CoreDashboardResponse(BaseModel):
+    """Dashboard Core - User, Log, Retention metrics"""
+    user_stats: UserStatsResponse
+    log_stats: LogStatsResponse
+    retention_metrics: RetentionMetricsResponse
+    query_range: str = Field(..., description="Khoảng thời gian query: 7d, 30d, 90d")
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class BlogDashboardResponse(BaseModel):
+    """Dashboard Blog - Blog & Community metrics"""
+    blog_stats: BlogStatsResponse
+    query_range: str = Field(..., description="Khoảng thời gian query: 7d, 30d, 90d")
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class StreakDashboardResponse(BaseModel):
+    """Dashboard Streak - Streak metrics"""
+    streak_stats: StreakStatsResponse
+    query_range: str = Field(..., description="Khoảng thời gian query: 7d, 30d, 90d")
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 # ==================== USER MANAGEMENT SCHEMAS ====================
 
 class AdminUserListItem(BaseModel):
@@ -220,3 +243,43 @@ class AdminSimpleDashboardResponse(BaseModel):
     users_count: int = Field(..., ge=0)
     posts_count: int = Field(..., ge=0)
     open_tickets_count: int = Field(..., ge=0)
+
+
+# ==================== DAILY STATS SCHEMAS ====================
+
+class DailyStatItem(BaseModel):
+    """Thống kê của 1 ngày"""
+    date_log: date = Field(..., description="Ngày thống kê")
+    
+    # User metrics
+    total_users: int = Field(..., description="Tổng số user (tích lũy)")
+    new_users: int = Field(..., description="User đăng ký mới")
+    active_users: int = Field(..., description="DAU - có log trong ngày - food hoặc exercise")
+    active_food_users: int = Field(..., description="User có log ăn")
+    active_exercise_users: int = Field(..., description="User có log tập")
+    
+    # Volume metrics
+    total_food_logs: int = Field(..., description="Số food logs")
+    total_exercise_logs: int = Field(..., description="Số exercise logs")
+    
+    # Community metrics
+    new_posts: int = Field(..., description="Bài blog mới")
+    total_likes: int = Field(..., description="Lượt like")
+    total_saves: int = Field(..., description="Lượt save")
+    new_tickets: int = Field(..., description="Ticket mới")
+    
+    # Health metrics
+    users_hit_calorie_target: int = Field(..., description="User đạt calorie goal")
+    avg_streak_length: Decimal = Field(..., description="Streak trung bình")
+    
+    created_at: datetime = Field(..., description="Thời điểm tạo record")
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DailyStatsResponse(BaseModel):
+    """Response danh sách daily stats"""
+    items: List[DailyStatItem] = Field(..., description="Danh sách stats theo ngày")
+    total_days: int = Field(..., description="Số ngày có dữ liệu")
+    date_from: date = Field(..., description="Ngày bắt đầu")
+    date_to: date = Field(..., description="Ngày kết thúc")

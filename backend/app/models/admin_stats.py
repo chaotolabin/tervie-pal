@@ -118,14 +118,14 @@ class DailySystemStat(Base):
     
     avg_streak_length: Mapped[Decimal] = mapped_column(
         Numeric(5, 2),
-        default=0.0,
+        default=Decimal("0.00"),
         nullable=False,
         comment="Streak trung bình của active users trong ngày"
     )
 
     # ================= METADATA =================
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         server_default=func.now(),
         comment="Thời điểm chạy job thống kê - cuối ngày"
     )
