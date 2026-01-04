@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, Share2, Send, MoreVertical, Loader2 } from 'lucide-react';
+import { ArrowLeft, Heart, MessageCircle, Share2, Send, MoreVertical, Loader2, Bookmark } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -7,7 +7,7 @@ import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { toast } from 'sonner';
-import api from '../lib/api';
+import { BlogService } from '../../../service/blog.service';
 
 // --- Interfaces khớp với Backend ---
 interface Author {
@@ -58,9 +58,9 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Backend không có endpoint comments, chỉ lấy post detail
-        const postRes = await api.get(`/blog/posts/${postId}`);
-        setPost(postRes.data);
+        // Sử dụng BlogService để fetch post detail
+        const postData = await BlogService.getPost(postId);
+        setPost(postData);
         setComments([]); // Comments feature not implemented in backend
       } catch (error) {
         console.error("Lỗi tải bài viết:", error);
@@ -76,7 +76,7 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
 
   // 2. Xử lý Like bài viết
   const handleLikePost = async () => {
-    if (!post) return;
+    if (!post || !postId) return;
     
     // Optimistic UI Update (Cập nhật giao diện ngay lập tức)
     const originalPost = { ...post };
@@ -89,17 +89,46 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
     });
 
     try {
-      if (!postId) return;
-      const { BlogService } = await import('../../../service/blog.service');
       if (newIsLiked) {
         await BlogService.likePost(postId);
+        toast.success("Đã thích bài viết");
       } else {
         await BlogService.unlikePost(postId);
       }
     } catch (error) {
       // Revert nếu lỗi
       setPost(originalPost);
+      console.error("Like error:", error);
       toast.error("Lỗi khi tương tác");
+    }
+  };
+
+  // 2b. Xử lý Save bài viết
+  const handleSavePost = async () => {
+    if (!post || !postId) return;
+    
+    // Optimistic UI Update
+    const originalPost = { ...post };
+    const newIsSaved = !post.is_saved;
+    
+    setPost({
+      ...post,
+      is_saved: newIsSaved
+    });
+
+    try {
+      if (newIsSaved) {
+        await BlogService.savePost(postId);
+        toast.success("Đã lưu bài viết");
+      } else {
+        await BlogService.unsavePost(postId);
+        toast.success("Đã bỏ lưu bài viết");
+      }
+    } catch (error) {
+      // Revert nếu lỗi
+      setPost(originalPost);
+      console.error("Save error:", error);
+      toast.error("Lỗi khi lưu bài viết");
     }
   };
 
@@ -237,7 +266,16 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
               <span className="font-medium">{post.comments_count}</span>
             </Button>
             
-            <Button variant="ghost" size="sm" className="text-gray-600 ml-auto hover:bg-gray-100">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSavePost}
+              className={`ml-auto ${post.is_saved ? 'text-blue-600' : 'text-gray-600'} hover:bg-blue-50 hover:text-blue-600`}
+            >
+              <Bookmark className={`size-5 ${post.is_saved ? 'fill-blue-600' : ''}`} />
+            </Button>
+            
+            <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-100">
               <Share2 className="size-5" />
             </Button>
           </div>

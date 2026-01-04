@@ -14,7 +14,7 @@ export default function BlogPage() {
 
   return (
     <div className="max-w-xl mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Cộng đồng Tervie</h1>
+      <h1 className="text-2xl font-bold mb-6">Tervie blog</h1>
       <div className="space-y-6">
         {feed.map((post) => (
           <div key={post.id} className="bg-white p-4 rounded-lg shadow">

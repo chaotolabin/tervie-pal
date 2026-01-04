@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Utensils, Activity, TrendingUp, HelpCircle, User as UserIcon, LogOut } from 'lucide-react';
+import { Home, Utensils, Activity, TrendingUp, MessageCircle, HelpCircle, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import DashboardHome from './dashboard/DashboardHome';
 import FoodLoggingPage from './dashboard/FoodLoggingPage';
 import ExerciseLogging from './dashboard/ExerciseLogging';
 import Progress from './dashboard/Progress';
+import BlogPage from './pages/BlogPage';
 import HelpSupport from './dashboard/HelpSupport';
 import QuickAddModal from './dashboard/QuickAddModal';
 import api from './lib/api';
@@ -35,7 +36,7 @@ interface UserDashboardProps {
   userData?: UserMeResponse | null;
 }
 
-type Tab = 'home' | 'food' | 'exercise' | 'progress' | 'help' | 'profile';
+type Tab = 'home' | 'food' | 'exercise' | 'progress' | 'blog' | 'help' | 'profile';
 
 export default function UserDashboard({ onLogout, userData: userDataProp }: UserDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -85,6 +86,7 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
     { id: 'food', label: 'Dinh dưỡng', icon: Utensils },
     { id: 'exercise', label: 'Tập luyện', icon: Activity },
     { id: 'progress', label: 'Tiến độ', icon: TrendingUp },
+    { id: 'blog', label: 'Cộng đồng', icon: MessageCircle },
     { id: 'help', label: 'Trợ giúp', icon: HelpCircle },
     { id: 'profile', label: 'Cá nhân', icon: UserIcon },
   ];
@@ -131,6 +133,9 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
       
       case 'progress':
         return <Progress />;
+      
+      case 'blog':
+        return <BlogPage />;
       
       case 'help':
         return <HelpSupport />;
