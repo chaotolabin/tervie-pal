@@ -19,6 +19,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -42,6 +43,7 @@ export default function App() {
         const userRes = await api.get('/users/me');
         const role = userRes.data.user?.role || 'user';
         
+        setUserData(userRes.data); // Lưu userData
         setIsAuthenticated(true);
         setUserRole(role as UserRole);
         setCurrentPage(role === 'admin' ? 'admin' : 'dashboard');
@@ -63,6 +65,7 @@ export default function App() {
             const userRes = await api.get('/users/me');
             const role = userRes.data.user?.role || 'user';
             
+            setUserData(userRes.data); // Lưu userData
             setIsAuthenticated(true);
             setUserRole(role as UserRole);
             setCurrentPage(role === 'admin' ? 'admin' : 'dashboard');
@@ -150,7 +153,7 @@ export default function App() {
     }
 
     if (isAuthenticated && userRole === 'user') {
-      return <UserDashboard onLogout={handleLogout} />;
+      return <UserDashboard onLogout={handleLogout} userData={userData} />;
     }
 
     return <LandingPage onLogin={() => setCurrentPage('login')} onSignup={() => setCurrentPage('signup')} />;
