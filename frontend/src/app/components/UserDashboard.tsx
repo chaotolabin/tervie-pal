@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Home, Utensils, Activity, TrendingUp, HelpCircle, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import DashboardHome from './dashboard/DashboardHome';
+import FoodLoggingPage from './dashboard/FoodLoggingPage';
+import ExerciseLogging from './dashboard/ExerciseLogging';
+import Progress from './dashboard/Progress';
+import HelpSupport from './dashboard/HelpSupport';
+import QuickAddModal from './dashboard/QuickAddModal';
 import api from './lib/api';
 
 // Interface khớp với backend schemas (users.py, streak.py)
@@ -112,6 +117,18 @@ export default function UserDashboard({ onLogout }: UserDashboardProps) {
       case 'home':
         // Truyền dữ liệu xuống DashboardHome nếu component đó hỗ trợ props
         return <DashboardHome onQuickAdd={() => setShowQuickAdd(true)} />;
+      
+      case 'food':
+        return <FoodLoggingPage />;
+      
+      case 'exercise':
+        return <ExerciseLogging />;
+      
+      case 'progress':
+        return <Progress />;
+      
+      case 'help':
+        return <HelpSupport />;
         
       default:
         return <div className="p-8 text-center text-gray-500">Tính năng đang phát triển</div>;
@@ -152,6 +169,9 @@ export default function UserDashboard({ onLogout }: UserDashboardProps) {
           {renderContent()}
         </div>
       </main>
+
+      {/* Quick Add Modal */}
+      <QuickAddModal open={showQuickAdd} onClose={() => setShowQuickAdd(false)} />
     </div>
   );
 }

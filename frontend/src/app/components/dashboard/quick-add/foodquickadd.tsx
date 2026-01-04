@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { FoodService } from '../../../../service/food.service';
 import { Search, Plus, Calculator } from 'lucide-react';
+import { toast } from 'sonner';
+import { LogService } from '../../../../service/log.service';
 
-export default function FoodQuickAdd() {
+interface FoodQuickAddProps {
+  onClose?: () => void;
+}
+
+export default function FoodQuickAdd({ onClose }: FoodQuickAddProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [selectedFood, setSelectedFood] = useState<any | null>(null);
@@ -18,9 +24,28 @@ export default function FoodQuickAdd() {
     }
   }, [query]);
 
-  const handleLogFood = async (foodId: number) => {
-    console.log("Logging food ID:", foodId);
-    alert("Đã ghi nhận món ăn vào nhật ký!");
+  const handleLogFood = async (e: React.MouseEvent, foodId: number) => {
+    e.stopPropagation(); // Prevent triggering onClick on parent div
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await LogService.addFoodLog({
+        logged_at: new Date().toISOString(),
+        items: [
+          {
+            food_id: foodId,
+            portion_id: 1, // Default portion, user can update later
+            quantity: 1
+          }
+        ]
+      });
+      toast.success("Đã ghi nhận món ăn vào nhật ký!");
+      if (onClose) onClose();
+      
+      // Trigger refresh summary ở dashboard
+      window.dispatchEvent(new CustomEvent('refreshDashboard'));
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || "Không thể lưu món ăn");
+    }
   };
 
   return (
@@ -48,7 +73,7 @@ export default function FoodQuickAdd() {
               <p className="text-xs text-gray-500">{food.food_group || 'Chung'}</p>
             </div>
             <button 
-              onClick={() => handleLogFood(food.id)}
+              onClick={(e) => handleLogFood(e, food.id)}
               className="p-1 bg-green-100 text-green-600 rounded-full hover:bg-green-200"
             >
               <Plus size={20} />

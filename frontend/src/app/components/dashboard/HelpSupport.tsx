@@ -45,14 +45,25 @@ export default function HelpSupport() {
   const [ticketForm, setTicketForm] = useState({ subject: '', message: '' });
   const [feedbackForm, setFeedbackForm] = useState({ type: 'suggestion', content: '' });
 
-  const handleSubmitTicket = () => {
+  const handleSubmitTicket = async () => {
     if (!ticketForm.subject || !ticketForm.message) {
       toast.error('Vui lòng điền đầy đủ thông tin');
       return;
     }
-    toast.success('Ticket đã được gửi! Chúng tôi sẽ phản hồi sớm.');
-    setShowTicketDialog(false);
-    setTicketForm({ subject: '', message: '' });
+    
+    try {
+      const { SupportService } = await import('../../../service/support.service');
+      await SupportService.createTicket({
+        subject: ticketForm.subject,
+        message: ticketForm.message,
+        category: 'question'
+      });
+      toast.success('Ticket đã được gửi! Chúng tôi sẽ phản hồi sớm.');
+      setShowTicketDialog(false);
+      setTicketForm({ subject: '', message: '' });
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Không thể gửi ticket');
+    }
   };
 
   const handleSubmitFeedback = () => {

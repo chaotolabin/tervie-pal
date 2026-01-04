@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Scale, Ruler, Plus } from 'lucide-react';
 import { Input } from '../../ui/input';
 import { Button } from '../../ui/button';
@@ -24,14 +24,38 @@ export default function BiometricsQuickAdd({ onClose }: BiometricsQuickAddProps)
     return (weightKg / (heightM * heightM)).toFixed(1);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!weight) {
       toast.error('Vui lòng nhập cân nặng');
       return;
     }
 
-    toast.success('Đã cập nhật chỉ số cơ thể!');
-    onClose();
+    if (!height) {
+      toast.error('Vui lòng nhập chiều cao');
+      return;
+    }
+
+    try {
+      const weightKg = weightUnit === 'kg' ? parseFloat(weight) : parseFloat(weight) * 0.453592;
+      const heightCm = heightUnit === 'cm' ? parseFloat(height) : parseFloat(height) * 0.0254 * 100;
+      
+      if (!heightCm || heightCm <= 0) {
+        toast.error('Chiều cao không hợp lệ');
+        return;
+      }
+      
+      const { BiometricService } = await import('../../../../service/biometric.service');
+      await BiometricService.createLog({
+        logged_at: new Date().toISOString(),
+        weight_kg: weightKg,
+        height_cm: heightCm
+      });
+      
+      toast.success('Đã cập nhật chỉ số cơ thể!');
+      onClose();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Không thể lưu chỉ số');
+    }
   };
 
   const bmi = calculateBMI();

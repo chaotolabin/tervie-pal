@@ -61,12 +61,20 @@ export default function ResetPasswordPage({ onBack, onSuccess, token }: ResetPas
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { AuthService } = await import('../../../service/auth.sevice');
+      if (!token) {
+        toast.error('Token không hợp lệ');
+        return;
+      }
+      await AuthService.resetPassword(token, password);
       setIsSuccess(true);
       toast.success('Đặt lại mật khẩu thành công!');
-    }, 1500);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Không thể đặt lại mật khẩu');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Loading state while checking token

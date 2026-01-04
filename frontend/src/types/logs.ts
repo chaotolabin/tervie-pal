@@ -31,3 +31,51 @@ export interface DailyLogsResponse {
   exercise_logs: any[];
   summary: DailyNutritionSummary;
 }
+
+// Biometrics Logs
+export interface BiometricsCreateRequest {
+  logged_at: string; // ISO DateTime
+  weight_kg: number;
+  height_cm: number;
+}
+
+export interface BiometricsPatchRequest {
+  logged_at?: string; // ISO DateTime
+  weight_kg?: number;
+  height_cm?: number;
+}
+
+export interface BiometricsLogResponse {
+  id: number;
+  user_id: string; // UUID as string
+  logged_at: string; // ISO DateTime
+  weight_kg: number;
+  height_cm: number;
+  bmi: number;
+  created_at: string; // ISO DateTime
+}
+
+export interface BiometricsListResponse {
+  items: BiometricsLogResponse[];
+}
+
+// Exercise Logs
+export interface ExerciseLogItemCreate {
+  exercise_id: number;
+  duration_min?: number; 
+  notes?: string;
+}
+
+export interface ExerciseLogEntryCreate {
+  logged_at: string; // ISO DateTime
+  items: ExerciseLogItemCreate[];
+}
+
+export interface ExerciseLogItemUpdate {
+  duration_min?: number;
+  notes?: string;
+}
+
+export interface ExerciseLogEntryPatch {
+  logged_at?: string;
+}

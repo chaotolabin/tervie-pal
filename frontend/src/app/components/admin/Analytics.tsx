@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Flame, Trophy, Activity, Users, Calendar, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
@@ -31,12 +31,19 @@ export default function Analytics() {
       setLoading(true);
       try {
         // Giả định bạn có một endpoint admin tổng hợp các model này
-        const response = await fetch('/api/v1/admin/analytics/dashboard');
-        const data = await response.json();
+        const { AdminService } = await import('../../../service/admin.service');
+        const data = await AdminService.getStreakDashboard();
         
-        setSummary(data.summary);
-        setDistribution(data.distribution);
-        setActivity(data.activity);
+        // Map backend response to frontend format
+        const streakStats = data.streak_stats;
+        setSummary({
+          avg_current_streak: streakStats?.avg_current_streak || 0,
+          max_longest_streak: streakStats?.highest_streak || 0,
+          total_users_active: streakStats?.users_with_streak || 0
+        });
+        // TODO: Map distribution and activity from backend response
+        setDistribution([]);
+        setActivity([]);
       } catch (error) {
         console.error("Lỗi lấy dữ liệu từ Backend:", error);
       } finally {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Heart, MessageCircle, Share2, Send, MoreVertical, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
@@ -58,15 +58,10 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Gọi song song 2 API: Chi tiết bài viết & Danh sách bình luận
-        // Lưu ý: Cần đảm bảo backend có endpoint /blog/posts/{id}/comments
-        const [postRes, commentsRes] = await Promise.all([
-          api.get(`/blog/posts/${postId}`),
-          api.get(`/blog/posts/${postId}/comments`) 
-        ]);
-
+        // Backend không có endpoint comments, chỉ lấy post detail
+        const postRes = await api.get(`/blog/posts/${postId}`);
         setPost(postRes.data);
-        setComments(commentsRes.data.items || []); // Giả sử backend trả về dạng pagination items
+        setComments([]); // Comments feature not implemented in backend
       } catch (error) {
         console.error("Lỗi tải bài viết:", error);
         toast.error("Không thể tải bài viết này");
@@ -94,10 +89,12 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
     });
 
     try {
+      if (!postId) return;
+      const { BlogService } = await import('../../../service/blog.service');
       if (newIsLiked) {
-        await api.post(`/blog/posts/${postId}/like`);
+        await BlogService.likePost(postId);
       } else {
-        await api.delete(`/blog/posts/${postId}/like`);
+        await BlogService.unlikePost(postId);
       }
     } catch (error) {
       // Revert nếu lỗi
@@ -115,19 +112,8 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
 
     setSubmitting(true);
     try {
-      const res = await api.post(`/blog/posts/${postId}/comments`, {
-        content: newComment
-      });
-
-      // Thêm bình luận mới vào danh sách
-      const newCommentData: Comment = res.data;
-      setComments([newCommentData, ...comments]);
-      setNewComment('');
-      
-      // Cập nhật số lượng comment trong post
-      setPost({ ...post, comments_count: post.comments_count + 1 });
-      
-      toast.success('Đã gửi bình luận!');
+      // Comments feature not implemented in backend
+      toast.error('Tính năng bình luận chưa được triển khai');
     } catch (error) {
       toast.error('Không thể gửi bình luận');
     } finally {

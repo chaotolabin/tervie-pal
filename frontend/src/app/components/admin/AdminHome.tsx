@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Loader2, TrendingUp, Activity, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { toast } from 'sonner';
@@ -21,23 +21,17 @@ export default function AdminHome() {
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        const response = await fetch('/api/v1/admin/stats'); 
-        
-        if (!response.ok) {
-          throw new Error('Lỗi mạng hoặc server không phản hồi');
-        }
-
-        const data = await response.json();
-        
+        const { AdminService } = await import('../../../service/admin.service');
+        const data = await AdminService.getDashboard();
         
         setStats({
-          totalUsers: data.total_users || 0,
-          activeToday: data.active_today || 0,
-          growthRate: data.growth_rate || 0
+          totalUsers: data.users_count || 0,
+          activeToday: 0, // TODO: Calculate from daily stats
+          growthRate: 0 // TODO: Calculate from daily stats
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Fetch Error:", error);
-        toast.error("Không thể kết nối đến máy chủ để lấy dữ liệu");
+        toast.error(error.response?.data?.detail || "Không thể kết nối đến máy chủ để lấy dữ liệu");
       } finally {
         setLoading(false);
       }

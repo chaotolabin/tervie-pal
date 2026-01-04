@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Search, Plus, Filter, Clock, Flame, Dumbbell, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Filter, Clock, Flame, Dumbbell, Loader2, Trash2, Calendar } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -7,12 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import api from '../lib/api';
+import { LogService } from '../../../service/log.service';
 
 // --- Interfaces khớp với Backend ---
 interface ExerciseLog {
-  id: number;
+  id: number; // item.id
+  entry_id: number; // entry.id - cần để xóa
   exercise: {
     id: number;
     description: string;
@@ -34,6 +37,7 @@ interface ExerciseSearchResult {
 export default function ExerciseLogging() {
   // State dữ liệu thực
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
+  const [allLogs, setAllLogs] = useState<ExerciseLog[]>([]); // Lưu tất cả logs để filter
   const [searchResults, setSearchResults] = useState<ExerciseSearchResult[]>([]);
   
   // State UI
@@ -41,26 +45,128 @@ export default function ExerciseLogging() {
   const [loading, setLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   
+  // State cho filter
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDateOption, setSelectedDateOption] = useState<string>('today'); // 'today', 'yesterday', '2days', 'custom'
+  const [customDate, setCustomDate] = useState<string>(''); // Cho custom date picker
+  const [selectedMajorHeading, setSelectedMajorHeading] = useState<string>('all');
+  
   // State cho Dialog thêm bài tập
   const [selectedExercise, setSelectedExercise] = useState<ExerciseSearchResult | null>(null);
   const [duration, setDuration] = useState<string>('30');
+  const [exerciseDate, setExerciseDate] = useState<string>(new Date().toISOString().split('T')[0]); // Ngày để thêm bài tập
   const [submitting, setSubmitting] = useState(false);
 
-  // 1. Tải lịch sử tập luyện hôm nay
-  const fetchTodayLogs = async () => {
+  // 1. Tải lịch sử tập luyện theo ngày
+  const fetchLogs = async (date: string) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const res = await api.get(`/logs/summary/${today}`);
-      // Backend trả về logs trong object exercise_logs
-      setLogs(res.data.exercise_logs || []);
+      setLoading(true);
+      // Sử dụng /logs/daily để lấy cả exercise_logs, không phải /logs/summary
+      const res = await api.get(`/logs/daily/${date}`);
+      // Backend trả về logs trong object exercise_logs với items bên trong
+      const exerciseEntries = res.data.exercise_logs || [];
+      
+      // Lấy tất cả exercise_ids cần fetch
+      const exerciseIds = new Set<number>();
+      exerciseEntries.forEach((entry: any) => {
+        if (entry.items && entry.items.length > 0) {
+          entry.items.forEach((item: any) => {
+            if (item.exercise_id) {
+              exerciseIds.add(item.exercise_id);
+            }
+          });
+        }
+      });
+
+      // Fetch thông tin exercises một lần
+      const exerciseMap = new Map<number, any>();
+      if (exerciseIds.size > 0) {
+        try {
+          // Fetch từng exercise (có thể tối ưu bằng cách tạo endpoint batch)
+          const exercisePromises = Array.from(exerciseIds).map(async (exerciseId) => {
+            try {
+              const exerciseRes = await api.get(`/exercises/${exerciseId}`);
+              exerciseMap.set(exerciseId, exerciseRes.data);
+            } catch (err) {
+              console.error(`Failed to fetch exercise ${exerciseId}:`, err);
+            }
+          });
+          await Promise.all(exercisePromises);
+        } catch (err) {
+          console.error("Error fetching exercises:", err);
+        }
+      }
+
+      // Flatten items từ các entries thành danh sách logs
+      const flattenedLogs: ExerciseLog[] = [];
+      exerciseEntries.forEach((entry: any) => {
+        if (entry.items && entry.items.length > 0) {
+          entry.items.forEach((item: any) => {
+            const exercise = exerciseMap.get(item.exercise_id);
+            flattenedLogs.push({
+              id: item.id, // item.id
+              entry_id: entry.id, // entry.id - cần để xóa
+              exercise: exercise ? {
+                id: exercise.id,
+                description: exercise.description || 'Unknown',
+                major_heading: exercise.major_heading || '',
+                met_value: exercise.met_value || item.met_value_snapshot || 0
+              } : {
+                id: item.exercise_id,
+                description: 'Unknown',
+                major_heading: '',
+                met_value: item.met_value_snapshot || 0
+              },
+              duration_minutes: parseFloat(item.duration_min || 0),
+              calories_burned: parseFloat(item.calories || 0),
+              logged_at: entry.logged_at
+            });
+          });
+        }
+      });
+      setAllLogs(flattenedLogs);
+      // Áp dụng filter
+      applyFilters(flattenedLogs, selectedMajorHeading);
     } catch (error) {
       console.error("Lỗi tải logs:", error);
+      setAllLogs([]);
+      setLogs([]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // 2. Lọc logs theo major_heading
+  const applyFilters = (logsToFilter: ExerciseLog[], majorHeading: string) => {
+    let filtered = [...logsToFilter];
+    
+    // Filter theo major_heading
+    if (majorHeading !== 'all') {
+      filtered = filtered.filter(log => log.exercise.major_heading === majorHeading);
+    }
+    
+    setLogs(filtered);
+  };
+
+  // Lấy danh sách unique major_headings từ logs
+  const getUniqueMajorHeadings = (): string[] => {
+    const headings = new Set<string>();
+    allLogs.forEach(log => {
+      if (log.exercise.major_heading) {
+        headings.add(log.exercise.major_heading);
+      }
+    });
+    return Array.from(headings).sort();
+  };
+
   useEffect(() => {
-    fetchTodayLogs();
-  }, []);
+    fetchLogs(selectedDate);
+  }, [selectedDate]);
+
+  // Khi major_heading filter thay đổi, áp dụng filter lại
+  useEffect(() => {
+    applyFilters(allLogs, selectedMajorHeading);
+  }, [selectedMajorHeading]);
 
   // 2. Xử lý tìm kiếm bài tập (Debounce đơn giản)
   useEffect(() => {
@@ -95,25 +201,54 @@ export default function ExerciseLogging() {
     
     setSubmitting(true);
     try {
+      // Tạo datetime từ exerciseDate và thời gian hiện tại
+      const exerciseDateTime = new Date(exerciseDate);
+      exerciseDateTime.setHours(new Date().getHours());
+      exerciseDateTime.setMinutes(new Date().getMinutes());
+      
       // Gọi API POST /logs/exercise từ logs.py
       await api.post('/logs/exercise', {
         items: [
           {
             exercise_id: selectedExercise.id,
-            duration_minutes: parseInt(duration)
+            duration_min: parseFloat(duration) // Backend yêu cầu duration_min, không phải duration_minutes
           }
         ],
-        logged_at: new Date().toISOString()
+        logged_at: exerciseDateTime.toISOString()
       });
       
       toast.success(`Đã thêm: ${selectedExercise.description}`);
       setSelectedExercise(null); // Đóng modal
       setSearchQuery(''); // Reset tìm kiếm
-      fetchTodayLogs(); // Refresh lại list
-    } catch (error) {
-      toast.error('Không thể lưu bài tập');
+      // Reset exerciseDate về hôm nay sau khi thêm
+      setExerciseDate(new Date().toISOString().split('T')[0]);
+      // Refresh lại list với ngày đã chọn (có thể là ngày khác hôm nay)
+      await fetchLogs(selectedDate);
+      
+      // Trigger refresh summary ở dashboard bằng cách dispatch custom event
+      window.dispatchEvent(new CustomEvent('refreshDashboard'));
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Không thể lưu bài tập');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // 4. Xử lý xóa bài tập
+  const handleDeleteExercise = async (entryId: number, exerciseName: string) => {
+    if (!confirm(`Bạn có chắc muốn xóa "${exerciseName}"?`)) {
+      return;
+    }
+
+    try {
+      await LogService.deleteExerciseLog(entryId);
+      toast.success('Đã xóa bài tập');
+      await fetchLogs(selectedDate); // Refresh lại list với ngày hiện tại
+      
+      // Trigger refresh summary ở dashboard
+      window.dispatchEvent(new CustomEvent('refreshDashboard'));
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Không thể xóa bài tập');
     }
   };
 
@@ -135,42 +270,75 @@ export default function ExerciseLogging() {
       </div>
 
       {/* Search Bar */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-          <Input
-            id="exercise-search"
-            placeholder="Tìm kiếm bài tập (Chạy bộ, Gym, Yoga...)"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-          {loading && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <Loader2 className="size-4 animate-spin text-gray-400" />
-            </div>
-          )}
-        </div>
-        <Button variant="outline" size="icon">
-          <Filter className="size-4" />
-        </Button>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+        <Input
+          id="exercise-search"
+          placeholder="Thêm mới bài tập (Chạy bộ, Gym, Yoga...)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
+        {loading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Loader2 className="size-4 animate-spin text-gray-400" />
+          </div>
+        )}
       </div>
 
       {/* Tabs: Chuyển đổi giữa Kết quả tìm kiếm và Lịch sử */}
       <Tabs defaultValue="history" value={isSearching ? 'search' : 'history'} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="history" onClick={() => { setSearchQuery(''); setIsSearching(false); }}>
-            Lịch sử hôm nay
+            Lịch sử tập luyện
           </TabsTrigger>
           <TabsTrigger value="search">Tìm kiếm</TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Lịch sử Log (Dữ liệu từ API /logs/summary) */}
+        {/* Tab 1: Lịch sử Log (Dữ liệu từ API /logs/daily) */}
         <TabsContent value="history" className="space-y-3 mt-4">
-          {logs.length === 0 ? (
+          {/* Filters: Date và Major Heading - Đặt trong tab Lịch sử */}
+          <div className="flex gap-3 items-center pb-3 border-b">
+            {/* Date Picker */}
+            <div className="flex items-center gap-2">
+              <Calendar className="size-4 text-gray-500" />
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-auto"
+              />
+            </div>
+
+            {/* Major Heading Filter */}
+            <Select value={selectedMajorHeading} onValueChange={setSelectedMajorHeading}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Tất cả nhóm bài tập" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả nhóm bài tập</SelectItem>
+                {getUniqueMajorHeadings().map((heading) => (
+                  <SelectItem key={heading} value={heading}>
+                    {heading}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 className="size-8 animate-spin text-pink-600 mx-auto mb-3" />
+              <p className="text-gray-500">Đang tải dữ liệu...</p>
+            </div>
+          ) : logs.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
               <Dumbbell className="size-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">Hôm nay chưa tập gì cả.</p>
+              <p className="text-gray-500">
+                {selectedDate === new Date().toISOString().split('T')[0] 
+                  ? 'Hôm nay chưa tập gì cả.' 
+                  : `Ngày ${new Date(selectedDate).toLocaleDateString('vi-VN')} chưa có dữ liệu tập luyện.`}
+              </p>
               <Button variant="link" onClick={() => document.getElementById('exercise-search')?.focus()}>
                 Bắt đầu ngay
               </Button>
@@ -200,12 +368,23 @@ export default function ExerciseLogging() {
                           </span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-orange-600 flex items-center justify-end gap-1">
-                          <Flame className="size-4 fill-orange-600" />
-                          {Math.round(log.calories_burned)}
-                        </p>
-                        <p className="text-xs text-gray-400">kcal</p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-orange-600 flex items-center justify-end gap-1">
+                            <Flame className="size-4 fill-orange-600" />
+                            {Math.round(log.calories_burned)}
+                          </p>
+                          <p className="text-xs text-gray-400">kcal</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteExercise(log.entry_id, log.exercise.description)}
+                          title="Xóa bài tập"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -244,7 +423,13 @@ export default function ExerciseLogging() {
       </Tabs>
 
       {/* Dialog nhập thời gian tập */}
-      <Dialog open={!!selectedExercise} onOpenChange={(open) => !open && setSelectedExercise(null)}>
+      <Dialog open={!!selectedExercise} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedExercise(null);
+          // Reset exerciseDate về hôm nay khi đóng dialog
+          setExerciseDate(new Date().toISOString().split('T')[0]);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Ghi nhận hoạt động</DialogTitle>
@@ -256,6 +441,19 @@ export default function ExerciseLogging() {
               <p className="text-sm text-blue-700 mt-1">
                  Cường độ (MET): {selectedExercise?.met_value}
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Ngày tập luyện</Label>
+              <div className="flex items-center gap-2">
+                <Calendar className="size-4 text-gray-500" />
+                <Input
+                  type="date"
+                  value={exerciseDate}
+                  onChange={(e) => setExerciseDate(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

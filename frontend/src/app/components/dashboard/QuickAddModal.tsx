@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Apple, Dumbbell, Activity } from 'lucide-react';
-import FoodQuickAdd from './quick-add/FoodQuickAdd';
+import FoodQuickAdd from './quick-add/foodquickadd';
 import ExerciseQuickAdd from './quick-add/ExerciseQuickAdd';
 import BiometricsQuickAdd from './quick-add/BiometricsQuickAdd';
 

@@ -53,20 +53,13 @@ export default function SupportManagement() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Bạn có thể dùng Promise.all để gọi đồng thời 3 API
-        const [faqRes, ticketRes, feedbackRes] = await Promise.all([
-          fetch('/api/v1/admin/faqs'),
-          fetch('/api/v1/admin/tickets'),
-          fetch('/api/v1/admin/feedbacks')
-        ]);
+        // Chỉ lấy tickets từ backend (faqs và feedbacks không có endpoint)
+        const { AdminService } = await import('../../../service/admin.service');
+        const ticketData = await AdminService.getAllTickets();
 
-        const faqData = await faqRes.json();
-        const ticketData = await ticketRes.json();
-        const feedbackData = await feedbackRes.json();
-
-        setFaqs(faqData);
-        setTickets(ticketData);
-        setFeedbacks(feedbackData);
+        setFaqs([]); // FAQ feature not implemented in backend
+        setTickets(ticketData.items || []);
+        setFeedbacks([]); // Feedback feature not implemented in backend
       } catch (error) {
         toast.error('Không thể tải dữ liệu hỗ trợ');
       } finally {
@@ -78,52 +71,18 @@ export default function SupportManagement() {
 
   // 2. Xử lý FAQ (Create/Update/Delete)
   const handleSaveFaq = async () => {
-    if (!faqForm.question || !faqForm.answer) {
-      toast.error('Vui lòng điền đầy đủ thông tin');
-      return;
-    }
-
-    try {
-      const url = editingFaq ? `/api/v1/admin/faqs/${editingFaq.id}` : '/api/v1/admin/faqs';
-      const method = editingFaq ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(faqForm),
-      });
-
-      if (res.ok) {
-        toast.success(editingFaq ? 'Đã cập nhật FAQ' : 'Đã tạo FAQ mới');
-        setShowFaqDialog(false);
-        setEditingFaq(null);
-        setFaqForm({ question: '', answer: '', category: '' });
-        // Refresh data hoặc update state cục bộ tại đây
-      }
-    } catch (error) {
-      toast.error('Có lỗi xảy ra khi lưu FAQ');
-    }
+    toast.error('Tính năng FAQ chưa được triển khai trong backend');
   };
 
   const handleDeleteFaq = async (id: number) => {
-    if (!confirm('Bạn có chắc muốn xóa FAQ này?')) return;
-    try {
-      await fetch(`/api/v1/admin/faqs/${id}`, { method: 'DELETE' });
-      setFaqs(faqs.filter(f => f.id !== id));
-      toast.success('Đã xóa FAQ');
-    } catch (error) {
-      toast.error('Không thể xóa FAQ');
-    }
+    toast.error('Tính năng FAQ chưa được triển khai trong backend');
   };
 
   // 3. Xử lý Ticket Status
   const handleUpdateTicketStatus = async (id: number, newStatus: string) => {
     try {
-      await fetch(`/api/v1/admin/tickets/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const { AdminService } = await import('../../../service/admin.service');
+      await AdminService.updateTicket(id, { status: newStatus as any });
       setTickets(tickets.map(t => t.id === id ? { ...t, status: newStatus as any } : t));
       toast.success(`Đã cập nhật ticket #${id}`);
     } catch (error) {

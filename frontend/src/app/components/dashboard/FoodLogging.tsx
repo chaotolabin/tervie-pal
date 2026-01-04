@@ -1,11 +1,19 @@
 import React from 'react';
-import api from '../lib/api';
+import { toast } from 'sonner';
 
 export default function FoodLogging({ foodLogs }: { foodLogs: any[] }) {
   const handleDelete = async (logId: number) => {
-    // Gọi DELETE /logs/food/{log_id}
-    await api.delete(`/logs/food/${logId}`);
-    window.location.reload(); 
+    try {
+      const { LogService } = await import('../../../service/log.service');
+      await LogService.deleteFoodLog(logId);
+      toast.success('Đã xóa bữa ăn');
+      
+      // Trigger refresh thay vì reload toàn bộ trang
+      window.dispatchEvent(new CustomEvent('refreshDashboard'));
+      window.dispatchEvent(new CustomEvent('refreshFoodLogs'));
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Không thể xóa bữa ăn');
+    }
   };
 
   return (

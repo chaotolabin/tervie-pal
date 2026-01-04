@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Dumbbell, Heart, Zap, Target, Flame, Loader2, Clock, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -93,7 +93,7 @@ export default function ExerciseLibraryPage() {
       await api.post('/logs/exercise', {
         items: [{
           exercise_id: selectedExercise.id,
-          duration_minutes: parseInt(duration)
+          duration_min: parseFloat(duration) // Backend yêu cầu duration_min, không phải duration_minutes
         }],
         logged_at: new Date().toISOString()
       });

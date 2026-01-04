@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Toaster } from './components/ui/sonner';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
+import api from './components/lib/api';
 
 type Page = 'landing' | 'login' | 'signup' | 'dashboard' | 'admin';
 type UserRole = 'user' | 'admin' | null;
@@ -13,11 +15,81 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  const handleLogin = (role: UserRole = 'user') => {
+  // Kiểm tra authentication khi app khởi động
+  useEffect(() => {
+    const checkAuth = async () => {
+      const accessToken = localStorage.getItem('access_token');
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      // Nếu không có token nào, không cần kiểm tra
+      if (!accessToken && !refreshToken) {
+        setIsCheckingAuth(false);
+        return;
+      }
+
+      try {
+        // Thử gọi API với access token hiện tại
+        const userRes = await api.get('/users/me');
+        const role = userRes.data.user?.role || 'user';
+        
+        // Nếu thành công, đăng nhập tự động
+        setIsAuthenticated(true);
+        setUserRole(role as UserRole);
+        setCurrentPage(role === 'admin' ? 'admin' : 'dashboard');
+      } catch (error: any) {
+        // Nếu access token hết hạn, thử refresh
+        if (error.response?.status === 401 && refreshToken) {
+          try {
+            const refreshRes = await axios.post(
+              'http://localhost:8000/api/v1/auth/refresh',
+              { refresh_token: refreshToken },
+              { headers: { 'Content-Type': 'application/json' } }
+            );
+
+            const { access_token, refresh_token: newRefreshToken } = refreshRes.data;
+            localStorage.setItem('access_token', access_token);
+            if (newRefreshToken) {
+              localStorage.setItem('refresh_token', newRefreshToken);
+            }
+
+            // Thử lại lấy thông tin user
+            const userRes = await api.get('/users/me');
+            const role = userRes.data.user?.role || 'user';
+            
+            setIsAuthenticated(true);
+            setUserRole(role as UserRole);
+            setCurrentPage(role === 'admin' ? 'admin' : 'dashboard');
+          } catch (refreshError) {
+            // Refresh token cũng không hợp lệ, xóa token và về landing
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            setIsAuthenticated(false);
+            setUserRole(null);
+            setCurrentPage('landing');
+          }
+        } else {
+          // Lỗi khác hoặc không có refresh token, xóa token
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          setIsAuthenticated(false);
+          setUserRole(null);
+          setCurrentPage('landing');
+        }
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const handleLogin = (role: string | UserRole = 'user') => {
+    const userRole = (role as UserRole) || 'user';
     setIsAuthenticated(true);
-    setUserRole(role);
-    setCurrentPage(role === 'admin' ? 'admin' : 'dashboard');
+    setUserRole(userRole);
+    setCurrentPage(userRole === 'admin' ? 'admin' : 'dashboard');
   };
 
   const handleLogout = () => {
@@ -27,6 +99,18 @@ export default function App() {
   };
 
   const renderPage = () => {
+    // Hiển thị loading khi đang kiểm tra authentication
+    if (isCheckingAuth) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Đang tải...</p>
+          </div>
+        </div>
+      );
+    }
+
     if (!isAuthenticated && currentPage === 'landing') {
       return <LandingPage onLogin={() => setCurrentPage('login')} onSignup={() => setCurrentPage('signup')} />;
     }

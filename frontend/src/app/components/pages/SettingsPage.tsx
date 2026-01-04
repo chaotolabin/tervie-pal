@@ -163,7 +163,37 @@ export default function SettingsPage() {
                 <Label htmlFor="confirmPassword">Xác nhận mật khẩu mới</Label>
                 <Input id="confirmPassword" type="password" />
               </div>
-              <Button variant="outline">Đổi mật khẩu</Button>
+              <Button 
+                variant="outline"
+                onClick={async () => {
+                  const currentPassword = (document.getElementById('currentPassword') as HTMLInputElement)?.value;
+                  const newPassword = (document.getElementById('newPassword') as HTMLInputElement)?.value;
+                  const confirmPassword = (document.getElementById('confirmPassword') as HTMLInputElement)?.value;
+                  
+                  if (!currentPassword || !newPassword || !confirmPassword) {
+                    toast.error('Vui lòng điền đầy đủ thông tin');
+                    return;
+                  }
+                  
+                  if (newPassword !== confirmPassword) {
+                    toast.error('Mật khẩu xác nhận không khớp');
+                    return;
+                  }
+                  
+                  try {
+                    const { SettingsService } = await import('../../../service/settings.service');
+                    await SettingsService.changePassword(currentPassword, newPassword);
+                    toast.success('Đã đổi mật khẩu thành công');
+                    (document.getElementById('currentPassword') as HTMLInputElement).value = '';
+                    (document.getElementById('newPassword') as HTMLInputElement).value = '';
+                    (document.getElementById('confirmPassword') as HTMLInputElement).value = '';
+                  } catch (error: any) {
+                    toast.error(error.response?.data?.detail || 'Không thể đổi mật khẩu');
+                  }
+                }}
+              >
+                Đổi mật khẩu
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

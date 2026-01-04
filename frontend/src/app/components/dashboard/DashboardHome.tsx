@@ -25,9 +25,9 @@ interface DailySummary {
 
 interface UserGoal {
   daily_calorie_target: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
+  protein_grams?: number;
+  carb_grams?: number;
+  fat_grams?: number;
   goal_type: string;
 }
 
@@ -43,43 +43,54 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [currentWeight, setCurrentWeight] = useState<number>(0);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const today = new Date().toISOString().split('T')[0];
+  const fetchDashboardData = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
 
-        // Gọi song song 3 API để tối ưu tốc độ
-        const [logsRes, goalsRes, bioRes] = await Promise.all([
-          api.get(`/logs/summary/${today}`), // Lấy dinh dưỡng hôm nay
-          api.get('/goals'),                 // Lấy mục tiêu (để so sánh)
-          api.get('/biometrics?limit=7')     // Lấy 7 lần cân gần nhất
-        ]);
+      // Gọi song song 3 API để tối ưu tốc độ
+      const [logsRes, goalsRes, bioRes] = await Promise.all([
+        api.get(`/logs/summary/${today}`), // Lấy dinh dưỡng hôm nay
+        api.get('/goals'),                 // Lấy mục tiêu (để so sánh)
+        api.get('/biometrics?limit=7')     // Lấy 7 lần cân gần nhất
+      ]);
 
-        setSummary(logsRes.data);
-        setGoal(goalsRes.data);
+      setSummary(logsRes.data);
+      setGoal(goalsRes.data);
 
-        // Xử lý dữ liệu cân nặng cho biểu đồ
-        const bioLogs: BiometricLog[] = bioRes.data.items || [];
-        // Đảo ngược mảng để hiển thị từ cũ đến mới trên biểu đồ
-        const chartData = [...bioLogs].reverse().map(log => ({
-          date: new Date(log.logged_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-          weight: log.weight_kg
-        }));
-        
-        setWeightHistory(chartData);
-        if (bioLogs.length > 0) {
-          setCurrentWeight(bioLogs[0].weight_kg); // Lấy cân nặng mới nhất
-        }
-
-      } catch (error) {
-        console.error("Dashboard data error:", error);
-        // Không toast lỗi chặn dòng chảy, chỉ log
-      } finally {
-        setLoading(false);
+      // Xử lý dữ liệu cân nặng cho biểu đồ
+      const bioLogs: BiometricLog[] = bioRes.data.items || [];
+      // Đảo ngược mảng để hiển thị từ cũ đến mới trên biểu đồ
+      const chartData = [...bioLogs].reverse().map(log => ({
+        date: new Date(log.logged_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+        weight: log.weight_kg
+      }));
+      
+      setWeightHistory(chartData);
+      if (bioLogs.length > 0) {
+        setCurrentWeight(bioLogs[0].weight_kg); // Lấy cân nặng mới nhất
       }
-    };
 
+    } catch (error) {
+      console.error("Dashboard data error:", error);
+      // Không toast lỗi chặn dòng chảy, chỉ log
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDashboardData();
+    
+    // Lắng nghe event refresh từ các component con (ExerciseLogging, FoodLoggingPage)
+    const handleRefresh = () => {
+      fetchDashboardData();
+    };
+    
+    window.addEventListener('refreshDashboard', handleRefresh);
+    
+    return () => {
+      window.removeEventListener('refreshDashboard', handleRefresh);
+    };
   }, []);
 
   if (loading) {
@@ -230,9 +241,9 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
       {/* Macros Summary */}
       {/* Truyền dữ liệu thật vào component MacroSummary */}
       <MacroSummary
-        protein={{ current: Number(summary?.total_protein_g) || 0, goal: goal?.protein_g || 150 }}
-        carbs={{ current: Number(summary?.total_carbs_g) || 0, goal: goal?.carbs_g || 200 }}
-        fat={{ current: Number(summary?.total_fat_g) || 0, goal: goal?.fat_g || 70 }}
+        protein={{ current: Number(summary?.total_protein_g) || 0, goal: goal?.protein_grams || 150 }}
+        carbs={{ current: Number(summary?.total_carbs_g) || 0, goal: goal?.carb_grams || 200 }}
+        fat={{ current: Number(summary?.total_fat_g) || 0, goal: goal?.fat_grams || 70 }}
       />
 
       {/* Streak & Quick Actions */}

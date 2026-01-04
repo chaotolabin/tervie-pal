@@ -32,7 +32,7 @@ export default function DiaryPage() {
       <div className="grid grid-cols-4 gap-4 bg-white p-6 rounded-xl shadow">
         <div className="text-center">
           <p className="text-gray-500 text-sm">Nạp vào</p>
-          <p className="font-bold text-xl">{data.summary.total_calories_in}</p>
+          <p className="font-bold text-xl">{data.summary?.total_calories_consumed || 0}</p>
         </div>
         <div className="text-center">
           <p className="text-gray-500 text-sm">Tiêu hao</p>
@@ -46,12 +46,29 @@ export default function DiaryPage() {
         <FoodLogging foodLogs={data.food_logs} />
         <div className="bg-white p-4 rounded-xl shadow">
           <h3 className="font-bold mb-4">Hoạt động thể chất</h3>
-          {data.exercise_logs.map((ex: any) => (
-            <div key={ex.id} className="flex justify-between py-2 border-b">
-              <span>{ex.exercise_name}</span>
-              <span>-{ex.calories_burned} kcal</span>
-            </div>
-          ))}
+          {data.exercise_logs && data.exercise_logs.length > 0 ? (
+            data.exercise_logs.map((entry: any) => (
+              <div key={entry.id} className="mb-3 pb-3 border-b last:border-b-0">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-500">
+                    {new Date(entry.logged_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="font-medium text-blue-600">-{Math.round(Number(entry.total_calories || 0))} kcal</span>
+                </div>
+                {entry.items && entry.items.length > 0 && (
+                  <div className="pl-2 space-y-1">
+                    {entry.items.map((item: any) => (
+                      <div key={item.id} className="text-sm text-gray-600">
+                        • {item.duration_min || 0} phút
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-400 text-sm">Chưa có hoạt động thể chất.</p>
+          )}
           <ExerciseQuickAdd />
         </div>
       </div>

@@ -25,12 +25,16 @@ export default function ForgotPasswordPage({ onBack }: ForgotPasswordPageProps) 
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { AuthService } = await import('../../../service/auth.sevice');
+      await AuthService.forgotPassword(email);
       setIsSubmitted(true);
       toast.success('Email đã được gửi!');
-    }, 1500);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Không thể gửi email');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSubmitted) {

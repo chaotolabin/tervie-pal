@@ -6,6 +6,14 @@ export enum GoalType {
   IMPROVE_HEALTH = "improve_health"
 }
 
+export enum ActivityLevel {
+  SEDENTARY = "sedentary",
+  LOW_ACTIVE = "low_active",
+  MODERATELY_ACTIVE = "moderately_active",
+  VERY_ACTIVE = "very_active",
+  EXTREMELY_ACTIVE = "extremely_active"
+}
+
 export interface GoalCalculateRequest {
   goal_type: GoalType;
   baseline_activity: ActivityLevel;
@@ -21,7 +29,22 @@ export interface GoalCalculateResponse {
   bmr: number;
   tdee: number;
   daily_calorie_target: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
+  protein_grams: number;
+  carb_grams: number;
+  fat_grams: number;
+}
+
+export interface GoalResponse {
+  user_id: string;
+  goal_type: string;
+  baseline_activity?: string;
+  weekly_goal?: number;
+  target_weight_kg?: number;
+  daily_calorie_target: number;
+  protein_grams?: number;
+  fat_grams?: number;
+  carb_grams?: number;
+  weekly_exercise_min?: number;
+  created_at: string;
+  updated_at: string;
 }

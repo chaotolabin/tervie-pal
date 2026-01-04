@@ -21,15 +21,9 @@ export default function UserManagement() {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/v1/admin/users');
-        
-        if (!response.ok) {
-          throw new Error('Không thể lấy danh sách người dùng');
-        }
-
-        const data = await response.json();
-        // Giả sử API trả về mảng trực tiếp hoặc data.users
-        setUsers(Array.isArray(data) ? data : data.users || []);
+        const { AdminService } = await import('../../../service/admin.service');
+        const data = await AdminService.getUsers();
+        setUsers(data.items || []);
       } catch (error) {
         console.error("Fetch Users Error:", error);
         toast.error("Lỗi kết nối: Không thể tải danh sách người dùng");
