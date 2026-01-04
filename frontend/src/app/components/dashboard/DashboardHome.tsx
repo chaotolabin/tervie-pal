@@ -138,7 +138,7 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-white/90 text-lg font-medium">
             <Flame className="size-5" />
-            Calories ròng (Net)
+            Calories
           </CardTitle>
         </CardHeader>
         <CardContent>
