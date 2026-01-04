@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Activity, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
+import api from '../lib/api'; // Import axios instance
 
 interface LoginPageProps {
   onLogin: (role?: 'user' | 'admin') => void;
@@ -15,53 +16,65 @@ interface LoginPageProps {
 export default function LoginPage({ onLogin, onBack, onSignup }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Demo login logic
-    if (email === 'admin@healthtrack.com' && password === 'admin123') {
-      toast.success('Đăng nhập Admin thành công!');
-      onLogin('admin');
-    } else if (email && password) {
+    setIsLoading(true);
+
+    try {
+      // Gọi API thực tế từ auth.py
+      const formData = new URLSearchParams();
+      formData.append('username', email); // OAuth2PasswordRequestForm dùng username field cho email
+      formData.append('password', password);
+
+      // Lưu ý: Nếu backend dùng OAuth2PasswordRequestForm thì endpoint thường là /token hoặc /auth/login trả về token
+      // Dựa trên auth.py của bạn: POST /auth/login nhận LoginRequest (JSON body)
+      const res = await api.post('/auth/login', {
+        email_or_username: email,
+        password: password
+      });
+
+      // Lưu token vào localStorage
+      localStorage.setItem('access_token', res.data.access_token);
+      localStorage.setItem('refresh_token', res.data.refresh_token);
+      
       toast.success('Đăng nhập thành công!');
-      onLogin('user');
-    } else {
-      toast.error('Vui lòng nhập email và mật khẩu');
+      
+      // Chuyển role từ response backend
+      onLogin(res.data.user.role); 
+    } catch (error: any) {
+      console.error(error);
+      const msg = error.response?.data?.detail || 'Đăng nhập thất bại';
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Button variant="ghost" onClick={onBack} className="mb-4">
-          <ArrowLeft className="size-4 mr-2" />
-          Quay lại
+          <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại
         </Button>
 
         <Card>
-          <CardHeader className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="size-16 bg-green-100 rounded-full flex items-center justify-center">
-                <Activity className="size-8 text-green-600" />
-              </div>
-            </div>
-            <CardTitle>Đăng nhập</CardTitle>
-            <CardDescription>
-              Nhập thông tin để truy cập tài khoản của bạn
-            </CardDescription>
-          </CardHeader>
-
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-center mb-2">Chào mừng trở lại</h2>
+            <p className="text-center text-gray-600 mb-6">Đăng nhập để tiếp tục hành trình</p>
+          </div>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email hoặc Username</Label>
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
 
@@ -73,25 +86,24 @@ export default function LoginPage({ onLogin, onBack, onSignup }: LoginPageProps)
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                Đăng nhập
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-pink-500 to-purple-600"
+                disabled={isLoading}
+              >
+                {isLoading ? "Đang xử lý..." : "Đăng nhập"}
               </Button>
             </form>
 
             <div className="mt-4 text-center text-sm text-gray-600">
               Chưa có tài khoản?{' '}
-              <button onClick={onSignup} className="text-green-600 hover:underline">
+              <button onClick={onSignup} className="text-pink-600 hover:underline">
                 Đăng ký ngay
               </button>
-            </div>
-
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm">
-              <p className="font-semibold mb-2">Demo accounts:</p>
-              <p>👤 User: any email + password</p>
-              <p>👨‍💼 Admin: admin@healthtrack.com / admin123</p>
             </div>
           </CardContent>
         </Card>

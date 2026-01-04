@@ -1,178 +1,282 @@
-import { Calendar, Flame, TrendingDown, Apple, Dumbbell, Target } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Flame, TrendingDown, Apple, Loader2, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import StreakWidget from './StreakWidget'; // Component này tự fetch data (đã sửa ở bước trước)
+import MacroSummary from './MacroSummary';
+import api from '../../lib/api'; // Đảm bảo import đúng đường dẫn api client
+import { toast } from 'sonner';
 
 interface DashboardHomeProps {
   onQuickAdd: () => void;
 }
 
-const weightData = [
-  { date: '01/12', weight: 75 },
-  { date: '08/12', weight: 74.5 },
-  { date: '15/12', weight: 74 },
-  { date: '22/12', weight: 73.5 },
-  { date: '29/12', weight: 73 },
-];
+// Định nghĩa kiểu dữ liệu cho State
+interface DailySummary {
+  total_calories_consumed: number;
+  total_calories_burned: number;
+  net_calories: number;
+  total_protein_g: number;
+  total_carbs_g: number;
+  total_fat_g: number;
+}
+
+interface UserGoal {
+  daily_calorie_target: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  goal_type: string;
+}
+
+interface BiometricLog {
+  logged_at: string;
+  weight_kg: number;
+}
 
 export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
+  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<DailySummary | null>(null);
+  const [goal, setGoal] = useState<UserGoal | null>(null);
+  const [weightHistory, setWeightHistory] = useState<any[]>([]);
+  const [currentWeight, setCurrentWeight] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+
+        // Gọi song song 3 API để tối ưu tốc độ
+        const [logsRes, goalsRes, bioRes] = await Promise.all([
+          api.get(`/logs/summary/${today}`), // Lấy dinh dưỡng hôm nay
+          api.get('/goals'),                 // Lấy mục tiêu (để so sánh)
+          api.get('/biometrics?limit=7')     // Lấy 7 lần cân gần nhất
+        ]);
+
+        setSummary(logsRes.data);
+        setGoal(goalsRes.data);
+
+        // Xử lý dữ liệu cân nặng cho biểu đồ
+        const bioLogs: BiometricLog[] = bioRes.data.items || [];
+        // Đảo ngược mảng để hiển thị từ cũ đến mới trên biểu đồ
+        const chartData = [...bioLogs].reverse().map(log => ({
+          date: new Date(log.logged_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+          weight: log.weight_kg
+        }));
+        
+        setWeightHistory(chartData);
+        if (bioLogs.length > 0) {
+          setCurrentWeight(bioLogs[0].weight_kg); // Lấy cân nặng mới nhất
+        }
+
+      } catch (error) {
+        console.error("Dashboard data error:", error);
+        // Không toast lỗi chặn dòng chảy, chỉ log
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-pink-600" />
+      </div>
+    );
+  }
+
+  // Tính toán % Calo
+  const calorieTarget = goal?.daily_calorie_target || 2000;
+  const caloriesConsumed = summary?.total_calories_consumed || 0;
+  const caloriesBurned = summary?.total_calories_burned || 0;
+  const netCalories = summary?.net_calories || 0; // Backend đã tính (consumed - burned)
+  
+  // Logic hiển thị: Nếu muốn hiển thị (Consumed) vs Target hay (Net) vs Target tùy logic app
+  // Ở đây dùng Net Calories (thực nhận) vs Target
+  const caloriePercent = Math.min(Math.round((netCalories / calorieTarget) * 100), 100);
+
   return (
     <div className="space-y-6">
-      {/* Date Range Selector */}
+      {/* Date Range Selector & Welcome */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Calendar className="size-5 text-gray-600" />
-          <h2 className="text-xl font-semibold">Tổng quan</h2>
+          <h2 className="text-xl font-semibold">Hôm nay</h2>
         </div>
         <Select defaultValue="today">
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-32 bg-white">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="today">Hôm nay</SelectItem>
-            <SelectItem value="7d">7 ngày</SelectItem>
-            <SelectItem value="1m">1 tháng</SelectItem>
-            <SelectItem value="3m">3 tháng</SelectItem>
+            {/* Các option khác cần xử lý logic filter sau */}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Calories Summary */}
-      <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
+      {/* Calories Summary Card */}
+      <Card className="bg-gradient-to-br from-pink-500 to-purple-600 text-white border-none shadow-lg">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-white/90 text-lg font-medium">
             <Flame className="size-5" />
-            Calories hôm nay
+            Calories ròng (Net)
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex justify-between items-end">
             <div>
-              <p className="text-4xl font-bold">1,850</p>
-              <p className="text-sm opacity-90">/ 2,000 kcal mục tiêu</p>
+              <p className="text-5xl font-bold tracking-tight">{Math.round(netCalories)}</p>
+              <p className="text-sm opacity-80 mt-1">/ {Math.round(calorieTarget)} kcal mục tiêu</p>
             </div>
             <div className="text-right">
-              <div className="size-20 rounded-full border-4 border-white/30 flex items-center justify-center">
-                <span className="text-xl font-bold">93%</span>
+              <div className="size-20 rounded-full border-4 border-white/30 flex items-center justify-center relative">
+                 {/* Vòng tròn tiến độ đơn giản bằng SVG hoặc CSS */}
+                 <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      className="text-white/20"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                    <path
+                      className="text-white drop-shadow-md"
+                      strokeDasharray={`${caloriePercent}, 100`}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                    />
+                 </svg>
+                <span className="text-xl font-bold">{caloriePercent}%</span>
               </div>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
+          
+          <div className="mt-6 grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
             <div>
-              <p className="text-xs opacity-80">Đã ăn</p>
-              <p className="font-semibold">1,850</p>
+              <p className="text-xs opacity-70 uppercase tracking-wider">Đã ăn</p>
+              <p className="font-bold text-lg">{Math.round(caloriesConsumed)}</p>
             </div>
             <div>
-              <p className="text-xs opacity-80">Tập luyện</p>
-              <p className="font-semibold">-350</p>
+              <p className="text-xs opacity-70 uppercase tracking-wider">Tập luyện</p>
+              <p className="font-bold text-lg">-{Math.round(caloriesBurned)}</p>
             </div>
             <div>
-              <p className="text-xs opacity-80">Còn lại</p>
-              <p className="font-semibold">500</p>
+              <p className="text-xs opacity-70 uppercase tracking-wider">Còn lại</p>
+              <p className="font-bold text-lg">{Math.max(0, Math.round(calorieTarget - netCalories))}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Weight Chart */}
-      <Card>
+      <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingDown className="size-5 text-blue-600" />
-            Cân nặng
+          <CardTitle className="flex items-center gap-2 text-gray-700">
+            <TrendingDown className="size-5 text-cyan-600" />
+            Theo dõi cân nặng
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <p className="text-3xl font-bold">73.0 kg</p>
-            <p className="text-sm text-gray-600">-2.0 kg trong tháng này</p>
+          <div className="mb-6">
+            <p className="text-3xl font-bold text-gray-900">{currentWeight > 0 ? `${currentWeight} kg` : '-- kg'}</p>
+            <p className="text-sm text-gray-500">Biểu đồ 7 lần cân gần nhất</p>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={weightData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis domain={[72, 76]} />
-              <Tooltip />
-              <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+          
+          <div className="h-[200px] w-full">
+            {weightHistory.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weightHistory}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{fontSize: 12, fill: '#9ca3af'}} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    domain={['dataMin - 1', 'dataMax + 1']} 
+                    hide 
+                  />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="weight" 
+                    stroke="#06b6d4" 
+                    strokeWidth={3} 
+                    dot={{fill: '#06b6d4', strokeWidth: 2, r: 4, stroke: '#fff'}}
+                    activeDot={{r: 6}}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
+                Chưa có dữ liệu cân nặng
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       {/* Macros Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Protein</span>
-              <span className="font-semibold">85g</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-red-500" style={{ width: '75%' }} />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">75% / 110g</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Carbs</span>
-              <span className="font-semibold">220g</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500" style={{ width: '88%' }} />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">88% / 250g</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Fat</span>
-              <span className="font-semibold">52g</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-yellow-500" style={{ width: '65%' }} />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">65% / 80g</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Truyền dữ liệu thật vào component MacroSummary */}
+      <MacroSummary
+        protein={{ current: Number(summary?.total_protein_g) || 0, goal: goal?.protein_g || 150 }}
+        carbs={{ current: Number(summary?.total_carbs_g) || 0, goal: goal?.carbs_g || 200 }}
+        fat={{ current: Number(summary?.total_fat_g) || 0, goal: goal?.fat_g || 70 }}
+      />
 
       {/* Streak & Quick Actions */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <CardContent className="pt-6">
-            <Target className="size-8 mb-2 opacity-80" />
-            <p className="text-2xl font-bold">7 ngày</p>
-            <p className="text-sm opacity-90">Streak hiện tại 🔥</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* StreakWidget tự handle fetch data nên không cần truyền props */}
+        <StreakWidget /> 
 
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-          <CardContent className="pt-6 flex flex-col h-full">
-            <div className="flex-1">
-              <p className="text-sm opacity-90 mb-1">Hôm nay</p>
-              <p className="font-semibold">3 bữa ăn</p>
-              <p className="font-semibold">1 bài tập</p>
-            </div>
+        {/* Quick Log Summary Card */}
+        <Card className="bg-gradient-to-br from-orange-500 to-amber-500 text-white border-none shadow-md">
+          <CardContent className="pt-6 flex flex-col h-full justify-between">
+             <div>
+                <p className="text-sm opacity-90 mb-2 font-medium">Hoạt động hôm nay</p>
+                <div className="space-y-1">
+                   {/* Dữ liệu này có thể lấy chi tiết hơn nếu cần, tạm thời dùng summary */}
+                   <p className="font-bold text-lg flex items-center gap-2">
+                      <Apple className="size-4 opacity-80" /> 
+                      {/* Backend không trả về count món ăn trong summary, có thể bổ sung sau */}
+                      Đã ghi nhận dinh dưỡng
+                   </p>
+                   <p className="font-bold text-lg flex items-center gap-2">
+                       <TrendingDown className="size-4 opacity-80" />
+                       {caloriesBurned > 0 ? 'Đã có tập luyện' : 'Chưa tập luyện'}
+                   </p>
+                </div>
+             </div>
+             <div className="mt-4 pt-4 border-t border-white/20 text-xs opacity-80">
+                Tiếp tục phát huy nhé!
+             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Add CTA */}
-      <Card className="border-2 border-dashed border-gray-300 hover:border-green-500 transition-colors cursor-pointer" onClick={onQuickAdd}>
-        <CardContent className="pt-6 text-center">
-          <div className="size-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Apple className="size-6 text-green-600" />
-          </div>
-          <p className="font-semibold mb-1">Thêm nhanh</p>
-          <p className="text-sm text-gray-600">Ghi nhận thực phẩm hoặc bài tập</p>
-        </CardContent>
-      </Card>
+      {/* Quick Add CTA Button */}
+      <div onClick={onQuickAdd} className="group cursor-pointer">
+        <Card className="border-2 border-dashed border-gray-300 group-hover:border-pink-500 group-hover:bg-pink-50 transition-all duration-300">
+          <CardContent className="pt-6 text-center py-8">
+            <div className="size-14 bg-pink-100 group-hover:bg-pink-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
+              <Plus className="size-7 text-pink-600" />
+            </div>
+            <p className="font-bold text-gray-900 group-hover:text-pink-700">Thêm nhanh</p>
+            <p className="text-sm text-gray-500 group-hover:text-pink-600">Ghi nhận thực phẩm hoặc bài tập mới</p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

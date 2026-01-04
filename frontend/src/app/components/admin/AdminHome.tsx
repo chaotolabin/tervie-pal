@@ -1,156 +1,128 @@
-import { Users, UserCheck, Utensils, Dumbbell, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useState, useEffect } from 'react';
+import { Users, Loader2, TrendingUp, Activity, AlertCircle } from 'lucide-react';
+import { Card, CardContent } from '../ui/card';
+import { toast } from 'sonner';
 
-const growthData = [
-  { date: '01/12', users: 1200, active: 850 },
-  { date: '08/12', users: 1350, active: 920 },
-  { date: '15/12', users: 1520, active: 1050 },
-  { date: '22/12', users: 1680, active: 1150 },
-  { date: '29/12', users: 1850, active: 1280 },
-];
 
-const activityData = [
-  { date: 'T2', meals: 4250, exercises: 1820 },
-  { date: 'T3', meals: 4380, exercises: 1950 },
-  { date: 'T4', meals: 4520, exercises: 2100 },
-  { date: 'T5', meals: 4680, exercises: 2050 },
-  { date: 'T6', meals: 4850, exercises: 2200 },
-  { date: 'T7', meals: 3920, exercises: 1680 },
-  { date: 'CN', meals: 3650, exercises: 1520 },
-];
+interface DashboardStats {
+  totalUsers: number;
+  activeToday: number;
+  growthRate: number; // Ví dụ thêm tỉ lệ tăng trưởng
+}
 
 export default function AdminHome() {
+  const [stats, setStats] = useState<DashboardStats>({ 
+    totalUsers: 0, 
+    activeToday: 0,
+    growthRate: 0 
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const response = await fetch('/api/v1/admin/stats'); 
+        
+        if (!response.ok) {
+          throw new Error('Lỗi mạng hoặc server không phản hồi');
+        }
+
+        const data = await response.json();
+        
+        
+        setStats({
+          totalUsers: data.total_users || 0,
+          activeToday: data.active_today || 0,
+          growthRate: data.growth_rate || 0
+        });
+      } catch (error) {
+        console.error("Fetch Error:", error);
+        toast.error("Không thể kết nối đến máy chủ để lấy dữ liệu");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardStats();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-2">
+        <Loader2 className="animate-spin text-green-600 size-10" />
+        <p className="text-gray-500 animate-pulse">Đang tải dữ liệu hệ thống...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Tổng quan hệ thống</h1>
-        <p className="text-gray-600 mt-1">Thống kê và phân tích tổng thể</p>
+        <h1 className="text-3xl font-bold text-gray-900">Tervie Pal Dashboard</h1>
+        <p className="text-gray-500 mt-1">Chào mừng quay trở lại, đây là tình hình hệ thống hôm nay.</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <p className="text-sm opacity-90">Tổng người dùng</p>
-                <p className="text-3xl font-bold mt-1">1,850</p>
-              </div>
-              <Users className="size-10 opacity-80" />
-            </div>
-            <p className="text-sm opacity-90">+170 so với tháng trước</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <p className="text-sm opacity-90">Người dùng hoạt động</p>
-                <p className="text-3xl font-bold mt-1">1,280</p>
-              </div>
-              <UserCheck className="size-10 opacity-80" />
-            </div>
-            <p className="text-sm opacity-90">69% tổng số người dùng</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <p className="text-sm opacity-90">Bữa ăn ghi nhận</p>
-                <p className="text-3xl font-bold mt-1">32,500</p>
-              </div>
-              <Utensils className="size-10 opacity-80" />
-            </div>
-            <p className="text-sm opacity-90">Tuần này</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-          <CardContent className="pt-6">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <p className="text-sm opacity-90">Bài tập ghi nhận</p>
-                <p className="text-3xl font-bold mt-1">13,320</p>
-              </div>
-              <Dumbbell className="size-10 opacity-80" />
-            </div>
-            <p className="text-sm opacity-90">Tuần này</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Growth Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="size-5 text-green-600" />
-            Tăng trưởng người dùng
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={growthData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={2} name="Tổng người dùng" />
-              <Line type="monotone" dataKey="active" stroke="#10b981" strokeWidth={2} name="Người dùng hoạt động" />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Activity Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Hoạt động tuần này</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={activityData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="meals" fill="#8b5cf6" name="Bữa ăn" />
-              <Bar dataKey="exercises" fill="#f97316" name="Bài tập" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        {/* Tổng người dùng */}
+        <Card className="bg-white hover:shadow-md transition-shadow border-none ring-1 ring-gray-200">
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-1">DAU (Daily Active Users)</p>
-            <p className="text-3xl font-bold">856</p>
-            <p className="text-sm text-green-600 mt-1">+5.2% so với hôm qua</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-black tracking-wider">Tổng người dùng</p>
+                <p className="text-3xl font-extrabold text-gray-900 mt-1">
+                  {stats.totalUsers.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-xl">
+                <Users className="text-blue-600 size-6" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Hoạt động hôm nay */}
+        <Card className="bg-white hover:shadow-md transition-shadow border-none ring-1 ring-gray-200">
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-1">WAU (Weekly Active Users)</p>
-            <p className="text-3xl font-bold">1,280</p>
-            <p className="text-sm text-green-600 mt-1">+8.1% so với tuần trước</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-black tracking-wider">Hoạt động hôm nay</p>
+                <p className="text-3xl font-extrabold text-gray-900 mt-1">
+                  {stats.activeToday.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-green-50 p-3 rounded-xl">
+                <Activity className="text-green-600 size-6" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* Tăng trưởng */}
+        <Card className="bg-white hover:shadow-md transition-shadow border-none ring-1 ring-gray-200">
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-1">MAU (Monthly Active Users)</p>
-            <p className="text-3xl font-bold">1,650</p>
-            <p className="text-sm text-green-600 mt-1">+12.5% so với tháng trước</p>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-black tracking-wider">Tăng trưởng</p>
+                <p className="text-3xl font-extrabold text-gray-900 mt-1">
+                  {stats.growthRate}%
+                </p>
+              </div>
+              <div className="bg-orange-50 p-3 rounded-xl">
+                <TrendingUp className="text-orange-600 size-6" />
+              </div>
+            </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Placeholder cho các biểu đồ API sau này */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+         <div className="h-64 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center">
+            <p className="text-gray-400 text-sm">Biểu đồ tăng trưởng (Đang đợi API dữ liệu lịch sử)</p>
+         </div>
+         <div className="h-64 bg-gray-100 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center">
+            <p className="text-gray-400 text-sm">Phân bố người dùng (Đang đợi API dữ liệu vùng miền)</p>
+         </div>
       </div>
     </div>
   );

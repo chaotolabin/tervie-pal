@@ -1,103 +1,157 @@
-import { useState } from 'react';
-import { Home, Utensils, Activity, TrendingUp, HelpCircle, LogOut, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Home, Utensils, Activity, TrendingUp, HelpCircle, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import DashboardHome from './dashboard/DashboardHome';
-import FoodLogging from './dashboard/FoodLogging';
-import ExerciseLogging from './dashboard/ExerciseLogging';
-import Progress from './dashboard/Progress';
-import HelpSupport from './dashboard/HelpSupport';
-import QuickAddModal from './dashboard/QuickAddModal';
+import api from '../lib/api';
+
+// Interface khớp với backend schemas (users.py, streak.py)
+interface UserMeResponse {
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    role: string;
+  };
+  profile: {
+    full_name: string | null;
+    gender: string | null;
+    height_cm_default: number | null;
+  };
+}
+
+interface StreakResponse {
+  current_streak: number;
+  longest_streak: number;
+  week: { day: string; status: 'green' | 'yellow' | 'gray' }[];
+}
 
 interface UserDashboardProps {
   onLogout: () => void;
 }
 
-type Tab = 'home' | 'food' | 'exercise' | 'progress' | 'help';
+type Tab = 'home' | 'food' | 'exercise' | 'progress' | 'help' | 'profile';
 
 export default function UserDashboard({ onLogout }: UserDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  
+  // State dữ liệu thực
+  const [userData, setUserData] = useState<UserMeResponse | null>(null);
+  const [streakData, setStreakData] = useState<StreakResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch dữ liệu khi load Dashboard
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Gọi song song các API cần thiết
+        const [userRes, streakRes] = await Promise.all([
+          api.get('/users/me'),
+          api.get('/streak')
+        ]);
+
+        setUserData(userRes.data);
+        setStreakData(streakRes.data);
+      } catch (error) {
+        console.error("Lỗi tải dữ liệu dashboard:", error);
+        // Nếu lỗi 401 (Unauthorized) thì logout
+        // onLogout(); 
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    onLogout();
+  };
 
   const tabs = [
-    { id: 'home', label: 'Trang chủ', icon: Home },
-    { id: 'food', label: 'Thực phẩm', icon: Utensils },
+    { id: 'home', label: 'Tổng quan', icon: Home },
+    { id: 'food', label: 'Dinh dưỡng', icon: Utensils },
     { id: 'exercise', label: 'Tập luyện', icon: Activity },
     { id: 'progress', label: 'Tiến độ', icon: TrendingUp },
     { id: 'help', label: 'Trợ giúp', icon: HelpCircle },
+    { id: 'profile', label: 'Cá nhân', icon: UserIcon },
   ];
 
   const renderContent = () => {
+    if (isLoading) {
+      return <div className="p-8 text-center">Đang tải dữ liệu...</div>;
+    }
+
     switch (activeTab) {
+      case 'profile':
+        return (
+          <div className="p-6 bg-white rounded-lg shadow">
+            <h2 className="text-2xl font-bold mb-4">Hồ sơ người dùng</h2>
+            <div className="space-y-3">
+              <div className="p-4 bg-gray-50 rounded">
+                <p className="text-sm text-gray-500">Họ và tên</p>
+                <p className="font-medium">{userData?.profile.full_name || 'Chưa cập nhật'}</p>
+              </div>
+              <div className="p-4 bg-gray-50 rounded">
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="font-medium">{userData?.user.email}</p>
+              </div>
+              <div className="p-4 bg-blue-50 rounded border border-blue-100">
+                <p className="text-sm text-blue-600">Chuỗi ngày (Streak)</p>
+                <p className="text-2xl font-bold text-blue-700">{streakData?.current_streak || 0} Ngày 🔥</p>
+              </div>
+            </div>
+            <Button onClick={handleLogout} variant="destructive" className="mt-6 w-full flex gap-2">
+               <LogOut size={16} /> Đăng xuất
+            </Button>
+          </div>
+        );
+      
       case 'home':
+        // Truyền dữ liệu xuống DashboardHome nếu component đó hỗ trợ props
         return <DashboardHome onQuickAdd={() => setShowQuickAdd(true)} />;
-      case 'food':
-        return <FoodLogging />;
-      case 'exercise':
-        return <ExerciseLogging />;
-      case 'progress':
-        return <Progress />;
-      case 'help':
-        return <HelpSupport />;
+        
       default:
-        return <DashboardHome onQuickAdd={() => setShowQuickAdd(true)} />;
+        return <div className="p-8 text-center text-gray-500">Tính năng đang phát triển</div>;
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top App Bar */}
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Activity className="size-6 text-green-600" />
-            <span className="text-xl font-bold">HealthTrack</span>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onLogout}>
-            <LogOut className="size-4 mr-2" />
-            Đăng xuất
-          </Button>
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <nav className="w-64 bg-white border-r hidden md:block">
+        <div className="p-6">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+            terviepal
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Xin chào, {userData?.user.username}</p>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 pb-24">
-        {renderContent()}
-      </main>
-
-      {/* Quick Add FAB */}
-      <button
-        onClick={() => setShowQuickAdd(true)}
-        className="fixed bottom-20 right-6 size-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-110"
-      >
-        <Plus className="size-6" />
-      </button>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-around">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as Tab)}
-                  className={`flex flex-col items-center py-3 px-4 ${
-                    isActive ? 'text-green-600' : 'text-gray-500'
-                  }`}
-                >
-                  <Icon className={`size-6 mb-1 ${isActive ? 'text-green-600' : 'text-gray-500'}`} />
-                  <span className="text-xs">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
+        <div className="space-y-1 px-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as Tab)}
+              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                activeTab === tab.id 
+                  ? 'bg-pink-50 text-pink-600 font-medium' 
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <tab.icon className="mr-3 h-5 w-5" />
+              {tab.label}
+            </button>
+          ))}
         </div>
       </nav>
 
-      {/* Quick Add Modal */}
-      <QuickAddModal open={showQuickAdd} onClose={() => setShowQuickAdd(false)} />
+      {/* Main Content */}
+      <main className="flex-1 overflow-auto p-8">
+        <div className="max-w-5xl mx-auto">
+          {renderContent()}
+        </div>
+      </main>
     </div>
   );
 }

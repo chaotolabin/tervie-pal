@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Utensils, Dumbbell, FileText, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Utensils, Dumbbell, FileText, Check, X, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
@@ -7,268 +7,177 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
 
-const pendingFoods = [
-  { id: 1, name: 'Phở bò đặc biệt', submittedBy: 'Nguyễn Văn A', calories: 450, protein: 25, carbs: 60, fat: 12, status: 'pending' },
-  { id: 2, name: 'Bánh mì pate', submittedBy: 'Trần Thị B', calories: 350, protein: 15, carbs: 45, fat: 18, status: 'pending' },
-  { id: 3, name: 'Cơm gà xối mỡ', submittedBy: 'Lê Văn C', calories: 520, protein: 30, carbs: 55, fat: 20, status: 'pending' },
-];
+// --- Định nghĩa Interfaces theo Schema API của bạn ---
 
-const pendingExercises = [
-  { id: 1, name: 'Jump Rope', submittedBy: 'Phạm Thị D', caloriesPerMin: 12, category: 'Cardio', status: 'pending' },
-  { id: 2, name: 'Plank', submittedBy: 'Hoàng Văn E', caloriesPerMin: 4, category: 'Core', status: 'pending' },
-];
+interface Nutrient {
+  nutrient_name: string;
+  unit: string;
+  amount_per_100g: number;
+}
 
-const reportedContent = [
-  { id: 1, type: 'food', content: 'Pizza 10000 calories', reportedBy: 'User123', reason: 'Thông tin sai', status: 'pending' },
-  { id: 2, type: 'exercise', content: 'Run 5000 kcal/min', reportedBy: 'User456', reason: 'Spam', status: 'pending' },
-];
+interface FoodDetail {
+  id: number;
+  name: string;
+  food_group: string | null;
+  owner_user_id: string | null;
+  nutrients: Nutrient[];
+  // Theo API, "owner_user_id" null là global food, có ID là custom food
+}
+
+interface ExerciseResponse {
+  id: number;
+  description: string;
+  major_heading: string;
+  met_value: number;
+  owner_user_id: string | null;
+}
 
 export default function Moderation() {
-  const [foods, setFoods] = useState(pendingFoods);
-  const [exercises, setExercises] = useState(pendingExercises);
-  const [reports, setReports] = useState(reportedContent);
+  const [foods, setFoods] = useState<FoodDetail[]>([]);
+  const [exercises, setExercises] = useState<ExerciseResponse[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleApproveFood = (id: number) => {
-    setFoods(foods.filter(f => f.id !== id));
-    toast.success('Đã phê duyệt thực phẩm');
+  // Giả định API kiểm duyệt lấy từ một endpoint admin
+  // Vì API bạn cung cấp là endpoint chung, tôi viết hàm fetch tổng quát
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Lưu ý: Trong thực tế bạn cần endpoint admin để lấy danh sách "pending"
+      // Ở đây tôi minh họa fetch từ route chính
+      const [foodRes, exRes] = await Promise.all([
+        fetch('/api/v1/foods/search?q=&limit=50'), 
+        fetch('/api/v1/exercises/search?q=&limit=50')
+      ]);
+
+      const foodData = await foodRes.json();
+      const exData = await exRes.json();
+
+      setFoods(foodData.items);
+      setExercises(exData.items);
+    } catch (error) {
+      toast.error('Lỗi kết nối dữ liệu');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRejectFood = (id: number) => {
-    setFoods(foods.filter(f => f.id !== id));
-    toast.warning('Đã từ chối thực phẩm');
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Xử lý Duyệt (Thường là đổi flag is_public hoặc status trong DB)
+  const handleApprove = async (type: 'foods' | 'exercises', id: number) => {
+    try {
+      // Giả định endpoint patch để duyệt
+      const res = await fetch(`/api/v1/${type}/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_public: true }) 
+      });
+
+      if (res.ok) {
+        toast.success('Đã phê duyệt nội dung');
+        if (type === 'foods') setFoods(foods.filter(f => f.id !== id));
+        else setExercises(exercises.filter(e => e.id !== id));
+      }
+    } catch (e) {
+      toast.error('Thao tác thất bại');
+    }
   };
 
-  const handleApproveExercise = (id: number) => {
-    setExercises(exercises.filter(e => e.id !== id));
-    toast.success('Đã phê duyệt bài tập');
-  };
-
-  const handleRejectExercise = (id: number) => {
-    setExercises(exercises.filter(e => e.id !== id));
-    toast.warning('Đã từ chối bài tập');
-  };
-
-  const handleResolveReport = (id: number) => {
-    setReports(reports.filter(r => r.id !== id));
-    toast.success('Đã xử lý báo cáo');
-  };
+  if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold">Kiểm duyệt nội dung</h1>
-        <p className="text-gray-600 mt-1">Phê duyệt và quản lý nội dung do người dùng tạo</p>
+        <h1 className="text-3xl font-bold">Hệ thống Kiểm duyệt</h1>
+        <p className="text-muted-foreground">Theo đúng cấu trúc API Foods & Exercises</p>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">Thực phẩm chờ duyệt</p>
-                <p className="text-3xl font-bold">{foods.length}</p>
-              </div>
-              <Utensils className="size-10 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">Bài tập chờ duyệt</p>
-                <p className="text-3xl font-bold">{exercises.length}</p>
-              </div>
-              <Dumbbell className="size-10 text-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">Báo cáo nội dung</p>
-                <p className="text-3xl font-bold">{reports.length}</p>
-              </div>
-              <FileText className="size-10 text-orange-500" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Content Tabs */}
-      <Tabs defaultValue="foods" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="foods">
-            Thực phẩm ({foods.length})
-          </TabsTrigger>
-          <TabsTrigger value="exercises">
-            Bài tập ({exercises.length})
-          </TabsTrigger>
-          <TabsTrigger value="reports">
-            Báo cáo ({reports.length})
-          </TabsTrigger>
+      <Tabs defaultValue="foods">
+        <TabsList className="w-[400px]">
+          <TabsTrigger value="foods">Thực phẩm ({foods.length})</TabsTrigger>
+          <TabsTrigger value="exercises">Bài tập ({exercises.length})</TabsTrigger>
         </TabsList>
 
-        {/* Foods Tab */}
-        <TabsContent value="foods" className="mt-6">
+        {/* Cột dữ liệu cho FOODS */}
+        <TabsContent value="foods">
           <Card>
-            <CardHeader>
-              <CardTitle>Thực phẩm chờ phê duyệt</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tên thực phẩm</TableHead>
-                    <TableHead>Người tạo</TableHead>
-                    <TableHead>Calories</TableHead>
-                    <TableHead>Protein</TableHead>
-                    <TableHead>Carbs</TableHead>
-                    <TableHead>Fat</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead>Nhóm</TableHead>
+                    <TableHead>Dinh dưỡng (100g)</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {foods.map((food) => (
                     <TableRow key={food.id}>
                       <TableCell className="font-medium">{food.name}</TableCell>
-                      <TableCell>{food.submittedBy}</TableCell>
-                      <TableCell>{food.calories} kcal</TableCell>
-                      <TableCell>{food.protein}g</TableCell>
-                      <TableCell>{food.carbs}g</TableCell>
-                      <TableCell>{food.fat}g</TableCell>
+                      <TableCell><Badge variant="outline">{food.food_group || 'N/A'}</Badge></TableCell>
                       <TableCell>
-                        <Badge variant="secondary">Chờ duyệt</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="default" onClick={() => handleApproveFood(food.id)}>
-                            <Check className="size-4 mr-1" />
-                            Duyệt
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleRejectFood(food.id)}>
-                            <X className="size-4 mr-1" />
-                            Từ chối
-                          </Button>
+                        <div className="flex flex-wrap gap-1">
+                          {food.nutrients.slice(0, 3).map((n, i) => (
+                            <span key={i} className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                              {n.nutrient_name}: {n.amount_per_100g}{n.unit}
+                            </span>
+                          ))}
+                          {food.nutrients.length > 3 && <span className="text-xs text-slate-400">...</span>}
                         </div>
                       </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {foods.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  Không có thực phẩm nào chờ phê duyệt
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Exercises Tab */}
-        <TabsContent value="exercises" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Bài tập chờ phê duyệt</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tên bài tập</TableHead>
-                    <TableHead>Người tạo</TableHead>
-                    <TableHead>Calories/phút</TableHead>
-                    <TableHead>Danh mục</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {exercises.map((exercise) => (
-                    <TableRow key={exercise.id}>
-                      <TableCell className="font-medium">{exercise.name}</TableCell>
-                      <TableCell>{exercise.submittedBy}</TableCell>
-                      <TableCell>{exercise.caloriesPerMin} kcal</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{exercise.category}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Chờ duyệt</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="default" onClick={() => handleApproveExercise(exercise.id)}>
-                            <Check className="size-4 mr-1" />
-                            Duyệt
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleRejectExercise(exercise.id)}>
-                            <X className="size-4 mr-1" />
-                            Từ chối
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {exercises.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  Không có bài tập nào chờ phê duyệt
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Reports Tab */}
-        <TabsContent value="reports" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Báo cáo nội dung</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Loại</TableHead>
-                    <TableHead>Nội dung</TableHead>
-                    <TableHead>Người báo cáo</TableHead>
-                    <TableHead>Lý do</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((report) => (
-                    <TableRow key={report.id}>
-                      <TableCell>
-                        <Badge variant="outline">{report.type === 'food' ? 'Thực phẩm' : 'Bài tập'}</Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">{report.content}</TableCell>
-                      <TableCell>{report.reportedBy}</TableCell>
-                      <TableCell>{report.reason}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">Chờ xử lý</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button size="sm" onClick={() => handleResolveReport(report.id)}>
-                          Xử lý
+                      <TableCell className="text-right space-x-2">
+                        <Button size="sm" onClick={() => handleApprove('foods', food.id)}>
+                          <Check className="size-4 mr-1" /> Duyệt
+                        </Button>
+                        <Button size="sm" variant="destructive">
+                          <X className="size-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              {reports.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  Không có báo cáo nào chờ xử lý
-                </div>
-              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Cột dữ liệu cho EXERCISES */}
+        <TabsContent value="exercises">
+          <Card>
+            <CardContent className="pt-6">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mô tả bài tập</TableHead>
+                    <TableHead>Nhóm bài tập</TableHead>
+                    <TableHead>MET Value</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {exercises.map((ex) => (
+                    <TableRow key={ex.id}>
+                      <TableCell className="font-medium">{ex.description}</TableCell>
+                      <TableCell>{ex.major_heading}</TableCell>
+                      <TableCell>
+                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">
+                          {ex.met_value} MET
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button size="sm" onClick={() => handleApprove('exercises', ex.id)}>
+                          <Check className="size-4 mr-1" /> Duyệt
+                        </Button>
+                        <Button size="sm" variant="destructive">
+                          <X className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
