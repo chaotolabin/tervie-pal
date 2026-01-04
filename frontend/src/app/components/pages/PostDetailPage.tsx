@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MessageCircle, Share2, Send, MoreVertical, Loader2, Bookmark } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, MoreVertical, Loader2, Bookmark } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { Textarea } from '../ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { toast } from 'sonner';
 import { BlogService } from '../../../service/blog.service';
@@ -14,16 +13,7 @@ interface Author {
   id: string;
   username: string;
   avatar_url?: string;
-  streak_count?: number; // Nếu backend có trả về streak của author
-}
-
-interface Comment {
-  id: number;
-  content: string;
-  created_at: string;
-  author: Author;
-  likes_count: number;
-  is_liked: boolean;
+  streak_count?: number;
 }
 
 interface PostDetail {
@@ -32,7 +22,6 @@ interface PostDetail {
   created_at: string;
   author: Author;
   likes_count: number;
-  comments_count: number;
   is_liked: boolean;
   is_saved: boolean;
   tags?: string[];
@@ -41,15 +30,12 @@ interface PostDetail {
 
 interface PostDetailPageProps {
   onBack: () => void;
-  postId?: string; // ID bài viết được truyền từ trang Feed
+  postId?: string;
 }
 
 export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) {
   const [post, setPost] = useState<PostDetail | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
 
   // 1. Fetch dữ liệu bài viết và bình luận
   useEffect(() => {
@@ -58,14 +44,12 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Sử dụng BlogService để fetch post detail
         const postData = await BlogService.getPost(postId);
         setPost(postData);
-        setComments([]); // Comments feature not implemented in backend
       } catch (error) {
         console.error("Lỗi tải bài viết:", error);
         toast.error("Không thể tải bài viết này");
-        onBack(); // Quay lại nếu lỗi
+        onBack();
       } finally {
         setLoading(false);
       }
@@ -129,24 +113,6 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
       setPost(originalPost);
       console.error("Save error:", error);
       toast.error("Lỗi khi lưu bài viết");
-    }
-  };
-
-  // 3. Xử lý Gửi bình luận
-  const handleSubmitComment = async () => {
-    if (!newComment.trim() || !post) {
-      toast.error('Vui lòng nhập nội dung');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      // Comments feature not implemented in backend
-      toast.error('Tính năng bình luận chưa được triển khai');
-    } catch (error) {
-      toast.error('Không thể gửi bình luận');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -261,11 +227,6 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
               <span className="font-medium">{post.likes_count}</span>
             </Button>
             
-            <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-blue-50 hover:text-blue-600">
-              <MessageCircle className="size-5 mr-2" />
-              <span className="font-medium">{post.comments_count}</span>
-            </Button>
-            
             <Button
               variant="ghost"
               size="sm"
@@ -278,76 +239,6 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
             <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-100">
               <Share2 className="size-5" />
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Comments Section */}
-      <Card className="border-none shadow-sm">
-        <CardHeader className="pb-2 border-b">
-          <h3 className="font-semibold text-lg text-gray-800">Bình luận</h3>
-        </CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          {/* Add Comment Input */}
-          <div className="flex gap-3">
-            <Avatar className="size-8 mt-1">
-              <AvatarFallback className="bg-gray-200">Me</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 space-y-3">
-              <Textarea
-                placeholder="Viết bình luận của bạn..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                rows={2}
-                className="resize-none bg-gray-50 border-gray-200 focus:bg-white transition-all"
-              />
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleSubmitComment}
-                  disabled={submitting || !newComment.trim()}
-                  className="bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md hover:shadow-lg transition-all"
-                  size="sm"
-                >
-                  {submitting ? <Loader2 className="size-4 animate-spin mr-2" /> : <Send className="size-4 mr-2" />}
-                  Gửi
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Comments List */}
-          <div className="space-y-6">
-            {comments.length === 0 ? (
-               <div className="text-center py-8 text-gray-400 italic">
-                 Chưa có bình luận nào. Hãy là người đầu tiên!
-               </div>
-            ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <Avatar className="size-9 border border-gray-100 flex-shrink-0">
-                    <AvatarImage src={comment.author.avatar_url} />
-                    <AvatarFallback className="bg-blue-100 text-blue-600 text-xs font-bold">
-                      {comment.author.username.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  <div className="flex-1">
-                    <div className="bg-gray-50 rounded-2xl p-3 px-4 inline-block min-w-[200px]">
-                      <div className="flex justify-between items-baseline mb-1">
-                        <span className="font-bold text-sm text-gray-900 mr-2">{comment.author.username}</span>
-                        <span className="text-[10px] text-gray-400">{formatDate(comment.created_at)}</span>
-                      </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 mt-1 ml-2 text-xs text-gray-500 font-medium">
-                      <button className="hover:text-pink-600 transition-colors">Thích</button>
-                      <button className="hover:text-blue-600 transition-colors">Trả lời</button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
           </div>
         </CardContent>
       </Card>
