@@ -5,6 +5,7 @@ import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
+import { ChatbotWidget } from './components/chatbot/ChatbotWidget';  // ✅ Import chatbot
 
 type Page = 'landing' | 'login' | 'signup' | 'dashboard' | 'admin';
 type UserRole = 'user' | 'admin' | null;
@@ -54,6 +55,7 @@ export default function App() {
     <>
       {renderPage()}
       <Toaster />
+      {isAuthenticated && <ChatbotWidget />}  {/* ✅ Thêm chatbot - chỉ hiện khi đã login */}
     </>
   );
 }

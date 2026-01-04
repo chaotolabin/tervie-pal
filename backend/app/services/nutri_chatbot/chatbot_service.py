@@ -116,7 +116,7 @@ class ChatbotService:
         
         try:
             from app.models.auth import User
-            from app.models.biometrics import BiometricsLog  # ✅ FIX: Import model biometrics
+            from app.models.biometric import BiometricsLog 
             
             # Lấy user
             user = self.db.query(User).filter(User.id == self.user_id).first()
@@ -698,18 +698,20 @@ CHỈ TRẢ JSON, KHÔNG GIẢI THÍCH:
             # Nếu user nói goal mới → Dùng goal mới
             # Nếu không → Dùng goal từ database
             final_goal = goal_type if goal_type else db_goal_type
-            final_calorie = int(db_calorie_target)
-            
-            print(f"✅ Using database: Goal={final_goal}, Calories={final_calorie}")
+            weekly_exercise_min = user_profile.get('weekly_exercise_min', 0) or 0
+            daily_exercise_burn = (weekly_exercise_min / 7) * 5
+            meal_calorie = int(db_calorie_target - daily_exercise_burn)
+
+            print(f"✅ Using database: Goal={final_goal}, Total={db_calorie_target}, Exercise burn={daily_exercise_burn:.0f}, Meal={meal_calorie}")
             
             # Tạo thực đơn
-            result = self._create_full_day_meal(final_goal, final_calorie, message)
+            result = self._create_full_day_meal(final_goal, meal_calorie, message)
             
             # Thêm prefix giải thích
             goal_viet = self._goal_to_vietnamese(final_goal)
             prefix = f"""✅ **Dựa trên mục tiêu của bạn:**
 - Mục tiêu: {goal_viet}
-- Nên ăn: **{final_calorie} calo/ngày**
+- Nên ăn: **{meal_calorie} calo/ngày**
 
 ---
 
