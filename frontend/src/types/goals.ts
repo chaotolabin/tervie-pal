@@ -48,3 +48,11 @@ export interface GoalResponse {
   created_at: string;
   updated_at: string;
 }
+
+export interface GoalPatchRequest {
+  goal_type?: GoalType;
+  baseline_activity?: ActivityLevel;
+  weekly_goal?: number;
+  target_weight_kg?: number;
+  weekly_exercise_min?: number;
+}

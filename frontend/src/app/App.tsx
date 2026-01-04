@@ -9,6 +9,7 @@ import ResetPasswordPage from './components/ResetPasswordPage';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import api from './components/lib/api';
+import { ChatbotWidget } from './components/chatbot/ChatbotWidget';
 
 type Page = 'landing' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard' | 'admin';
 type UserRole = 'user' | 'admin' | null;
@@ -19,9 +20,7 @@ export default function App() {
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Kiểm tra authentication khi app khởi động
   useEffect(() => {
-    // Kiểm tra nếu có token trong URL (reset password)
     const urlParams = new URLSearchParams(window.location.search);
     const resetToken = urlParams.get('token');
     if (resetToken && !isAuthenticated) {
@@ -34,27 +33,23 @@ export default function App() {
       const accessToken = localStorage.getItem('access_token');
       const refreshToken = localStorage.getItem('refresh_token');
 
-      // Nếu không có token nào, không cần kiểm tra
       if (!accessToken && !refreshToken) {
         setIsCheckingAuth(false);
         return;
       }
 
       try {
-        // Thử gọi API với access token hiện tại
         const userRes = await api.get('/users/me');
         const role = userRes.data.user?.role || 'user';
         
-        // Nếu thành công, đăng nhập tự động
         setIsAuthenticated(true);
         setUserRole(role as UserRole);
         setCurrentPage(role === 'admin' ? 'admin' : 'dashboard');
       } catch (error: any) {
-        // Nếu access token hết hạn, thử refresh
         if (error.response?.status === 401 && refreshToken) {
           try {
             const refreshRes = await axios.post(
-              'http://localhost:8000/api/v1/auth/refresh',
+              `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth/refresh`,
               { refresh_token: refreshToken },
               { headers: { 'Content-Type': 'application/json' } }
             );
@@ -65,7 +60,6 @@ export default function App() {
               localStorage.setItem('refresh_token', newRefreshToken);
             }
 
-            // Thử lại lấy thông tin user
             const userRes = await api.get('/users/me');
             const role = userRes.data.user?.role || 'user';
             
@@ -73,7 +67,6 @@ export default function App() {
             setUserRole(role as UserRole);
             setCurrentPage(role === 'admin' ? 'admin' : 'dashboard');
           } catch (refreshError) {
-            // Refresh token cũng không hợp lệ, xóa token và về landing
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             setIsAuthenticated(false);
@@ -81,7 +74,6 @@ export default function App() {
             setCurrentPage('landing');
           }
         } else {
-          // Lỗi khác hoặc không có refresh token, xóa token
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           setIsAuthenticated(false);
@@ -110,7 +102,6 @@ export default function App() {
   };
 
   const renderPage = () => {
-    // Hiển thị loading khi đang kiểm tra authentication
     if (isCheckingAuth) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -144,7 +135,6 @@ export default function App() {
     }
 
     if (!isAuthenticated && currentPage === 'reset-password') {
-      // Lấy token từ URL query params
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
       
@@ -170,6 +160,7 @@ export default function App() {
     <>
       {renderPage()}
       <Toaster />
+      {isAuthenticated && <ChatbotWidget />}
     </>
   );
 }

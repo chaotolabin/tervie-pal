@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     
     # Database Configuration
     DATABASE_URL: str  # URL ket noi den PostgreSQL database
+
+    # Gemini AI Configuration
+    GEMINI_API_KEY: str
+
+    # ChromaDB Configuration
+    CHROMA_DB_PATH: str = "./chroma_db"
     
     # Can cap nhat gia tri nay de phu hop voi frontend
     FRONTEND_URL: Optional[str] = "http://testUrl.com"  # URL frontend
