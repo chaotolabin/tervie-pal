@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     # Database Configuration
     DATABASE_URL: str  # URL ket noi den PostgreSQL database
 
-    # Gemini AI Configuration
-    GEMINI_API_KEY: str
+    # Gemini AI Configuration (Optional - chỉ cần khi sử dụng chatbot)
+    GEMINI_API_KEY: Optional[str] = None
 
     # ChromaDB Configuration
     CHROMA_DB_PATH: str = "./chroma_db"
