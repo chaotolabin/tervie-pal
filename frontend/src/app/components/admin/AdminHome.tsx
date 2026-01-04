@@ -70,13 +70,18 @@ export default function AdminHome() {
         });
         
         // Format daily stats for charts
-        const formatted = (dailyData.items || []).map((item: any) => ({
-          date_log: new Date(item.date_log).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-          total_users: item.total_users || 0,
-          new_users: item.new_users || 0,
-          active_users: item.active_users || 0,
-          new_posts: item.new_posts || 0
-        }));
+        // Sắp xếp theo ngày tăng dần (cũ -> mới) để biểu đồ hiển thị đúng (mới nhất bên phải)
+        const formatted = (dailyData.items || [])
+          .map((item: any) => ({
+            date_log: new Date(item.date_log).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+            date_log_raw: item.date_log, // Giữ lại để sort
+            total_users: item.total_users || 0,
+            new_users: item.new_users || 0,
+            active_users: item.active_users || 0,
+            new_posts: item.new_posts || 0
+          }))
+          .sort((a, b) => new Date(a.date_log_raw).getTime() - new Date(b.date_log_raw).getTime())
+          .map(({ date_log_raw, ...rest }) => rest); // Xóa date_log_raw sau khi sort
         setDailyStats(formatted);
       } catch (error: any) {
         console.error("Fetch Error:", error);
