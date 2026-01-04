@@ -15,7 +15,7 @@ class BiometricsRepository:
         user_id: uuid.UUID, 
         weight_kg: float, 
         height_cm: float, 
-        bmi: float  # ✅ Thêm parameter BMI (đã tính sẵn từ Service)
+        bmi: float 
     ) -> BiometricsLog:
         """Create biometrics log entry - BMI phải được tính sẵn từ Service"""
         biometric = BiometricsLog(

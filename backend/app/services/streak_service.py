@@ -50,36 +50,51 @@ class StreakService:
     @staticmethod
     def _check_today_completion(db: Session, user_id: uuid.UUID) -> bool:
         """
-        Kiểm tra nhanh: hôm nay có đủ 1 food log + 1 exercise log không?
+        Kiểm tra nhanh: hôm nay có ít nhất 1 food log HOẶC 1 exercise log không?
         Sử dụng EXISTS subquery thay vì COUNT để tối ưu performance
         """
         today = date.today()
+        return StreakService._check_date_completion(db, user_id, today)
+    
+    @staticmethod
+    def _check_date_completion(db: Session, user_id: uuid.UUID, target_date: date) -> bool:
+        """
+        Kiểm tra nhanh: một ngày cụ thể có ít nhất 1 food log HOẶC 1 exercise log không?
+        Sử dụng EXISTS subquery thay vì COUNT để tối ưu performance
         
+        Logic: Chỉ cần có food log HOẶC exercise log là hoàn thành rồi.
+        
+        Args:
+            db: Database session
+            user_id: UUID của user
+            target_date: Ngày cần kiểm tra
+        
+        Returns:
+            bool: True nếu đã có ít nhất 1 food log hoặc 1 exercise log trong ngày đó
+        """
         # EXISTS query nhanh hơn COUNT khi chỉ cần biết có/không
         has_food = db.query(
             exists().where(
                 and_(
                     FoodLogEntry.user_id == user_id,
-                    func.date(FoodLogEntry.logged_at) == today,
+                    func.date(FoodLogEntry.logged_at) == target_date,
                     FoodLogEntry.deleted_at.is_(None)
                 )
             )
         ).scalar()
         
-        if not has_food:
-            return False
-        
         has_exercise = db.query(
             exists().where(
                 and_(
                     ExerciseLogEntry.user_id == user_id,
-                    func.date(ExerciseLogEntry.logged_at) == today,
+                    func.date(ExerciseLogEntry.logged_at) == target_date,
                     ExerciseLogEntry.deleted_at.is_(None)
                 )
             )
         ).scalar()
         
-        return has_exercise
+        # Chỉ cần có food HOẶC exercise là hoàn thành
+        return has_food or has_exercise
 
     @staticmethod
     def _get_week_statuses(
@@ -93,7 +108,7 @@ class StreakService:
         Chiến lược:
         1. Query batch tất cả cached days trong 7 ngày
         2. Với ngày hôm nay: check logs nếu chưa cache
-        3. Các ngày quá khứ không cache = NONE (đã qua deadline)
+        3. Với ngày quá khứ: check logs nếu chưa cache (có thể là YELLOW nếu có log)
         """
         today = date.today()
         start_day = end_day - timedelta(days=6)
@@ -119,8 +134,12 @@ class StreakService:
                 # Tương lai => NONE
                 status = StreakStatus.NONE
             else:
-                # Quá khứ không cache => NONE (đã qua deadline, không hoàn thành)
-                status = StreakStatus.NONE
+                # Quá khứ chưa cache => check logs
+                # Nếu có log thì là YELLOW, không có thì NONE
+                if StreakService._check_date_completion(db, user_id, target_day):
+                    status = StreakStatus.YELLOW
+                else:
+                    status = StreakStatus.NONE
             
             week_days.append(StreakDayResponse(day=target_day, status=status))
         
@@ -244,19 +263,50 @@ class StreakService:
         
         Được gọi từ Food/Exercise log services khi user log thành công.
         Đây là nơi DUY NHẤT streak được tính lại (write-through cache).
+        
+        Logic:
+        - Chỉ cộng streak một lần mỗi ngày. Nếu ngày đó đã có cache (GREEN hoặc YELLOW),
+          thì không cộng nữa.
+        - Nếu log ngày hôm nay và hoàn thành → set GREEN
+        - Nếu log ngày quá khứ và hoàn thành → set YELLOW
+        - Chỉ cộng streak state khi log ngày hôm nay (GREEN)
         """
         today = date.today()
         
-        # Chỉ xử lý log cho hôm nay (không cho phép log ngày quá khứ ảnh hưởng streak)
-        if log_date != today:
+        # Không xử lý log ngày tương lai
+        if log_date > today:
             return
         
-        # Check nếu hôm nay đã hoàn thành cả food + exercise
-        if not StreakService._check_today_completion(db, user_id):
+        # Check xem ngày đó đã có cache chưa (đã cộng streak rồi)
+        existing_cache = db.query(StreakDayCache).filter(
+            and_(
+                StreakDayCache.user_id == user_id,
+                StreakDayCache.day == log_date
+            )
+        ).first()
+        
+        # Nếu đã có cache rồi (GREEN hoặc YELLOW), không cộng nữa
+        if existing_cache:
             return
         
-        # Đã hoàn thành hôm nay => cache và update streak state
-        StreakService._cache_day_and_update_streak(db, user_id, today, StreakStatus.GREEN)
+        # Check nếu ngày đó đã hoàn thành (có food log HOẶC exercise log)
+        if not StreakService._check_date_completion(db, user_id, log_date):
+            return
+        
+        # Xác định status dựa trên ngày log
+        if log_date == today:
+            # Log hôm nay → GREEN và cộng streak
+            StreakService._cache_day_and_update_streak(db, user_id, log_date, StreakStatus.GREEN)
+        else:
+            # Log ngày quá khứ → YELLOW, không cộng streak state
+            # Chỉ cache status, không update streak state
+            cache_entry = StreakDayCache(
+                user_id=user_id,
+                day=log_date,
+                status=StreakStatus.YELLOW
+            )
+            db.add(cache_entry)
+            db.commit()
 
     @staticmethod
     def _cache_day_and_update_streak(
