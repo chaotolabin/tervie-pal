@@ -1,8 +1,12 @@
-import api from '../utils/axiosInstance';
+import api from '../app/components/lib/api';
 
+// Export axios instance as default for service files
+export default api;
+
+// Also export services for backward compatibility
 export const logService = {
   // Lấy toàn bộ nhật ký ăn uống & tập luyện trong ngày
-  getDailyLogs: (date: string) => api.get(`/logs/${date}`),
+  getDailyLogs: (date: string) => api.get(`/logs/daily/${date}`),
   // Tạo log bữa ăn mới
   createFoodLog: (data: any) => api.post('/logs/food', data),
   // Lấy tóm tắt dinh dưỡng (Calories, P, C, F)
@@ -17,7 +21,7 @@ export const biometricService = {
 };
 
 export const blogService = {
-  // Lấy bảng tin (Feed)
+  // Lấy bảng tin (Feed) - endpoint là /feed vì blog router có prefix /blog
   getFeed: (params: any) => api.get('/blog/feed', { params }),
   // Like bài viết
   likePost: (postId: string) => api.post(`/blog/posts/${postId}/like`),

@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { API } from '../../lib/api-client';
-import FoodLogging from '../components/dashboard/FoodLogging';
-import ExerciseQuickAdd from '../components/dashboard/quick-add/ExerciseQuickAdd';
+import { logService } from '../../../../service/apiClient';
+import FoodLogging from '../dashboard/FoodLogging';
+import ExerciseQuickAdd from '../dashboard/quick-add/ExerciseQuickAdd';
 
 export default function DiaryPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    // Gọi endpoint /logs/{target_date}
-    API.getDailyLogs(date).then(res => setData(res.data));
+    const fetchData = async () => {
+      try {
+        // Gọi endpoint /logs/{target_date}
+        const res = await logService.getDailyLogs(date);
+        setData(res);
+      } catch (error) {
+        console.error('Error fetching daily logs:', error);
+        setData(null);
+      }
+    };
+    fetchData();
   }, [date]);
 
   if (!data) return <div>Đang tải nhật ký...</div>;

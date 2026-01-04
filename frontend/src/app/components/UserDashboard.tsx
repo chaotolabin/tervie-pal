@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Home, Utensils, Activity, TrendingUp, HelpCircle, User as UserIcon, LogOut } from 'lucide-react';
 import { Button } from './ui/button';
 import DashboardHome from './dashboard/DashboardHome';
-import api from '../lib/api';
+import api from './lib/api';
 
 // Interface khớp với backend schemas (users.py, streak.py)
 interface UserMeResponse {

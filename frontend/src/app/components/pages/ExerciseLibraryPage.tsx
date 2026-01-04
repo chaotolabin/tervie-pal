@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Search, Dumbbell, Heart, Zap, Target, Flame, Loader2, Clock, Info } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
-import { Label } from '../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
+import { Label } from '../ui/label';
 import { toast } from 'sonner';
-import api from '../../lib/api';
+import api from '../lib/api';
 
 // Định nghĩa Interface khớp với Backend response
 interface Exercise {

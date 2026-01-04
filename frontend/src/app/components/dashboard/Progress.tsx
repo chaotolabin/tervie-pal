@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { API } from '../../../lib/api';
+import api from '../lib/api';
 
 export default function Progress() {
   const [goal, setGoal] = useState<any>(null);
 
   useEffect(() => {
-    API.getGoal().then(res => setGoal(res.data));
+    api.get('/goals').then(res => setGoal(res.data)).catch(() => setGoal(null));
   }, []);
 
   if (!goal) return <div>Chưa thiết lập mục tiêu.</div>;

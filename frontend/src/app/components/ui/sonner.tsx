@@ -1,14 +1,18 @@
-"use client";
-
-import { useTheme } from "next-themes";
 import { Toaster as Sonner, ToasterProps } from "sonner";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  // Detect theme from document or default to light
+  const getTheme = (): ToasterProps["theme"] => {
+    if (typeof window !== "undefined") {
+      const isDark = document.documentElement.classList.contains("dark");
+      return isDark ? "dark" : "light";
+    }
+    return "light";
+  };
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={getTheme()}
       className="toaster group"
       style={
         {

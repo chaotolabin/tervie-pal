@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { food.service } from '../../../../service/food.service';
+import { FoodService } from '../../../../service/food.service';
 import { Search, Plus, Calculator } from 'lucide-react';
 
 export default function FoodQuickAdd() {
@@ -11,7 +11,7 @@ export default function FoodQuickAdd() {
   useEffect(() => {
     if (query.length > 1) {
       const delaySearch = setTimeout(async () => {
-        const data = await foodService.searchFoods(query);
+        const data = await FoodService.search(query);
         setResults(data.items); 
       }, 500);
       return () => clearTimeout(delaySearch);

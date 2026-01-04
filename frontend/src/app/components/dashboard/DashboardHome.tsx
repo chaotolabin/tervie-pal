@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Flame, TrendingDown, Apple, Loader2, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import StreakWidget from './StreakWidget'; // Component này tự fetch data (đã sửa ở bước trước)
 import MacroSummary from './MacroSummary';
-import api from '../../lib/api'; // Đảm bảo import đúng đường dẫn api client
+import api from '../lib/api'; // Đảm bảo import đúng đường dẫn api client
 import { toast } from 'sonner';
 
 interface DashboardHomeProps {

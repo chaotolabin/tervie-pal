@@ -8,7 +8,7 @@ import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
-import api from '../../lib/api';
+import api from '../lib/api';
 
 // --- Interfaces khớp với Backend ---
 interface ExerciseLog {

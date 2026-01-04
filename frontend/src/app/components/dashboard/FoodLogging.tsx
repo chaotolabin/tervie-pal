@@ -1,5 +1,5 @@
 import React from 'react';
-import { logService } from '../../../lib/services/api-client';
+import api from '../lib/api';
 
 export default function FoodLogging({ foodLogs }: { foodLogs: any[] }) {
   const handleDelete = async (logId: number) => {

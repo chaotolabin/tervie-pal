@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Flame, Trophy, Calendar } from 'lucide-react';
 import { Card, CardContent } from '../ui/card'; // Giả sử bạn có UI components này
 import { toast } from 'sonner';
-import api from '../../lib/api';
+import api from '../lib/api';
 
 
 interface StreakDay {

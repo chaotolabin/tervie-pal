@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { API } from '../../../../lib/api';
+import api from '../../../lib/api';
 
 export default function ExerciseQuickAdd() {
   const [exerciseSearch, setExerciseSearch] = useState('');
   
   const handleAddExercise = async (exerciseId: number) => {
     // Gọi API logExercise khớp với logs.py
-    await API.logExercise({
+    await api.post('/logs/exercise', {
       exercise_id: exerciseId,
       duration_min: 30, // Ví dụ mặc định
       logged_at: new Date().toISOString()

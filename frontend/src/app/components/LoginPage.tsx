@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
-import api from '../lib/api'; // Import axios instance
+import api from './lib/api'; // Import axios instance
 
 interface LoginPageProps {
   onLogin: (role?: 'user' | 'admin') => void;

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { blogService } from '../../lib/services/api-client';
+import { BlogService } from '../../../service/blog.service';
 
 export default function BlogPage() {
   const [feed, setFeed] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchFeed = async () => {
-      const res = await blogService.getFeed({ limit: 10 });
-      setFeed(res.data.items); // Khớp với FeedResponse schema
+      const res = await BlogService.getFeed({ limit: 10 });
+      setFeed(res.items || []); // Khớp với FeedResponse schema
     };
     fetchFeed();
   }, []);
