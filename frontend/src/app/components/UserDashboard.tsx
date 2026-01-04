@@ -7,6 +7,7 @@ import ExerciseLogging from './dashboard/ExerciseLogging';
 import Progress from './dashboard/Progress';
 import HelpSupport from './dashboard/HelpSupport';
 import QuickAddModal from './dashboard/QuickAddModal';
+import UserProfileDashboard from './pages/UserProfileDashboard';
 import api from './lib/api';
 
 // Interface khớp với backend schemas (users.py, streak.py)
@@ -91,28 +92,7 @@ export default function UserDashboard({ onLogout }: UserDashboardProps) {
 
     switch (activeTab) {
       case 'profile':
-        return (
-          <div className="p-6 bg-white rounded-lg shadow">
-            <h2 className="text-2xl font-bold mb-4">Hồ sơ người dùng</h2>
-            <div className="space-y-3">
-              <div className="p-4 bg-gray-50 rounded">
-                <p className="text-sm text-gray-500">Họ và tên</p>
-                <p className="font-medium">{userData?.profile.full_name || 'Chưa cập nhật'}</p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded">
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{userData?.user.email}</p>
-              </div>
-              <div className="p-4 bg-blue-50 rounded border border-blue-100">
-                <p className="text-sm text-blue-600">Chuỗi ngày (Streak)</p>
-                <p className="text-2xl font-bold text-blue-700">{streakData?.current_streak || 0} Ngày 🔥</p>
-              </div>
-            </div>
-            <Button onClick={handleLogout} variant="destructive" className="mt-6 w-full flex gap-2">
-               <LogOut size={16} /> Đăng xuất
-            </Button>
-          </div>
-        );
+        return <UserProfileDashboard onLogout={handleLogout} />;
       
       case 'home':
         // Truyền dữ liệu xuống DashboardHome nếu component đó hỗ trợ props

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../ui/select';
-import { X } from 'lucide-react';
+import { X, Calendar } from 'lucide-react';
 
 interface FoodAddModalProps {
   foodId: number;
@@ -42,6 +42,7 @@ export default function FoodAddModal({
   
   // Form state
   const [mealType, setMealType] = useState<string>('snacks');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [usePortion, setUsePortion] = useState<boolean>(true);
   const [selectedPortionId, setSelectedPortionId] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<string>('1');
@@ -54,9 +55,12 @@ export default function FoodAddModal({
     }
   }, [open, foodId]);
 
-  // Auto-detect meal type based on current time
+  // Auto-detect meal type based on current time and reset date when modal opens
   useEffect(() => {
     if (open) {
+      // Reset date to today when modal opens
+      setSelectedDate(new Date().toISOString().split('T')[0]);
+      
       const currentHour = new Date().getHours();
       if (currentHour >= 5 && currentHour < 10) {
         setMealType('breakfast');
@@ -126,8 +130,15 @@ export default function FoodAddModal({
         }
       ];
 
+      // Create datetime from selected date with current time
+      const selectedDateTime = new Date(selectedDate);
+      const now = new Date();
+      selectedDateTime.setHours(now.getHours());
+      selectedDateTime.setMinutes(now.getMinutes());
+      selectedDateTime.setSeconds(now.getSeconds());
+
       await LogService.addFoodLog({
-        logged_at: new Date().toISOString(),
+        logged_at: selectedDateTime.toISOString(),
         meal_type: mealType,
         items: items,
       });
@@ -314,6 +325,21 @@ export default function FoodAddModal({
                     <SelectItem value="snacks">Đồ ăn vặt</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Date Picker */}
+              <div className="space-y-2">
+                <Label htmlFor="log-date">Ngày ghi nhận</Label>
+                <div className="flex items-center gap-2">
+                  <Calendar className="size-4 text-gray-500" />
+                  <Input
+                    id="log-date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="flex-1"
+                  />
+                </div>
               </div>
 
               {/* Serving Size */}

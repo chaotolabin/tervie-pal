@@ -98,6 +98,53 @@ export default function FoodLoggingPage() {
     };
   }, [date, fetchData]);
 
+  // Helper function để lấy date từ option
+  const getDateFromOption = (option: string): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    switch (option) {
+      case 'today':
+        return today.toISOString().split('T')[0];
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+      case '2days':
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        return twoDaysAgo.toISOString().split('T')[0];
+      default:
+        return today.toISOString().split('T')[0];
+    }
+  };
+
+  // Khi selectedDateOption thay đổi, cập nhật date (trừ custom)
+  useEffect(() => {
+    if (selectedDateOption !== 'custom') {
+      const newDate = getDateFromOption(selectedDateOption);
+      setDate(newDate);
+    }
+  }, [selectedDateOption]);
+
+  // Xử lý khi thay đổi date option
+  const handleDateOptionChange = (option: string) => {
+    setSelectedDateOption(option);
+    if (option === 'custom') {
+      // Nếu chọn custom, mở date picker với ngày hiện tại
+      setCustomDate(date);
+    } else {
+      const newDate = getDateFromOption(option);
+      setDate(newDate);
+    }
+  };
+
+  // Xử lý khi thay đổi custom date
+  const handleCustomDateChange = (newDate: string) => {
+    setCustomDate(newDate);
+    setDate(newDate);
+  };
+
   if (loading) {
     return (
       <div className="p-8 text-center">
@@ -136,53 +183,6 @@ export default function FoodLoggingPage() {
     }
     return error?.message || defaultMsg;
   };
-
-  // Helper function để lấy date từ option
-  const getDateFromOption = (option: string): string => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    switch (option) {
-      case 'today':
-        return today.toISOString().split('T')[0];
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        return yesterday.toISOString().split('T')[0];
-      case '2days':
-        const twoDaysAgo = new Date(today);
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-        return twoDaysAgo.toISOString().split('T')[0];
-      default:
-        return today.toISOString().split('T')[0];
-    }
-  };
-
-  // Xử lý khi thay đổi date option
-  const handleDateOptionChange = (option: string) => {
-    setSelectedDateOption(option);
-    if (option === 'custom') {
-      // Nếu chọn custom, mở date picker với ngày hiện tại
-      setCustomDate(date);
-    } else {
-      const newDate = getDateFromOption(option);
-      setDate(newDate);
-    }
-  };
-
-  // Xử lý khi thay đổi custom date
-  const handleCustomDateChange = (newDate: string) => {
-    setCustomDate(newDate);
-    setDate(newDate);
-  };
-
-  // Khi selectedDateOption thay đổi, cập nhật date (trừ custom)
-  useEffect(() => {
-    if (selectedDateOption !== 'custom') {
-      const newDate = getDateFromOption(selectedDateOption);
-      setDate(newDate);
-    }
-  }, [selectedDateOption]);
 
   return (
     <div className="space-y-6 p-4">
