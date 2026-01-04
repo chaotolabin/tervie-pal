@@ -1,0 +1,161 @@
+import { useState, useEffect } from 'react';
+import { Flame, Trophy, Activity, Users, Calendar, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+
+interface StreakSummary {
+  avg_current_streak: number;
+  max_longest_streak: number;
+  total_users_active: number;
+}
+
+interface StreakDistribution {
+  range: string;
+  count: number;
+}
+
+interface ActivityStatus {
+  date: string;
+  green_count: number;  // Status: green (đúng hạn)
+  yellow_count: number; // Status: yellow (trễ)
+}
+
+export default function Analytics() {
+  const [summary, setSummary] = useState<StreakSummary | null>(null);
+  const [distribution, setDistribution] = useState<StreakDistribution[]>([]);
+  const [activity, setActivity] = useState<ActivityStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      setLoading(true);
+      try {
+        // Giả định bạn có một endpoint admin tổng hợp các model này
+        const response = await fetch('/api/v1/admin/analytics/dashboard');
+        const data = await response.json();
+        
+        setSummary(data.summary);
+        setDistribution(data.distribution);
+        setActivity(data.activity);
+      } catch (error) {
+        console.error("Lỗi lấy dữ liệu từ Backend:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, []);
+
+  const COLORS = ['#22c55e', '#eab308', '#94a3b8']; // Green, Yellow, Gray
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-96">
+      <Loader2 className="animate-spin text-blue-500 size-10 mb-4" />
+      <p className="text-slate-500">Đang tải dữ liệu từ hệ thống Streak...</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 p-6">
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight">Thống kê Hệ thống</h1>
+        <p className="text-muted-foreground">Dữ liệu tổng hợp từ UserStreakState và StreakDayCache</p>
+      </header>
+
+      {/* 1. Metric Cards: Lấy từ UserStreakState */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-orange-100 bg-orange-50/30">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-orange-600 uppercase">Streak TB hiện tại</p>
+                <h3 className="text-3xl font-bold text-orange-700 mt-1">{summary?.avg_current_streak.toFixed(1)}</h3>
+              </div>
+              <Flame className="size-8 text-orange-500 fill-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-yellow-100 bg-yellow-50/30">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-yellow-600 uppercase">Kỷ lục Hệ thống</p>
+                <h3 className="text-3xl font-bold text-yellow-700 mt-1">{summary?.max_longest_streak} ngày</h3>
+              </div>
+              <Trophy className="size-8 text-yellow-500 fill-yellow-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-blue-100 bg-blue-50/30">
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-blue-600 uppercase">User đang hoạt động</p>
+                <h3 className="text-3xl font-bold text-blue-700 mt-1">{summary?.total_users_active}</h3>
+              </div>
+              <Users className="size-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 2. Biểu đồ phân bổ Streak: Dựa trên current_streak của users */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Activity className="size-5" /> Phân bổ độ chăm chỉ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={distribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="count"
+                  nameKey="range"
+                >
+                  {distribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend verticalAlign="bottom" height={36}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* 3. Biểu đồ Trạng thái: Dựa trên StreakDayCache (Green vs Yellow) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Calendar className="size-5" /> Chất lượng hoàn thành (7 ngày qua)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={activity}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="green_count" name="Đúng hạn (Green)" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="yellow_count" name="Trễ hạn (Yellow)" fill="#eab308" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

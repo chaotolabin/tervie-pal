@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.auth import User
 from app.services.foods import FoodService, FoodPortionService, FoodNutrientService
-from app.schemas.food_schema import (
+from app.schemas.food import (
     FoodSearchResponse,
     FoodListItem,
     FoodCreateRequest,

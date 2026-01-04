@@ -269,6 +269,20 @@ class Goal(Base, TimestampMixin):
         comment="Mục tiêu kg/tuần (0.25 - 1.0) cho lose/gain weight"
     )
     
+    baseline_activity: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        default="low_active",
+        comment="Mức độ hoạt động: sedentary, low_active, moderately_active, very_active, extremely_active"
+    )
+    
+    weekly_goal: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(3, 2),
+        nullable=True,
+        default=0.5,
+        comment="Mục tiêu kg/tuần (0.25 - 1.0) cho lose/gain weight"
+    )
+    
     target_weight_kg: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(5, 2),
         nullable=True,

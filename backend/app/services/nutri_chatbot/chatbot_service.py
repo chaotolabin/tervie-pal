@@ -85,10 +85,11 @@ class ChatbotService:
         """
         ✅ FIXED: Lấy FULL thông tin user từ database
         
-        Lấy từ 3 bảng:
+        Lấy từ 4 bảng:
+        - users: username, email
         - profiles: full_name, gender, date_of_birth, height_cm_default
         - goals: goal_type, daily_calorie_target, baseline_activity, weekly_goal, macros
-        - biometrics_logs: weight_kg, bmi (record mới nhất)
+        - biometrics_logs: weight_kg, bmi (record mới nhất) - QUERY TRỰC TIẾP
         
         Returns:
             dict: {
@@ -101,7 +102,7 @@ class ChatbotService:
                 'height_cm': float,
                 'weight_kg': float,
                 'bmi': float,
-                'goal_type': str,  # 'lose_weight', 'gain_muscle', 'maintain_weight', 'gain_weight'
+                'goal_type': str,
                 'daily_calorie_target': float,
                 'baseline_activity': str,
                 'weekly_goal': float,
@@ -115,33 +116,33 @@ class ChatbotService:
         
         try:
             from app.models.auth import User
-            from sqlalchemy.orm import joinedload
+            from app.models.biometrics import BiometricsLog  # ✅ FIX: Import model biometrics
             
-            # Lấy user với eager loading
+            # Lấy user
             user = self.db.query(User).filter(User.id == self.user_id).first()
             if not user:
                 return None
             
-            # Lấy profile
+            # Lấy profile (dùng relationship - đã có sẵn trong User model)
             profile = None
             if hasattr(user, 'profile') and user.profile:
                 profile = user.profile
             
-            # Lấy goals
+            # Lấy goals (dùng relationship - đã có sẵn trong User model)
             goals = None
             if hasattr(user, 'goal') and user.goal:
                 goals = user.goal
             
-            # Lấy biometrics mới nhất
-            biometrics = None
-            if hasattr(user, 'biometrics_logs') and user.biometrics_logs:
-                # Sort by logged_at desc
-                sorted_logs = sorted(user.biometrics_logs, 
-                                   key=lambda x: x.logged_at if hasattr(x, 'logged_at') else x.created_at, 
-                                   reverse=True)
-                biometrics = sorted_logs[0] if sorted_logs else None
+            # ✅ FIX: Query biometrics_logs trực tiếp từ database
+            # KHÔNG dùng relationship vì User model không có biometrics_logs
+            biometrics = (
+                self.db.query(BiometricsLog)
+                .filter(BiometricsLog.user_id == self.user_id)
+                .order_by(BiometricsLog.logged_at.desc())
+                .first()
+            )
             
-            # Tính tuổi
+            # Tính tuổi từ date_of_birth
             age = None
             if profile and hasattr(profile, 'date_of_birth') and profile.date_of_birth:
                 from datetime import date
@@ -149,7 +150,7 @@ class ChatbotService:
                 dob = profile.date_of_birth
                 age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
             
-            # Build result
+            # Build result dictionary
             return {
                 'user_id': user.id,
                 'username': user.username,
@@ -157,13 +158,13 @@ class ChatbotService:
                 'full_name': profile.full_name if profile and hasattr(profile, 'full_name') else None,
                 'gender': profile.gender if profile and hasattr(profile, 'gender') else None,
                 'age': age,
-                'height_cm': profile.height_cm_default if profile and hasattr(profile, 'height_cm_default') else None,
-                'weight_kg': float(biometrics.weight_kg) if biometrics and hasattr(biometrics, 'weight_kg') else None,
-                'bmi': float(biometrics.bmi) if biometrics and hasattr(biometrics, 'bmi') else None,
+                'height_cm': float(profile.height_cm_default) if profile and hasattr(profile, 'height_cm_default') and profile.height_cm_default else None,
+                'weight_kg': float(biometrics.weight_kg) if biometrics and hasattr(biometrics, 'weight_kg') and biometrics.weight_kg else None,
+                'bmi': float(biometrics.bmi) if biometrics and hasattr(biometrics, 'bmi') and biometrics.bmi else None,
                 'goal_type': goals.goal_type if goals and hasattr(goals, 'goal_type') else None,
                 'daily_calorie_target': float(goals.daily_calorie_target) if goals and hasattr(goals, 'daily_calorie_target') else None,
                 'baseline_activity': goals.baseline_activity if goals and hasattr(goals, 'baseline_activity') else None,
-                'weekly_goal': float(goals.weekly_goal) if goals and hasattr(goals, 'weekly_goal') else None,
+                'weekly_goal': float(goals.weekly_goal) if goals and hasattr(goals, 'weekly_goal') and goals.weekly_goal else None,
                 'protein_grams': float(goals.protein_grams) if goals and hasattr(goals, 'protein_grams') and goals.protein_grams else None,
                 'fat_grams': float(goals.fat_grams) if goals and hasattr(goals, 'fat_grams') and goals.fat_grams else None,
                 'carb_grams': float(goals.carb_grams) if goals and hasattr(goals, 'carb_grams') and goals.carb_grams else None,
@@ -209,6 +210,25 @@ class ChatbotService:
         result = ""
         for i, food in enumerate(foods, 1):
             result += f"{i}. {food['name']}: {food['calories']}cal, {food['protein']}g protein\n"
+        return result.strip()
+    
+    def _format_foods_with_macros(self, foods):
+        """
+        ✅ NEW: Helper format foods với đầy đủ macros
+        
+        Args:
+            foods (list): Danh sách food dictionaries
+        
+        Returns:
+            str: Danh sách formatted với macros đầy đủ
+        """
+        if not foods:
+            return "(Không có món phù hợp)"
+        
+        result = ""
+        for i, food in enumerate(foods, 1):
+            result += f"{i}. {food['name']}\n"
+            result += f"   📊 {food['calories']}cal | {food['protein']}g protein | {food['carbs']}g carbs | {food['fat']}g fat\n\n"
         return result.strip()
     
     # ========== HANDLER: SOCIAL ==========
@@ -340,6 +360,8 @@ Nhiệm vụ của bạn là phản hồi các câu giao tiếp xã hội của 
     
     def _handle_calorie_based_recommendation(self, message, entities):
         """
+        ✅ ENHANCED: Hiển thị đầy đủ macros
+        
         Handler cho CALORIE_BASED_RECOMMENDATION intent
         
         Xử lý: Gợi ý món ăn theo khoảng calo
@@ -373,16 +395,17 @@ Nhiệm vụ của bạn là phản hồi các câu giao tiếp xã hội của 
                 "data": []
             }
         
-        # Build context cho Gemini
+        # Build context cho Gemini - ENHANCED với đầy đủ macros
         comparison_text = {'under': 'dưới', 'around': 'khoảng', 'above': 'trên'}
         
         context = f"Các món {comparison_text[comparison]} {target_calories} calo:\n\n"
         for i, food in enumerate(foods[:8], 1):
-            context += f"{i}. {food['name']}: {food['calories']}cal, {food['protein']}g protein, Group: {food['group']}\n"
+            context += f"{i}. {food['name']}\n"
+            context += f"   📊 {food['calories']}cal | {food['protein']}g protein | {food['carbs']}g carbs | {food['fat']}g fat\n\n"
         
-        # Generate response bằng Gemini
+        # Generate response bằng Gemini - ✅ PROMPT ENHANCED
         prompt = f"""
-Bạn là chuyên gia dinh dưỡng. Gợi ý 3-4 món ăn phù hợp.
+Bạn là chuyên gia dinh dưỡng. Gợi ý món ăn phù hợp.
 
 YÊU CẦU: "{message}"
 MỤC TIÊU: {comparison_text[comparison]} {target_calories} calo
@@ -391,19 +414,23 @@ CÁC MÓN KHẢ DỤNG:
 {context}
 
 QUY TẮC QUAN TRỌNG:
-- Chọn 3-4 món từ NHÓM KHÁC NHAU
-- ƯU TIÊN: Thịt, Cá, Trứng, Rau, Ngũ cốc
-- TRÁNH: KHÔNG chọn 2 món cùng là "Snacks"
-- Mỗi món: 1 câu giải thích NGẮN tại sao phù hợp
-- Format:
+1. Chọn 3-4 món từ NHÓM KHÁC NHAU
+2. ƯU TIÊN: Thịt, Cá, Trứng, Rau, Ngũ cốc
+3. TRÁNH: KHÔNG chọn 2 món cùng là "Snacks"
+4. Format BẮT BUỘC:
 
-1. **Tên món** - X calo
-   Lý do phù hợp (1 câu ngắn).
+**1. [Tên món]**
+📊 Calo: X kcal | Protein: Xg | Carbs: Xg | Fat: Xg
+✅ Lý do phù hợp: [1 câu ngắn]
 
-2. **Tên món** - X calo
-   Lý do phù hợp (1 câu ngắn).
+**2. [Tên món]**
+📊 Calo: X kcal | Protein: Xg | Carbs: Xg | Fat: Xg
+✅ Lý do phù hợp: [1 câu ngắn]
 
-KHÔNG dài dòng.
+QUY TẮC:
+- BẮT BUỘC hiển thị đầy đủ: Calo + Protein + Carbs + Fat
+- Giải thích ngắn gọn tại sao phù hợp
+- KHÔNG dài dòng
 
 TRẢ LỜI:
 """
@@ -420,12 +447,17 @@ TRẢ LỜI:
     
     def _handle_goal_based_recommendation(self, message, entities):
         """
-        ✅ FIXED: Ưu tiên goal từ database
+        ✅ COMPLETELY REWRITTEN: Gợi ý theo CATEGORY, KHÔNG phải món cụ thể
         
         Handler cho GOAL_BASED_RECOMMENDATION intent
         
-        Xử lý: Gợi ý món ăn theo mục tiêu sức khỏe
-        VD: "Tôi nên ăn gì để giảm cân?", "Món cho người tập gym"
+        Xử lý: Gợi ý NHÓM món ăn theo mục tiêu sức khỏe
+        VD: "Tôi muốn giảm cân?", "Tôi muốn tăng cân, nên ăn gì?"
+        
+        Response format:
+        - Giới thiệu nhóm protein: Gà, cá, trứng...
+        - Giới thiệu nhóm carbs: Cơm, mì, khoai...
+        - Giới thiệu nhóm rau: Salad, súp lơ, cải...
         
         Args:
             message (str): Tin nhắn từ user
@@ -434,7 +466,7 @@ TRẢ LỜI:
             }
         
         Returns:
-            dict: Response với danh sách món được gợi ý
+            dict: Response với danh sách món được gợi ý theo category
         """
         
         goal = entities.get('goal')
@@ -448,21 +480,46 @@ TRẢ LỜI:
             else:
                 goal = 'maintain_weight'
         
-        # Build search query dựa trên goal
-        goal_to_query = {
-            'lose_weight': 'high protein low calorie low carbs food',
-            'gain_muscle': 'high protein food muscle building',
-            'gain_weight': 'high calorie nutritious food',
-            'maintain_weight': 'healthy balanced nutritious food',
-        }
+        print(f"🎯 Goal-based recommendation for: {goal}")
         
-        query = goal_to_query.get(goal, 'healthy balanced nutritious food')
+        # ✅ Search theo 3 CATEGORY: Protein + Carbs + Veggie
+        # Mỗi category search với calorie estimate phù hợp
         
-        # Search món ăn (với randomize để đa dạng)
-        print(f"🔍 Searching for goal '{goal}': {query}")
-        foods = self.rag_service.search_foods(query, top_k=10, randomize=True)
+        # 1. PROTEIN - Luôn quan trọng cho mọi goal
+        protein_cal = 200 if goal == 'lose_weight' else 300
+        protein_foods = self.rag_service.search_by_goal_and_calories(
+            goal=goal,
+            target_calories=protein_cal,
+            meal_type='lunch',
+            food_category='protein',
+            comparison='around',
+            top_k=8
+        )
         
-        if not foods:
+        # 2. CARBS - Điều chỉnh theo goal
+        carbs_cal = 150 if goal == 'lose_weight' else 250
+        carbs_foods = self.rag_service.search_by_goal_and_calories(
+            goal=goal,
+            target_calories=carbs_cal,
+            meal_type='lunch',
+            food_category='carbs',
+            comparison='around',
+            top_k=8
+        )
+        
+        # 3. VEGGIE - Ít calo, nhiều chất xơ
+        veggie_foods = self.rag_service.search_by_goal_and_calories(
+            goal=goal,
+            target_calories=80,
+            meal_type='lunch',
+            food_category='veggie',
+            comparison='around',
+            top_k=6
+        )
+        
+        print(f"📊 Found: Protein={len(protein_foods)}, Carbs={len(carbs_foods)}, Veggie={len(veggie_foods)}")
+        
+        if not (protein_foods or carbs_foods or veggie_foods):
             return {
                 "response": "Mình không tìm được món phù hợp. Bạn mô tả cụ thể hơn được không?",
                 "intent": "GOAL_BASED_RECOMMENDATION",
@@ -471,35 +528,70 @@ TRẢ LỜI:
         
         goal_viet = self._goal_to_vietnamese(goal)
         
-        # Build context cho Gemini
-        context = f"Các món cho mục tiêu {goal_viet}:\n\n"
-        for i, food in enumerate(foods[:8], 1):
-            context += f"{i}. {food['name']}: {food['calories']}cal, {food['protein']}g protein, Group: {food['group']}\n"
+        # ✅ Build context với 3 CATEGORY riêng biệt
+        context = f"""
+**NHÓM 1: PROTEIN** (Thịt, Cá, Trứng - Xây dựng cơ bắp)
+{self._format_foods_with_macros(protein_foods[:5])}
+
+**NHÓM 2: CARBS** (Cơm, Mì, Khoai - Cung cấp năng lượng)
+{self._format_foods_with_macros(carbs_foods[:5])}
+
+**NHÓM 3: RAUCU** (Rau xanh, Salad - Vitamin & Chất xơ)
+{self._format_foods_with_macros(veggie_foods[:4])}
+"""
         
-        # Generate response bằng Gemini
+        # ✅ NEW PROMPT: Gợi ý theo CATEGORY, KHÔNG gợi ý món cụ thể
         prompt = f"""
-Bạn là chuyên gia dinh dưỡng. Gợi ý món cho mục tiêu sức khỏe.
+Bạn là chuyên gia dinh dưỡng. Tư vấn NHÓM món ăn phù hợp với mục tiêu.
 
 YÊU CẦU: "{message}"
 MỤC TIÊU: {goal_viet}
 
-CÁC MÓN KHẢ DỤNG:
+CÁC NHÓM MÓN ĂN:
 {context}
 
-QUY TẮC QUAN TRỌNG:
-- Chọn 3-4 món từ NHÓM KHÁC NHAU
-- ƯU TIÊN: Thịt, Cá, Trứng, Rau, Trái cây, Ngũ cốc
-- TRÁNH: KHÔNG chọn 2 món cùng là "Snacks"
-- Mỗi món: 1 câu giải thích TẠI SAO phù hợp với {goal_viet}
-- Format:
+QUY TẮC BẮT BUỘC:
+1. Giới thiệu 3 NHÓM món ăn (Protein, Carbs, Rau)
+2. MỖI NHÓM:
+   - Giải thích TẠI SAO quan trọng với {goal_viet}
+   - Liệt kê 3-5 món TIÊU BIỂU với đầy đủ macros
+   - 1 câu khuyên cách ăn
 
-1. **Tên món** - X calo
-   ✅ Lý do phù hợp (1 câu ngắn).
+3. Format BẮT BUỘC:
 
-2. **Tên món** - X calo
-   ✅ Lý do phù hợp (1 câu ngắn).
+💪 **NHÓM PROTEIN** (Xây dựng cơ bắp, no lâu)
+Để {goal_viet}, bạn nên tập trung vào protein vì [lý do ngắn].
 
-Tập trung vào TẠI SAO phù hợp với mục tiêu.
+Một số món gợi ý:
+• **[Tên món]** - X kcal | Xg protein | Xg carbs | Xg fat
+• **[Tên món]** - X kcal | Xg protein | Xg carbs | Xg fat
+• **[Tên món]** - X kcal | Xg protein | Xg carbs | Xg fat
+
+💡 Lưu ý: [1 câu khuyên]
+
+🍚 **NHÓM CARBS** (Năng lượng cho hoạt động)
+[Giải thích tại sao quan trọng với {goal_viet}]
+
+Một số món gợi ý:
+• **[Tên món]** - X kcal | Xg protein | Xg carbs | Xg fat
+• **[Tên món]** - X kcal | Xg protein | Xg carbs | Xg fat
+
+💡 Lưu ý: [1 câu khuyên]
+
+🥗 **NHÓM RAU CỦ** (Vitamin, chất xơ, ít calo)
+[Giải thích tại sao quan trọng với {goal_viet}]
+
+Một số món gợi ý:
+• **[Tên món]** - X kcal | Xg protein | Xg carbs | Xg fat
+• **[Tên món]** - X kcal | Xg protein | Xg carbs | Xg fat
+
+💡 Lưu ý: [1 câu khuyên]
+
+QUY TẮC:
+- BẮT BUỘC hiển thị đầy đủ: Calo + Protein + Carbs + Fat
+- Giải thích TẠI SAO nhóm này quan trọng với {goal_viet}
+- Ngắn gọn, dễ hiểu
+- CHỈ CHỌN TỪ DANH SÁCH ĐÃ CHO
 
 TRẢ LỜI:
 """
@@ -509,7 +601,11 @@ TRẢ LỜI:
         return {
             "response": response.text.strip(),
             "intent": "GOAL_BASED_RECOMMENDATION",
-            "data": foods
+            "data": {
+                "protein": protein_foods[:5],
+                "carbs": carbs_foods[:5],
+                "veggie": veggie_foods[:4]
+            }
         }
     
     # ========== HANDLER: MEAL_PLAN_REQUEST ==========
@@ -643,7 +739,7 @@ Sau đó bạn quay lại đây, mình sẽ tạo thực đơn phù hợp ngay! 
     
     def _create_full_day_meal(self, goal, total_calories, message):
         """
-        ✅ ENHANCED: Tạo thực đơn 4 bữa với phân loại chi tiết
+        ✅ ENHANCED: Tạo thực đơn 4 bữa - CHỈ SỬA PROMPT (in thêm macros)
         
         Cấu trúc:
         - SÁNG (25%): 1-2 món
@@ -768,40 +864,40 @@ Sau đó bạn quay lại đây, mình sẽ tạo thực đơn phù hợp ngay! 
                 "data": []
             }
         
-        # Build context cho Gemini
+        # ✅ Build context với đầy đủ macros
         context = f"""
 🌅 MÓN SÁNG (~{breakfast_cal} calo - CHỌN 1-2 MÓN):
-{self._format_foods(breakfast_foods[:8])}
+{self._format_foods_with_macros(breakfast_foods[:8])}
 
 🍽️ BỮA TRƯA (~{lunch_cal} calo - CHỌN 3 MÓN):
 
 **1. MÓN PROTEIN (~{lunch_protein_cal} cal - CHỌN 1):**
-{self._format_foods(lunch_protein[:5])}
+{self._format_foods_with_macros(lunch_protein[:5])}
 
 **2. MÓN CARBS/TINH BỘT (~{lunch_carbs_cal} cal - CHỌN 1):**
-{self._format_foods(lunch_carbs[:5])}
+{self._format_foods_with_macros(lunch_carbs[:5])}
 
 **3. MÓN RAU (~{lunch_veggie_cal} cal - CHỌN 1):**
-{self._format_foods(lunch_veggie[:5])}
+{self._format_foods_with_macros(lunch_veggie[:5])}
 
 🍎 SNACK (~{snack_cal} calo - CHỌN 1 MÓN):
-{self._format_foods(snack_foods[:8])}
+{self._format_foods_with_macros(snack_foods[:8])}
 
 🌙 BỮA TỐI (~{dinner_cal} calo - CHỌN 3 MÓN):
 
 **1. MÓN PROTEIN (~{dinner_protein_cal} cal - CHỌN 1):**
-{self._format_foods(dinner_protein[:5])}
+{self._format_foods_with_macros(dinner_protein[:5])}
 
 **2. MÓN CARBS/TINH BỘT (~{dinner_carbs_cal} cal - CHỌN 1):**
-{self._format_foods(dinner_carbs[:5])}
+{self._format_foods_with_macros(dinner_carbs[:5])}
 
 **3. MÓN RAU (~{dinner_veggie_cal} cal - CHỌN 1):**
-{self._format_foods(dinner_veggie[:5])}
+{self._format_foods_with_macros(dinner_veggie[:5])}
 """
         
         goal_viet = self._goal_to_vietnamese(goal) if goal else 'lành mạnh'
         
-        # Generate meal plan bằng Gemini
+        # ✅ ENHANCED PROMPT: Hiển thị đầy đủ macros
         prompt = f"""
 Bạn là chuyên gia dinh dưỡng chuyên nghiệp. Tạo thực đơn cả ngày.
 
@@ -823,38 +919,52 @@ QUY TẮC BẮT BUỘC:
    - 1 món PROTEIN (từ danh sách Protein)
    - 1 món CARBS/TINH BỘT (từ danh sách Carbs)
    - 1 món RAU (từ danh sách Rau)
-5. Giải thích NGẮN (1 câu) tại sao phù hợp
-6. CHỈ CHỌN TỪ DANH SÁCH ĐÃ CHO
-
-Format bắt buộc:
+5. CHỈ CHỌN TỪ DANH SÁCH ĐÃ CHO
+6. Format BẮT BUỘC (có đầy đủ macros):
 
 🌅 **BỮA SÁNG** (~{breakfast_cal} cal)
-**Tên món** - X cal
-Lý do ngắn.
+**[Tên món]**
+📊 X kcal | Xg protein | Xg carbs | Xg fat
+✅ Lý do ngắn gọn (1 câu).
 
 🍽️ **BỮA TRƯA** (~{lunch_cal} cal)
-1. **PROTEIN: Tên món** - X cal
-   Lý do ngắn.
-2. **CARBS: Tên món** - X cal
-   Lý do ngắn.
-3. **RAU: Tên món** - X cal
-   Lý do ngắn.
+1. **PROTEIN: [Tên món]**
+   📊 X kcal | Xg protein | Xg carbs | Xg fat
+   ✅ Lý do ngắn.
+   
+2. **CARBS: [Tên món]**
+   📊 X kcal | Xg protein | Xg carbs | Xg fat
+   ✅ Lý do ngắn.
+   
+3. **RAU: [Tên món]**
+   📊 X kcal | Xg protein | Xg carbs | Xg fat
+   ✅ Lý do ngắn.
 
 🍎 **SNACK** (~{snack_cal} cal)
-**Tên món** - X cal
-Lý do ngắn.
+**[Tên món]**
+📊 X kcal | Xg protein | Xg carbs | Xg fat
+✅ Lý do ngắn.
 
 🌙 **BỮA TỐI** (~{dinner_cal} cal)
-1. **PROTEIN: Tên món** - X cal
-   Lý do ngắn.
-2. **CARBS: Tên món** - X cal
-   Lý do ngắn.
-3. **RAU: Tên món** - X cal
-   Lý do ngắn.
+1. **PROTEIN: [Tên món]**
+   📊 X kcal | Xg protein | Xg carbs | Xg fat
+   ✅ Lý do ngắn.
+   
+2. **CARBS: [Tên món]**
+   📊 X kcal | Xg protein | Xg carbs | Xg fat
+   ✅ Lý do ngắn.
+   
+3. **RAU: [Tên món]**
+   📊 X kcal | Xg protein | Xg carbs | Xg fat
+   ✅ Lý do ngắn.
 
-📊 **TỔNG:** ~{total_calories} cal
+📊 **TỔNG CỘNG:** ~{total_calories} cal | [Tổng protein]g protein | [Tổng carbs]g carbs | [Tổng fat]g fat
 
-KHÔNG dài dòng.
+QUY TẮC:
+- BẮT BUỘC hiển thị: Calo + Protein + Carbs + Fat cho MỖI món
+- Tính TỔNG CỘNG cuối cùng (tổng các macros)
+- Giải thích ngắn gọn tại sao phù hợp
+- KHÔNG dài dòng
 
 TRẢ LỜI:
 """

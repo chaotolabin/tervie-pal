@@ -12,11 +12,13 @@ from fastapi import HTTPException, status
 from app.models.log import ExerciseLogEntry, ExerciseLogItem
 from app.models.exercise import Exercise
 from app.models.biometric import BiometricsLog
-from app.schemas.log_schema import (
+from app.schemas.log import (
     ExerciseLogEntryCreate,
     ExerciseLogEntryPatch,
     ExerciseLogItemUpdate
 )
+
+from app.services.streak_service import StreakService
 
 
 class ExerciseLogService:
@@ -115,6 +117,11 @@ class ExerciseLogService:
         
         # 5. Commit transaction
         db.commit()
+        
+        # Update streak nếu log cho hôm nay
+        log_date = data.logged_at.date() if isinstance(data.logged_at, datetime) else data.logged_at
+        StreakService.update_streak_on_log(db, user_id, log_date)
+        
         db.refresh(entry)
         
         return entry
@@ -250,11 +257,26 @@ class ExerciseLogService:
         # Get entry (check ownership)
         entry = ExerciseLogService.get_exercise_log_by_id(db, entry_id, user_id)
         
+        # Lưu ngày cũ trước khi update (để kiểm tra streak)
+        old_log_date = None
+        if data.logged_at is not None:
+            old_log_date = entry.logged_at.date() if isinstance(entry.logged_at, datetime) else entry.logged_at
+        
         # Update fields (chỉ update field không None)
         if data.logged_at is not None:
             entry.logged_at = data.logged_at
         
         db.commit()
+        
+        # Update streak nếu thay đổi logged_at và ảnh hưởng đến hôm nay
+        if data.logged_at is not None:
+            new_log_date = data.logged_at.date() if isinstance(data.logged_at, datetime) else data.logged_at
+            today = date.today()
+            
+            # Nếu ngày cũ là hôm nay hoặc ngày mới là hôm nay, cần update streak
+            if (old_log_date == today) or (new_log_date == today):
+                StreakService.update_streak_on_log(db, user_id, today)
+        
         db.refresh(entry)
         
         return entry
@@ -378,6 +400,9 @@ class ExerciseLogService:
         """
         Xóa buổi tập (soft delete)
         
+        Chỉ cho phép xóa log của hôm nay. Không cho phép xóa log của những ngày trước.
+        Khi xóa log, streak cache vẫn được giữ nguyên (không bị mất streak khi xóa log).
+        
         Args:
             db: Database session
             entry_id: ID của entry
@@ -385,11 +410,26 @@ class ExerciseLogService:
         
         Raises:
             404: Nếu không tìm thấy hoặc không có quyền
+            400: Nếu cố gắng xóa log của ngày trước (chỉ cho phép xóa log của hôm nay)
         """
         # Get entry (check ownership)
         entry = ExerciseLogService.get_exercise_log_by_id(db, entry_id, user_id)
+        
+        # Lưu log_date trước khi xóa
+        log_date = entry.logged_at.date() if isinstance(entry.logged_at, datetime) else entry.logged_at
+        today = date.today()
+        
+        # Chỉ cho phép xóa log của hôm nay
+        if log_date != today:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Chỉ có thể xóa log của ngày hôm nay. Không thể xóa log của những ngày trước."
+            )
         
         # Soft delete
         entry.deleted_at = datetime.now(timezone.utc)
         
         db.commit()
+        
+        # Không update streak khi xóa log
+        # Streak cache vẫn được giữ nguyên (không bị mất streak khi xóa log)

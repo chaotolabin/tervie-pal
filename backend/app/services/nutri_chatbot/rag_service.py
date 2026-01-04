@@ -49,7 +49,7 @@ class RAGService:
     FALSE_VEGGIE_KEYWORDS = [
         'dressing', 'sauce', 'mayo', 'mayonnaise', 'ketchup',
         'mustard', 'relish', 'gravy', 'butter', 'oil',
-        'sốt', 'tương', 'dầu'
+        'sốt', 'tương', 'dầu', 'Fast'
     ]
     
     def __init__(self, db: Session):
@@ -134,11 +134,14 @@ class RAGService:
             
             food_dict = self.db_adapter._to_chatbot_format(db_food)
             food_dict['similarity'] = 1 - distance
+
+            name_lower = food_dict['name'].lower()
+            if any(kw in name_lower for kw in self.BLACKLIST_KEYWORDS):
+                continue
+            
+            
             food_dict['category'] = self._detect_food_category(food_dict['name'])
             
-            # ✅ FILTER OUT BLACKLISTED ITEMS
-            if food_dict['category'] == 'blacklisted':
-                continue
             
             foods.append(food_dict)
         
@@ -163,7 +166,7 @@ class RAGService:
         ✅ ENHANCED: Tìm món theo goal + calories + meal_type + food_category
         
         Args:
-            goal: 'weight_loss' | 'muscle_gain' | 'weight_gain' | 'healthy'
+            goal: 'lose_weight' | 'gain_muscle' | 'gain_weight' | 'maintain_weight'
             target_calories: Mức calo mục tiêu
             meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
             food_category: 'protein' | 'carbs' | 'veggie' (optional)
@@ -180,7 +183,7 @@ class RAGService:
         all_foods = self.search_foods(query, top_k=top_k * 10, randomize=False)
         
         if not all_foods:
-            query_fallback = f"healthy {meal_type} {food_category or 'meal'}"
+            query_fallback = f"maintain_weight {meal_type} {food_category or 'meal'}"
             all_foods = self.search_foods(query_fallback, top_k=top_k * 10, randomize=False)
         
         # 3. Filter theo meal_type
@@ -203,16 +206,16 @@ class RAGService:
         """Build query với food_category - ENHANCED VERSION"""
         
         # Base query
-        if goal == 'weight_loss':
+        if goal == 'lose_weight':
             base = f"high protein low calorie"
-        elif goal == 'muscle_gain':
+        elif goal == 'gain_muscle':
             base = f"high protein"
-        elif goal == 'weight_gain':
+        elif goal == 'gain_weight':
             base = f"high calorie nutritious"
         else:
-            base = f"healthy balanced"
+            base = f"maintain_weight"
         
-        # ✅ ENHANCED: Better breakfast queries
+        # breakfast queries
         if meal_type == 'breakfast':
             base = "healthy breakfast eggs omelette scrambled pancake bacon yogurt"
         else:
@@ -302,27 +305,28 @@ class RAGService:
         return filtered if filtered else foods
     
     def _filter_by_food_category(self, foods, food_category):
-        """
-        ✅ ENHANCED: Filter theo food category với logic chặt chẽ hơn
-        """
         
         if not food_category:
             return foods
         
         filtered = []
+
         for food in foods:
+            name_lower = food['name'].lower()
             detected_category = food.get('category', self._detect_food_category(food['name']))
             
             # ✅ STRICT FILTER cho veggie - KHÔNG cho phép mixed
-            if food_category == 'veggie':
-                # CHỈ chấp nhận món rau thuần túy
-                if detected_category == 'veggie':
-                    # Double check: Không có protein keywords
-                    name_lower = food['name'].lower()
-                    has_protein = any(kw in name_lower for kw in ['chicken', 'beef', 'pork', 'fish', 'meat', 'turkey', 'egg'])
-                    if not has_protein:
-                        filtered.append(food)
             
+            if food_category =='veggie':
+                if detected_category != 'veggie':
+                    continue
+                if any(kw in name_lower for kw in self.FALSE_VEGGIE_KEYWORDS): 
+                    continue
+
+                filtered.append(food)
+
+
+
             # ✅ STRICT FILTER cho protein - Ưu tiên món protein thuần
             elif food_category == 'protein':
                 if detected_category == 'protein':

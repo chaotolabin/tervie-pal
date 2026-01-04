@@ -58,21 +58,21 @@ class FoodLogEntry(Base, TimestampMixin):
     )
 
     total_protein_g: Mapped[Decimal] = mapped_column(
-        Numeric(12, 7),
+        Numeric(12, 6),
         nullable=False,
         default=0.0,
         comment="Tổng lượng protein (grams) của bữa ăn"
     )
 
     total_carbs_g: Mapped[Decimal] = mapped_column(
-        Numeric(12, 7),
+        Numeric(12, 6),
         nullable=False,
         default=0.0,
         comment="Tổng lượng carbs (grams) của bữa ăn"
     )
 
     total_fat_g: Mapped[Decimal] = mapped_column(
-        Numeric(12, 7),
+        Numeric(12, 6),
         nullable=False,
         default=0.0,
         comment="Tổng lượng fat (grams) của bữa ăn"
@@ -157,9 +157,9 @@ class FoodLogItem(Base):
     
     # Snapshot để lịch sử không đổi khi food/portion thay đổi
     calories: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
-    protein_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 7), nullable=True)
-    carbs_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 7), nullable=True)
-    fat_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 7), nullable=True)
+    protein_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
+    carbs_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
+    fat_g: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 6), nullable=True)
     
     # Relationships
     entry: Mapped["FoodLogEntry"] = relationship(

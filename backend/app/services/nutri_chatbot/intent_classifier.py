@@ -118,21 +118,21 @@ Nhiệm vụ của bạn là phân tích câu hỏi/yêu cầu của người d�
    - **Định nghĩa:** Yêu cầu gợi ý món ăn dựa trên MỤC TIÊU sức khỏe/thể hình
    - **Đặc điểm nhận dạng:**
      * Có từ khóa gợi ý: "suggest", "recommend", "what should I eat", "foods for"
-     * Có mục tiêu: "weight loss", "muscle gain", "weight gain", "healthy", "diet"
+     * Có mục tiêu: "weight loss", "muscle gain", "weight gain", "maintain_weight", "diet"
      * Có ngữ cảnh: "for...", "to...", "help..."
    - **Entities:**
      * `goal` (string, BẮT BUỘC): Mục tiêu sức khỏe
-       - "weight_loss": weight loss, lose weight, diet, fat loss
-       - "muscle_gain": muscle gain, bodybuilding, gym, build muscle
-       - "weight_gain": weight gain, gain weight, bulk up
-       - "healthy": healthy, balanced, nutritious, wellness
+       - "lose_weight": weight loss, lose weight, diet, fat loss
+       - "gain_muscle": muscle gain, bodybuilding, gym, build muscle
+       - "gain_weight": weight gain, gain weight, bulk up
+       - "maintain_weight": healthy, balanced, nutritious, wellness
    - **Ví dụ:**
      * Input: "What should I eat for weight loss?"
-       Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "weight_loss"}}}}
+       Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "lose_weight"}}}}
      * Input: "Suggest foods for gym people"
-       Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "muscle_gain"}}}}
+       Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "gain_muscle"}}}}
      * Input: "Suggest foods" (mơ hồ)
-       Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "healthy"}}}}
+       Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "maintain_weight"}}}}
 
 
 5. **MEAL_PLAN_REQUEST** - Yêu cầu thực đơn cho ngày/tuần
@@ -146,12 +146,12 @@ Nhiệm vụ của bạn là phân tích câu hỏi/yêu cầu của người d�
        - "daily": hôm nay, ngày, daily
        - "weekly": tuần, week, weekly
      * `goal` (string, TÙY CHỌN): Mục tiêu (nếu có)
-       - "weight_loss", "muscle_gain", "weight_gain", "healthy"
+       - "lose_weight", "gain_muscle", "gain_weight", "maintain_weight"
    - **Ví dụ:**
      * Input: "Suggest a meal plan for today"
        Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily"}}}}
      * Input: "Give me a menu for muscle building"
-       Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily", "goal": "muscle_gain"}}}}
+       Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily", "goal": "gain_muscle"}}}}
      * Input: "What should I eat for breakfast lunch and dinner?"
        Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily"}}}}
 
@@ -161,13 +161,13 @@ Nhiệm vụ của bạn là phân tích câu hỏi/yêu cầu của người d�
 
 1. **Xử lý câu hỏi mơ hồ:**
    - Nếu người dùng chỉ nói "suggest foods" mà không nói rõ mục tiêu hoặc calo:
-     → Phân loại là GOAL_BASED_RECOMMENDATION với goal: "healthy"
+     → Phân loại là GOAL_BASED_RECOMMENDATION với goal: "maintain_weight"
    
    - Nếu hỏi "what's good?", "what to eat now?", "any good food?":
-     → Phân loại là GOAL_BASED_RECOMMENDATION với goal: "healthy"
+     → Phân loại là GOAL_BASED_RECOMMENDATION với goal: "maintain_weight"
    
    - Nếu hỏi "what's good for health?", "healthy food?":
-     → Phân loại là GOAL_BASED_RECOMMENDATION với goal: "healthy"
+     → Phân loại là GOAL_BASED_RECOMMENDATION với goal: "maintain_weight"
 
 
 2. **Xử lý định lượng không rõ ràng:**
@@ -185,13 +185,13 @@ Nhiệm vụ của bạn là phân tích câu hỏi/yêu cầu của người d�
 
 3. **Xử lý mục tiêu không rõ ràng:**
    - "What's good?", "good food", "healthy food":
-     → goal: "healthy"
+     → goal: "maintain_weight"
    
    - "What to eat to be healthy?", "boost immunity":
-     → goal: "healthy"
+     → goal: "maintain_weight"
    
    - "What to eat to lose weight?", "lose fat":
-     → goal: "weight_loss"
+     → goal: "lose_weight"
 
 
 4. **Ưu tiên xử lý:**
@@ -273,31 +273,31 @@ Input: "Low calorie foods" (không nói rõ số)
 Output: {{"intent": "CALORIE_BASED_RECOMMENDATION", "entities": {{"target_calories": 200, "comparison": "under"}}}}
 
 Input: "What should I eat for weight loss?"
-Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "weight_loss"}}}}
+Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "lose_weight"}}}}
 
 Input: "Suggest foods for gym people"
-Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "muscle_gain"}}}}
+Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "gain_muscle"}}}}
 
 Input: "What to eat to gain weight?"
-Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "weight_gain"}}}}
+Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "gain_weight"}}}}
 
 Input: "Suggest foods" (mơ hồ, không nói rõ)
-Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "healthy"}}}}
+Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "maintain_weight"}}}}
 
 Input: "What's good food?" (mơ hồ)
-Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "healthy"}}}}
+Output: {{"intent": "GOAL_BASED_RECOMMENDATION", "entities": {{"goal": "maintain_weight"}}}}
 
 Input: "Suggest a meal plan for today"
 Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily"}}}}
 
 Input: "Give me a menu for muscle building"
-Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily", "goal": "muscle_gain"}}}}
+Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily", "goal": "gain_muscle"}}}}
 
 Input: "What should I eat for breakfast lunch and dinner?"
 Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily"}}}}
 
 Input: "Create a daily meal plan for weight loss"
-Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily", "goal": "weight_loss"}}}}
+Output: {{"intent": "MEAL_PLAN_REQUEST", "entities": {{"duration": "daily", "goal": "lose_weight"}}}}
 
 
 **VI. CÂU CẦN PHÂN LOẠI:**

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.models.exercise import Exercise
-from app.schemas.exercise_schema import ExerciseCreateRequest, ExercisePatchRequest
+from app.schemas.exercise import ExerciseCreateRequest, ExercisePatchRequest
 
 
 class ExerciseService:
