@@ -50,6 +50,7 @@ class SupportTicketResponse(BaseModel):
     """Schema response cho 1 ticket"""
     id: int = Field(..., description="ID ticket")
     user_id: Optional[uuid.UUID] = Field(None, description="ID người tạo (NULL nếu guest)")
+    username: Optional[str] = Field(None, description="Tên người dùng (NULL nếu guest)")
     subject: str = Field(..., description="Tiêu đề")
     message: str = Field(..., description="Nội dung")
     category: Optional[str] = Field(None, description="Phân loại")
@@ -57,8 +58,7 @@ class SupportTicketResponse(BaseModel):
     created_at: datetime = Field(..., description="Thời gian tạo")
     updated_at: Optional[datetime] = Field(None, description="Thời gian cập nhật")
 
-    class Config:
-        from_attributes = True  # Cho phép convert từ SQLAlchemy model
+    model_config = ConfigDict(from_attributes=True)  # Cho phép convert từ SQLAlchemy model
 
 
 class SupportTicketListResponse(BaseModel):

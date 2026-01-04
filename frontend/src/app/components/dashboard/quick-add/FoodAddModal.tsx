@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../ui/select';
-import { X, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 interface FoodAddModalProps {
   foodId: number;
@@ -147,9 +147,10 @@ export default function FoodAddModal({
       onClose();
       if (onSuccess) onSuccess();
       
-      // Trigger refresh
+      // Trigger refresh dashboard, food logs và streak
       window.dispatchEvent(new CustomEvent('refreshDashboard'));
       window.dispatchEvent(new CustomEvent('refreshFoodLogs'));
+      window.dispatchEvent(new CustomEvent('refreshStreak'));
     } catch (error: any) {
       let errorMsg = 'Không thể thêm món ăn';
       if (error.response?.data?.detail) {
@@ -229,17 +230,7 @@ export default function FoodAddModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{foodName}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-6 w-6"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          <DialogTitle>{foodName}</DialogTitle>
         </DialogHeader>
 
         {loading ? (

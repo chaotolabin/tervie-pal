@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Flame, TrendingDown, Apple, Loader2, Plus } from 'lucide-react';
+import { Calendar, Flame, TrendingDown, Apple, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import StreakWidget from './StreakWidget'; // Component này tự fetch data (đã sửa ở bước trước)
 import MacroSummary from './MacroSummary';
+import QuickAddBar from './QuickAddBar';
 import api from '../lib/api'; // Đảm bảo import đúng đường dẫn api client
 import { toast } from 'sonner';
 
@@ -130,6 +130,9 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
         </Select>
       </div>
 
+      {/* Quick Add Bar - Positioned before Calories Net card */}
+      <QuickAddBar onClick={onQuickAdd} />
+
       {/* Calories Summary Card */}
       <Card className="bg-gradient-to-br from-pink-500 to-purple-600 text-white border-none shadow-lg">
         <CardHeader className="pb-2">
@@ -246,48 +249,29 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
         fat={{ current: Number(summary?.total_fat_g) || 0, goal: goal?.fat_grams || 70 }}
       />
 
-      {/* Streak & Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* StreakWidget tự handle fetch data nên không cần truyền props */}
-        <StreakWidget /> 
-
-        {/* Quick Log Summary Card */}
-        <Card className="bg-gradient-to-br from-orange-500 to-amber-500 text-white border-none shadow-md">
-          <CardContent className="pt-6 flex flex-col h-full justify-between">
-             <div>
-                <p className="text-sm opacity-90 mb-2 font-medium">Hoạt động hôm nay</p>
-                <div className="space-y-1">
-                   {/* Dữ liệu này có thể lấy chi tiết hơn nếu cần, tạm thời dùng summary */}
-                   <p className="font-bold text-lg flex items-center gap-2">
-                      <Apple className="size-4 opacity-80" /> 
-                      {/* Backend không trả về count món ăn trong summary, có thể bổ sung sau */}
-                      Đã ghi nhận dinh dưỡng
-                   </p>
-                   <p className="font-bold text-lg flex items-center gap-2">
-                       <TrendingDown className="size-4 opacity-80" />
-                       {caloriesBurned > 0 ? 'Đã có tập luyện' : 'Chưa tập luyện'}
-                   </p>
-                </div>
-             </div>
-             <div className="mt-4 pt-4 border-t border-white/20 text-xs opacity-80">
-                Tiếp tục phát huy nhé!
-             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Add CTA Button */}
-      <div onClick={onQuickAdd} className="group cursor-pointer">
-        <Card className="border-2 border-dashed border-gray-300 group-hover:border-pink-500 group-hover:bg-pink-50 transition-all duration-300">
-          <CardContent className="pt-6 text-center py-8">
-            <div className="size-14 bg-pink-100 group-hover:bg-pink-200 rounded-full flex items-center justify-center mx-auto mb-4 transition-colors">
-              <Plus className="size-7 text-pink-600" />
-            </div>
-            <p className="font-bold text-gray-900 group-hover:text-pink-700">Thêm nhanh</p>
-            <p className="text-sm text-gray-500 group-hover:text-pink-600">Ghi nhận thực phẩm hoặc bài tập mới</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Today's Activity Card */}
+      <Card className="bg-gradient-to-br from-orange-500 to-amber-500 text-white border-none shadow-md">
+        <CardContent className="pt-6 flex flex-col h-full justify-between">
+           <div>
+              <p className="text-sm opacity-90 mb-2 font-medium">Hoạt động hôm nay</p>
+              <div className="space-y-1">
+                 {/* Dữ liệu này có thể lấy chi tiết hơn nếu cần, tạm thời dùng summary */}
+                 <p className="font-bold text-lg flex items-center gap-2">
+                    <Apple className="size-4 opacity-80" /> 
+                    {/* Backend không trả về count món ăn trong summary, có thể bổ sung sau */}
+                    Đã ghi nhận dinh dưỡng
+                 </p>
+                 <p className="font-bold text-lg flex items-center gap-2">
+                     <TrendingDown className="size-4 opacity-80" />
+                     {caloriesBurned > 0 ? 'Đã có tập luyện' : 'Chưa tập luyện'}
+                 </p>
+              </div>
+           </div>
+           <div className="mt-4 pt-4 border-t border-white/20 text-xs opacity-80">
+              Tiếp tục phát huy nhé!
+           </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

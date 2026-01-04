@@ -131,8 +131,43 @@ export default function UserProfileDashboard({ onLogout }: UserProfileDashboardP
 
   // ==================== DATA FETCHING ====================
   
+  // Function để refresh chỉ streak data
+  const refreshStreakData = async () => {
+    try {
+      const streakRes = await StreakService.getStreakInfo();
+      if (streakRes && profileData) {
+        setProfileData({
+          ...profileData,
+          userInfo: {
+            ...profileData.userInfo,
+            streak: streakRes.current_streak || 0
+          },
+          dailySummary: {
+            ...profileData.dailySummary,
+            streak: streakRes.current_streak || 0
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi refresh streak:", error);
+    }
+  };
+
   useEffect(() => {
     fetchAllData();
+
+    // Lắng nghe event refresh streak từ các component log
+    const handleRefreshStreak = () => {
+      refreshStreakData();
+    };
+
+    window.addEventListener('refreshStreak', handleRefreshStreak);
+    window.addEventListener('refreshDashboard', handleRefreshStreak);
+
+    return () => {
+      window.removeEventListener('refreshStreak', handleRefreshStreak);
+      window.removeEventListener('refreshDashboard', handleRefreshStreak);
+    };
   }, []);
 
   const fetchAllData = async () => {

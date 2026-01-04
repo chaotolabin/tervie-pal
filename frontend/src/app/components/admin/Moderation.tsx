@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Utensils, Dumbbell, FileText, Check, X, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Utensils, Dumbbell, FileText, Check, X, Loader2, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
@@ -37,23 +37,21 @@ export default function Moderation() {
   const [exercises, setExercises] = useState<ExerciseResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Giả định API kiểm duyệt lấy từ một endpoint admin
-  // Vì API bạn cung cấp là endpoint chung, tôi viết hàm fetch tổng quát
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Lưu ý: Trong thực tế bạn cần endpoint admin để lấy danh sách "pending"
-      // Ở đây tôi minh họa fetch từ route chính
-      const [foodRes, exRes] = await Promise.all([
-        fetch('/api/v1/foods/search?q=&limit=50'), 
-        fetch('/api/v1/exercises/search?q=&limit=50')
-      ]);
-
-      const foodData = await foodRes.json();
-      const exData = await exRes.json();
-
-      setFoods(foodData.items);
-      setExercises(exData.items);
+      const { AdminService } = await import('../../../service/admin.service');
+      
+      // Fetch blog posts for moderation
+      const postsData = await AdminService.getPosts({ page: 1, page_size: 50, include_deleted: false });
+      
+      // Map posts to exercises format for display (reusing existing UI)
+      // In a real scenario, you might want separate components
+      setExercises([]);
+      setFoods([]);
+      
+      // For now, we'll focus on blog posts moderation
+      // You can extend this to handle foods/exercises if needed
     } catch (error) {
       toast.error('Lỗi kết nối dữ liệu');
     } finally {
@@ -65,23 +63,8 @@ export default function Moderation() {
     fetchData();
   }, []);
 
-  // Xử lý Duyệt (Thường là đổi flag is_public hoặc status trong DB)
   const handleApprove = async (type: 'foods' | 'exercises', id: number) => {
-    try {
-      // Giả định endpoint patch để duyệt
-      const res = await fetch(`/api/v1/${type}/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ is_public: true }) 
-      });
-
-      if (res.ok) {
-        toast.success('Đã phê duyệt nội dung');
-        if (type === 'foods') setFoods(foods.filter(f => f.id !== id));
-        else setExercises(exercises.filter(e => e.id !== id));
-      }
-    } catch (e) {
-      toast.error('Thao tác thất bại');
-    }
+    toast.info('Tính năng đang phát triển');
   };
 
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin" /></div>;
@@ -90,14 +73,20 @@ export default function Moderation() {
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold">Hệ thống Kiểm duyệt</h1>
-        <p className="text-muted-foreground">Theo đúng cấu trúc API Foods & Exercises</p>
+        <p className="text-muted-foreground">Quản lý và kiểm duyệt nội dung trong hệ thống</p>
       </div>
 
-      <Tabs defaultValue="foods">
+      <Tabs defaultValue="blog">
         <TabsList className="w-[400px]">
+          <TabsTrigger value="blog">Bài viết Blog</TabsTrigger>
           <TabsTrigger value="foods">Thực phẩm ({foods.length})</TabsTrigger>
           <TabsTrigger value="exercises">Bài tập ({exercises.length})</TabsTrigger>
         </TabsList>
+        
+        {/* Blog Posts Tab */}
+        <TabsContent value="blog">
+          <BlogPostsModeration />
+        </TabsContent>
 
         {/* Cột dữ liệu cho FOODS */}
         <TabsContent value="foods">
@@ -183,5 +172,148 @@ export default function Moderation() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Component riêng cho Blog Posts Moderation
+function BlogPostsModeration() {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        const { AdminService } = await import('../../../service/admin.service');
+        const data = await AdminService.getPosts({ page, page_size: 50, include_deleted: false });
+        setPosts(data.items || []);
+        setTotalPages(data.total_pages || 1);
+      } catch (error) {
+        toast.error('Không thể tải danh sách bài viết');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPosts();
+  }, [page]);
+
+  const handleDeletePost = async (postId: number) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa bài viết này?')) return;
+    
+    try {
+      const { AdminService } = await import('../../../service/admin.service');
+      await AdminService.deletePost(postId, 'Xóa bởi admin');
+      toast.success('Đã xóa bài viết');
+      setPosts(posts.filter(p => p.id !== postId));
+    } catch (error) {
+      toast.error('Không thể xóa bài viết');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center p-20">
+        <Loader2 className="animate-spin size-10 text-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Tác giả</TableHead>
+              <TableHead>Tiêu đề/Nội dung</TableHead>
+              <TableHead>Likes</TableHead>
+              <TableHead>Saves</TableHead>
+              <TableHead>Ngày tạo</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {posts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-gray-400 py-8">
+                  Chưa có bài viết nào
+                </TableCell>
+              </TableRow>
+            ) : (
+              posts.map((post) => (
+                <TableRow key={post.id}>
+                  <TableCell className="text-gray-400">#{post.id}</TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      <div className="font-medium">{post.username}</div>
+                      <div className="text-gray-400 text-xs">{post.user_id?.toString().substring(0, 8)}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-md">
+                      {post.title && (
+                        <div className="font-semibold text-gray-900 mb-1">{post.title}</div>
+                      )}
+                      <div className="text-sm text-gray-600 truncate">{post.content_preview}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="bg-red-50 text-red-700">
+                      ❤️ {post.like_count}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      🔖 {post.save_count}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600">
+                    {new Date(post.created_at).toLocaleDateString('vi-VN')}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button 
+                      size="sm" 
+                      variant="destructive"
+                      onClick={() => handleDeletePost(post.id)}
+                    >
+                      <Trash2 className="size-4 mr-1" />
+                      Xóa
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              Trang {page} / {totalPages}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

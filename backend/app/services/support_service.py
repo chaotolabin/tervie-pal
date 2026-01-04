@@ -5,11 +5,12 @@ Business logic: CRUD operations, filtering, pagination
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, and_, desc
 from fastapi import HTTPException, status
 
 from app.models.support import SupportTicket, TicketStatus, TicketCategory
+from app.models.auth import User
 from app.schemas.support import (
     SupportTicketCreateRequest,
     AdminTicketPatchRequest
@@ -152,15 +153,26 @@ class SupportTicketService:
             except ValueError:
                 pass
         
-        # Execute query
+        # Execute query với join User để lấy username
         stmt = (
-            select(SupportTicket)
-            .where(and_(*conditions)) if conditions else select(SupportTicket)
+            select(SupportTicket, User.username)
+            .outerjoin(User, SupportTicket.user_id == User.id)
         )
+        
+        if conditions:
+            stmt = stmt.where(and_(*conditions))
+        
         stmt = stmt.order_by(desc(SupportTicket.id)).limit(limit + 1)
         
         result = db.execute(stmt)
-        tickets = list(result.scalars().all())
+        rows = result.all()
+        
+        # Map results: gán username vào ticket object
+        tickets = []
+        for ticket, username in rows:
+            # Thêm username vào ticket object (temporary attribute)
+            ticket.username = username if username else "Guest"
+            tickets.append(ticket)
         
         # Calculate next cursor
         next_cursor = None

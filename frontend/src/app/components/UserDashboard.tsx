@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Utensils, Activity, TrendingUp, MessageCircle, HelpCircle, User as UserIcon, LogOut } from 'lucide-react';
+import { Home, Utensils, Activity, TrendingUp, MessageCircle, HelpCircle, User as UserIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import DashboardHome from './dashboard/DashboardHome';
+import StreakNavbarWidget from './dashboard/StreakNavbarWidget';
+import UserDropdown from './dashboard/UserDropdown';
 import FoodLoggingPage from './dashboard/FoodLoggingPage';
 import ExerciseLogging from './dashboard/ExerciseLogging';
 import Progress from './dashboard/Progress';
@@ -48,6 +50,16 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
   const [streakData, setStreakData] = useState<StreakResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch streak data
+  const fetchStreakData = async () => {
+    try {
+      const streakRes = await api.get('/streak');
+      setStreakData(streakRes.data);
+    } catch (error) {
+      console.error("Lỗi tải streak:", error);
+    }
+  };
+
   // Fetch dữ liệu khi load Dashboard (chỉ streak, không fetch lại user)
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -55,8 +67,7 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
         // Chỉ fetch streak nếu chưa có userData từ props
         if (userDataProp) {
           setUserData(userDataProp);
-          const streakRes = await api.get('/streak');
-          setStreakData(streakRes.data);
+          await fetchStreakData();
         } else {
           // Fallback: nếu không có userData từ props, fetch cả hai
           const [userRes, streakRes] = await Promise.all([
@@ -74,6 +85,19 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
     };
 
     fetchDashboardData();
+
+    // Lắng nghe event refresh streak từ các component log
+    const handleRefreshStreak = () => {
+      fetchStreakData();
+    };
+
+    window.addEventListener('refreshStreak', handleRefreshStreak);
+    window.addEventListener('refreshDashboard', handleRefreshStreak);
+
+    return () => {
+      window.removeEventListener('refreshStreak', handleRefreshStreak);
+      window.removeEventListener('refreshDashboard', handleRefreshStreak);
+    };
   }, [userDataProp]);
 
   const handleLogout = () => {
@@ -126,39 +150,64 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <nav className="w-64 bg-white border-r hidden md:block">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+    <div className="flex h-screen bg-gray-100 flex-col">
+      {/* Top Header/Navbar */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
             terviepal
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Xin chào, {userData?.user.username}</p>
         </div>
-        <div className="space-y-1 px-3">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as Tab)}
-              className={`flex items-center w-full p-3 rounded-lg transition-colors ${
-                activeTab === tab.id 
-                  ? 'bg-pink-50 text-pink-600 font-medium' 
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <tab.icon className="mr-3 h-5 w-5" />
-              {tab.label}
-            </button>
-          ))}
+        
+        <div className="flex items-center gap-4 relative">
+          {/* Streak Widget */}
+          <div className="relative z-20">
+            <StreakNavbarWidget streakData={streakData} />
+          </div>
+          
+          {/* User Dropdown */}
+          <div className="relative z-20">
+            <UserDropdown
+              username={userData?.user.username || 'User'}
+              email={userData?.user.email}
+              onProfileClick={() => setActiveTab('profile')}
+              onLogoutClick={handleLogout}
+            />
+          </div>
         </div>
-      </nav>
+      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto p-8">
-        <div className="max-w-5xl mx-auto">
-          {renderContent()}
-        </div>
-      </main>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <nav className="w-64 bg-white border-r hidden md:block overflow-y-auto">
+          <div className="p-6">
+            <p className="text-sm text-gray-500">Xin chào, {userData?.user.username}</p>
+          </div>
+          <div className="space-y-1 px-3">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as Tab)}
+                className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                  activeTab === tab.id 
+                    ? 'bg-pink-50 text-pink-600 font-medium' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <tab.icon className="mr-3 h-5 w-5" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto p-8">
+          <div className="max-w-5xl mx-auto">
+            {renderContent()}
+          </div>
+        </main>
+      </div>
 
       {/* Quick Add Modal */}
       <QuickAddModal open={showQuickAdd} onClose={() => setShowQuickAdd(false)} />

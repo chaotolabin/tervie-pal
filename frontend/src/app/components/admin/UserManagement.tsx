@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { Loader2, UserX, Search } from 'lucide-react';
@@ -6,24 +6,32 @@ import { toast } from 'sonner';
 
 // Định nghĩa cấu trúc dữ liệu từ API
 interface User {
-  user_id: string | number;
+  id: string;
+  username: string;
+  email: string;
+  role: string;
   full_name: string | null;
-  gender: 'male' | 'female' | string;
-  height_cm_default: number;
   created_at: string;
+  current_streak?: number;
+  last_log_at?: string | null;
 }
 
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
         const { AdminService } = await import('../../../service/admin.service');
-        const data = await AdminService.getUsers();
+        const data = await AdminService.getUsers({ page, page_size: 50 });
         setUsers(data.items || []);
+        setTotalPages(data.total_pages || 1);
+        setTotal(data.total || 0);
       } catch (error) {
         console.error("Fetch Users Error:", error);
         toast.error("Lỗi kết nối: Không thể tải danh sách người dùng");
@@ -33,7 +41,7 @@ export default function UserManagement() {
     };
 
     fetchUsers();
-  }, []);
+  }, [page]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -43,7 +51,7 @@ export default function UserManagement() {
           <p className="text-sm text-gray-500">Danh sách tất cả thành viên trong hệ thống</p>
         </div>
         <div className="text-sm font-medium bg-green-100 text-green-700 px-3 py-1 rounded-full">
-          Tổng cộng: {users.length}
+          Tổng cộng: {total.toLocaleString()}
         </div>
       </div>
 
@@ -63,30 +71,43 @@ export default function UserManagement() {
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
-                  <TableHead className="w-[250px]">Họ và tên</TableHead>
-                  <TableHead>Giới tính</TableHead>
-                  <TableHead>Chiều cao</TableHead>
+                  <TableHead className="w-[200px]">Tên người dùng</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Họ và tên</TableHead>
+                  <TableHead>Vai trò</TableHead>
+                  <TableHead>Streak</TableHead>
                   <TableHead>Ngày tham gia</TableHead>
                   <TableHead className="text-right">Trạng thái</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((user) => (
-                  <TableRow key={user.user_id} className="hover:bg-gray-50/50 transition-colors">
+                  <TableRow key={user.id} className="hover:bg-gray-50/50 transition-colors">
                     <TableCell className="font-semibold text-gray-700">
-                      {user.full_name || 'Chưa cập nhật'}
+                      {user.username}
+                    </TableCell>
+                    <TableCell className="text-gray-600 text-sm">
+                      {user.email}
+                    </TableCell>
+                    <TableCell>
+                      {user.full_name || <span className="text-gray-400 italic">Chưa cập nhật</span>}
                     </TableCell>
                     <TableCell>
                       <Badge 
-                        variant="secondary" 
-                        className={user.gender === 'male' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'}
+                        variant={user.role === 'admin' ? 'default' : 'secondary'}
+                        className={user.role === 'admin' ? 'bg-purple-100 text-purple-700' : ''}
                       >
-                        {user.gender === 'male' ? 'Nam' : 'Nữ'}
+                        {user.role === 'admin' ? 'Admin' : 'User'}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="font-mono">{user.height_cm_default}</span> 
-                      <span className="text-gray-400 text-xs ml-1">cm</span>
+                      {user.current_streak !== undefined ? (
+                        <Badge className="bg-orange-100 text-orange-700 border-none">
+                          🔥 {user.current_streak} ngày
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-gray-600">
                       {new Date(user.created_at).toLocaleDateString('vi-VN', {
@@ -96,12 +117,39 @@ export default function UserManagement() {
                       })}
                     </TableCell>
                     <TableCell className="text-right">
-                       <Badge className="bg-green-500/10 text-green-600 border-none">Hoạt động</Badge>
+                      <Badge className="bg-green-500/10 text-green-600 border-none">
+                        {user.last_log_at ? 'Hoạt động' : 'Không hoạt động'}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+        
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              Trang {page} / {totalPages}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Trước
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sau
+              </button>
+            </div>
           </div>
         )}
       </div>

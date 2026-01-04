@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Flame, Trophy, Calendar } from 'lucide-react';
 import { Card, CardContent } from '../ui/card'; // Giả sử bạn có UI components này
 import { toast } from 'sonner';
@@ -20,21 +20,35 @@ export default function StreakWidget() {
   const [streak, setStreak] = useState<StreakResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStreak = async () => {
-      try {
-        // Gọi endpoint GET /streak từ streak.py
-        const res = await api.get('/streak');
-        setStreak(res.data);
-      } catch (error) {
-        console.error("Lỗi tải streak:", error);
-        // Không toast lỗi ở đây để tránh spam nếu user chưa log food
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchStreak = async () => {
+    try {
+      setLoading(true);
+      // Gọi endpoint GET /streak từ streak.py
+      const res = await api.get('/streak');
+      setStreak(res.data);
+    } catch (error) {
+      console.error("Lỗi tải streak:", error);
+      // Không toast lỗi ở đây để tránh spam nếu user chưa log food
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStreak();
+    
+    // Lắng nghe event refresh từ các component log (food/exercise)
+    const handleRefresh = () => {
+      fetchStreak();
+    };
+    
+    window.addEventListener('refreshDashboard', handleRefresh);
+    window.addEventListener('refreshStreak', handleRefresh);
+    
+    return () => {
+      window.removeEventListener('refreshDashboard', handleRefresh);
+      window.removeEventListener('refreshStreak', handleRefresh);
+    };
   }, []);
 
   if (loading) {
