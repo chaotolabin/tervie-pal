@@ -31,6 +31,7 @@ class UserPublic(BaseModel):
     username: str
     email: str
     role: str  # UserRole enum: "user" or "admin"
+    created_at: Optional[datetime] = None  # Ngày tham gia
 
     class Config:
         from_attributes = True

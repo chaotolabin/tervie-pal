@@ -36,8 +36,8 @@ export interface DailyLogsResponse {
 // Biometrics Logs
 export interface BiometricsCreateRequest {
   logged_at: string; // ISO DateTime
-  weight_kg: number;
-  height_cm: number;
+  weight_kg?: number;
+  height_cm?: number;
 }
 
 export interface BiometricsPatchRequest {

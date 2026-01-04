@@ -337,3 +337,9 @@ class DailyLogsResponse(BaseModel):
     food_logs: List[FoodLogEntryResponse] = Field(default_factory=list, description="Các bữa ăn")
     exercise_logs: List[ExerciseLogEntryResponse] = Field(default_factory=list, description="Các buổi tập")
     summary: DailyNutritionSummary = Field(..., description="Tổng kết dinh dưỡng ngày")
+
+
+class UserLogStatsResponse(BaseModel):
+    """Thống kê tổng số logs của user từ lúc đăng ký"""
+    total_food_logs: int = Field(..., description="Tổng số bữa ăn đã ghi nhận")
+    total_exercise_logs: int = Field(..., description="Tổng số bài tập đã hoàn thành")

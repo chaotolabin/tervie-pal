@@ -25,13 +25,16 @@ from app.schemas.log import (
     ExerciseLogItemUpdate,
     # Daily Summary
     DailyLogsResponse,
-    DailyNutritionSummary
+    DailyNutritionSummary,
+    UserLogStatsResponse
 )
 from app.services.logs import (
     FoodLogService, 
     ExerciseLogService,
     DailyLogService
 )
+from app.models.log import FoodLogEntry, ExerciseLogEntry
+from sqlalchemy import func
 
 router = APIRouter(tags=["Logs"])
 
@@ -415,3 +418,40 @@ def get_daily_nutrition_summary(
     """Lấy tổng kết dinh dưỡng trong ngày"""
     summary = DailyLogService.get_daily_summary(db, current_user.id, target_date)
     return summary
+
+
+@router.get(
+    "/stats",
+    response_model=UserLogStatsResponse,
+    summary="Lấy thống kê tổng số logs của user",
+    description="""
+    Đếm tổng số bữa ăn và bài tập đã ghi nhận từ lúc đăng ký đến giờ.
+    
+    **Response:**
+    - total_food_logs: Tổng số bữa ăn (food log entries)
+    - total_exercise_logs: Tổng số bài tập (exercise log entries)
+    
+    **Note:** Chỉ đếm các logs chưa bị xóa (deleted_at IS NULL)
+    """
+)
+def get_user_log_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Đếm tổng số logs của user từ lúc đăng ký"""
+    # Đếm tổng số food logs
+    total_food_logs = db.query(func.count(FoodLogEntry.id)).filter(
+        FoodLogEntry.user_id == current_user.id,
+        FoodLogEntry.deleted_at.is_(None)
+    ).scalar() or 0
+    
+    # Đếm tổng số exercise logs
+    total_exercise_logs = db.query(func.count(ExerciseLogEntry.id)).filter(
+        ExerciseLogEntry.user_id == current_user.id,
+        ExerciseLogEntry.deleted_at.is_(None)
+    ).scalar() or 0
+    
+    return UserLogStatsResponse(
+        total_food_logs=total_food_logs,
+        total_exercise_logs=total_exercise_logs
+    )
