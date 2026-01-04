@@ -20,6 +20,7 @@ from app.schemas.log import (
 )
 
 from app.services.streak_service import StreakService
+from app.utils.timezone import utc_to_local_date, get_local_today, local_date_to_utc_range, datetime_to_local_date
 
 
 class FoodLogService:
@@ -156,7 +157,7 @@ class FoodLogService:
         db.commit()
 
         # Update streak nếu log cho hôm nay
-        log_date = data.logged_at.date() if isinstance(data.logged_at, datetime) else data.logged_at
+        log_date = datetime_to_local_date(data.logged_at)
         StreakService.update_streak_on_log(db, user_id, log_date)
         db.refresh(entry)
         
@@ -222,13 +223,13 @@ class FoodLogService:
         Args:
             db: Database session
             user_id: UUID của user
-            target_date: Ngày cần lấy logs (date object)
+            target_date: Ngày cần lấy logs (date object - local date)
         
         Returns:
             List[FoodLogEntry]: Danh sách entries (eager load items)
         """
-        start_dt = datetime.combine(target_date, datetime.min.time(), tzinfo=timezone.utc)
-        end_dt = datetime.combine(target_date, datetime.max.time(), tzinfo=timezone.utc)
+        # Convert local date sang UTC datetime range
+        start_dt, end_dt = local_date_to_utc_range(target_date)
 
         # Sử dụng selectinload để tránh N+1 query
         stmt = (
@@ -322,9 +323,7 @@ class FoodLogService:
         entry = FoodLogService.get_food_log_by_id(db, entry_id, user_id)
         
         # Lưu ngày cũ trước khi update (để kiểm tra streak)
-        old_log_date = None
-        if data.logged_at is not None:
-            old_log_date = entry.logged_at.date() if isinstance(entry.logged_at, datetime) else entry.logged_at
+        old_log_date = datetime_to_local_date(entry.logged_at)
         
         # Update fields (chỉ update field không None)
         if data.logged_at is not None:
@@ -337,8 +336,8 @@ class FoodLogService:
         
         # Update streak nếu thay đổi logged_at và ảnh hưởng đến hôm nay
         if data.logged_at is not None:
-            new_log_date = data.logged_at.date() if isinstance(data.logged_at, datetime) else data.logged_at
-            today = date.today()
+            new_log_date = datetime_to_local_date(data.logged_at)
+            today = get_local_today()
             
             # Nếu ngày cũ là hôm nay hoặc ngày mới là hôm nay, cần update streak
             if (old_log_date == today) or (new_log_date == today):
@@ -498,8 +497,8 @@ class FoodLogService:
         entry = FoodLogService.get_food_log_by_id(db, entry_id, user_id)
         
         # Lưu log_date trước khi xóa
-        log_date = entry.logged_at.date() if isinstance(entry.logged_at, datetime) else entry.logged_at
-        today = date.today()
+        log_date = datetime_to_local_date(entry.logged_at)
+        today = get_local_today()
         
         # Chỉ cho phép xóa log của hôm nay
         if log_date != today:

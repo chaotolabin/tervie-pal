@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { LogService } from '../../../service/log.service';
+import { getLocalDateString, getDaysAgoDateString } from '../../../utils/dateUtils';
 
 // --- Interfaces khớp với Backend ---
 interface ExerciseLog {
@@ -50,7 +51,13 @@ export default function ExerciseLogging() {
   const [searchTab, setSearchTab] = useState<'recent' | 'browse'>('browse'); // Tab trong search: recent hoặc browse
   
   // State cho filter
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [selectedDateOption, setSelectedDateOption] = useState<string>('today'); // 'today', 'yesterday', '2days', 'custom'
   const [customDate, setCustomDate] = useState<string>(''); // Cho custom date picker
   const [selectedMajorHeading, setSelectedMajorHeading] = useState<string>('all');
@@ -58,7 +65,13 @@ export default function ExerciseLogging() {
   // State cho Dialog thêm bài tập
   const [selectedExercise, setSelectedExercise] = useState<ExerciseSearchResult | null>(null);
   const [duration, setDuration] = useState<string>('30');
-  const [exerciseDate, setExerciseDate] = useState<string>(new Date().toISOString().split('T')[0]); // Ngày để thêm bài tập
+  const [exerciseDate, setExerciseDate] = useState<string>(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }); // Ngày để thêm bài tập
   const [submitting, setSubmitting] = useState(false);
 
   // 1. Tải lịch sử tập luyện theo ngày
@@ -507,24 +520,17 @@ export default function ExerciseLogging() {
 
   // Helper để tính ngày dựa trên option
   const getDateFromOption = (option: string): string => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
     switch (option) {
       case 'today':
-        return today.toISOString().split('T')[0];
+        return getLocalDateString();
       case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        return yesterday.toISOString().split('T')[0];
+        return getDaysAgoDateString(1);
       case '2days':
-        const twoDaysAgo = new Date(today);
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-        return twoDaysAgo.toISOString().split('T')[0];
+        return getDaysAgoDateString(2);
       case 'custom':
-        return customDate || today.toISOString().split('T')[0];
+        return customDate || getLocalDateString();
       default:
-        return today.toISOString().split('T')[0];
+        return getLocalDateString();
     }
   };
 

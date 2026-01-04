@@ -20,6 +20,7 @@ from app.schemas.biometric import (
     BiometricsPatchRequest,
     BiometricsLogResponse
 )
+from app.utils.timezone import local_date_to_utc_range
 
 
 class BiometricService:
@@ -171,17 +172,17 @@ class BiometricService:
         
         # Filter theo date range nếu có
         if from_date:
-            # So sánh DATE của logged_at với from_date
+            # Convert local date sang UTC datetime range
+            start_dt, _ = local_date_to_utc_range(from_date)
             query = query.where(
-                and_(BiometricsLog.logged_at >= datetime.combine(from_date, datetime.min.time()))
+                and_(BiometricsLog.logged_at >= start_dt)
             )
         
         if to_date:
-            # To date inclusive (đến 23:59:59 của ngày đó)
+            # To date inclusive (đến 23:59:59 của ngày đó theo local timezone)
+            _, end_dt = local_date_to_utc_range(to_date)
             query = query.where(
-                and_(BiometricsLog.logged_at < datetime.combine(
-                    to_date, datetime.max.time()
-                ))
+                and_(BiometricsLog.logged_at <= end_dt)
             )
         
         # Sắp xếp và limit

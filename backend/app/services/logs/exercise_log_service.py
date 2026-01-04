@@ -19,6 +19,7 @@ from app.schemas.log import (
 )
 
 from app.services.streak_service import StreakService
+from app.utils.timezone import utc_to_local_date, get_local_today, local_date_to_utc_range, datetime_to_local_date
 
 
 class ExerciseLogService:
@@ -119,7 +120,7 @@ class ExerciseLogService:
         db.commit()
         
         # Update streak nếu log cho hôm nay
-        log_date = data.logged_at.date() if isinstance(data.logged_at, datetime) else data.logged_at
+        log_date = datetime_to_local_date(data.logged_at)
         StreakService.update_streak_on_log(db, user_id, log_date)
         
         db.refresh(entry)
@@ -158,14 +159,13 @@ class ExerciseLogService:
         Args:
             db: Database session
             user_id: UUID của user
-            target_date: Ngày cần lấy logs
+            target_date: Ngày cần lấy logs (local date)
         
         Returns:
             List[ExerciseLogEntry]: Danh sách entries (eager load items)
         """
-        # tinh range thoi gian trong ngay (00:00 - 23:59)
-        start_dt = datetime.combine(target_date, datetime.min.time(), tzinfo=timezone.utc)
-        end_dt = datetime.combine(target_date, datetime.max.time(), tzinfo=timezone.utc)
+        # Convert local date sang UTC datetime range
+        start_dt, end_dt = local_date_to_utc_range(target_date)
 
         stmt = (
             select(ExerciseLogEntry)
@@ -258,9 +258,7 @@ class ExerciseLogService:
         entry = ExerciseLogService.get_exercise_log_by_id(db, entry_id, user_id)
         
         # Lưu ngày cũ trước khi update (để kiểm tra streak)
-        old_log_date = None
-        if data.logged_at is not None:
-            old_log_date = entry.logged_at.date() if isinstance(entry.logged_at, datetime) else entry.logged_at
+        old_log_date = datetime_to_local_date(entry.logged_at)
         
         # Update fields (chỉ update field không None)
         if data.logged_at is not None:
@@ -270,8 +268,8 @@ class ExerciseLogService:
         
         # Update streak nếu thay đổi logged_at và ảnh hưởng đến hôm nay
         if data.logged_at is not None:
-            new_log_date = data.logged_at.date() if isinstance(data.logged_at, datetime) else data.logged_at
-            today = date.today()
+            new_log_date = datetime_to_local_date(data.logged_at)
+            today = get_local_today()
             
             # Nếu ngày cũ là hôm nay hoặc ngày mới là hôm nay, cần update streak
             if (old_log_date == today) or (new_log_date == today):
@@ -416,8 +414,8 @@ class ExerciseLogService:
         entry = ExerciseLogService.get_exercise_log_by_id(db, entry_id, user_id)
         
         # Lưu log_date trước khi xóa
-        log_date = entry.logged_at.date() if isinstance(entry.logged_at, datetime) else entry.logged_at
-        today = date.today()
+        log_date = datetime_to_local_date(entry.logged_at)
+        today = get_local_today()
         
         # Chỉ cho phép xóa log của hôm nay
         if log_date != today:
