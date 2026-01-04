@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, TrendingUp } from 'lucide-react';
+import { Heart, Share2, Bookmark, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -16,15 +16,25 @@ interface Author {
 }
 
 interface Post {
-  id: string;
-  content: string;
+  id: number;
+  user_id: string;
+  content_text: string;
+  title?: string;
   created_at: string;
-  author: Author;
-  likes_count: number;
-  comments_count: number;
+  updated_at: string;
+  author?: Author; // Optional vì backend không trả về
+  like_count: number;
+  save_count: number;
   is_liked: boolean;
   is_saved: boolean;
-  tags?: string[];
+  hashtags?: string[];
+  media?: Array<{
+    id: string;
+    url: string;
+    media_type: string;
+    width?: number;
+    height?: number;
+  }>;
 }
 
 export default function BlogPage() {
@@ -36,6 +46,11 @@ export default function BlogPage() {
     const fetchFeed = async () => {
       try {
         const res = await BlogService.getFeed({ limit: 20 });
+        console.log('Feed response:', res);
+        console.log('Feed items:', res.items);
+        if (res.items && res.items.length > 0) {
+          console.log('First post sample:', res.items[0]);
+        }
         setFeed(res.items || []);
       } catch (error) {
         console.error('Lỗi tải feed:', error);
@@ -47,7 +62,7 @@ export default function BlogPage() {
     fetchFeed();
   }, []);
 
-  const handleLikePost = async (postId: string) => {
+  const handleLikePost = async (postId: number) => {
     const post = feed.find(p => p.id === postId);
     if (!post) return;
 
@@ -55,14 +70,14 @@ export default function BlogPage() {
     setFeed(feed.map(p => p.id === postId ? {
       ...p,
       is_liked: newIsLiked,
-      likes_count: newIsLiked ? p.likes_count + 1 : p.likes_count - 1
+      like_count: newIsLiked ? p.like_count + 1 : p.like_count - 1
     } : p));
 
     try {
       if (newIsLiked) {
-        await BlogService.likePost(postId);
+        await BlogService.likePost(String(postId));
       } else {
-        await BlogService.unlikePost(postId);
+        await BlogService.unlikePost(String(postId));
       }
     } catch (error) {
       // Revert on error
@@ -71,7 +86,7 @@ export default function BlogPage() {
     }
   };
 
-  const handleSavePost = async (postId: string) => {
+  const handleSavePost = async (postId: number) => {
     const post = feed.find(p => p.id === postId);
     if (!post) return;
 
@@ -80,10 +95,10 @@ export default function BlogPage() {
 
     try {
       if (newIsSaved) {
-        await BlogService.savePost(postId);
+        await BlogService.savePost(String(postId));
         toast.success('Đã lưu bài viết');
       } else {
-        await BlogService.unsavePost(postId);
+        await BlogService.unsavePost(String(postId));
       }
     } catch (error) {
       setFeed(feed.map(p => p.id === postId ? post : p));
@@ -158,17 +173,10 @@ export default function BlogPage() {
       <div className="space-y-4">
         {feed.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
-            <MessageCircle className="size-12 mx-auto mb-3 opacity-50" />
             <p>Chưa có bài viết nào</p>
           </div>
         ) : (
           feed.map((post) => {
-            // Skip posts without author data
-            if (!post.author) {
-              console.warn('Post missing author:', post.id);
-              return null;
-            }
-            
             return (
               <Card key={post.id} className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="pt-6">
@@ -176,34 +184,33 @@ export default function BlogPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <Avatar className="size-10 border-2 border-pink-100">
-                        <AvatarImage src={post.author?.avatar_url} />
                         <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold">
-                          {post.author?.username?.charAt(0).toUpperCase() || 'U'}
+                          {post.user_id?.substring(0, 2).toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-gray-900">{post.author?.username || 'Unknown'}</p>
-                          {post.author?.streak_count && post.author.streak_count > 0 && (
-                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
-                              {post.author.streak_count} ngày 🔥
-                            </Badge>
-                          )}
+                          <p className="font-bold text-gray-900">User {post.user_id?.substring(0, 8)}</p>
                         </div>
                         <p className="text-xs text-gray-500">{formatDate(post.created_at)}</p>
                       </div>
                     </div>
                   </div>
 
+                {/* Title */}
+                {post.title && (
+                  <h3 className="font-bold text-lg text-gray-900 mb-2">{post.title}</h3>
+                )}
+
                 {/* Content */}
-                <div className="mb-4" onClick={() => setSelectedPost(post.id)}>
-                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                <div className="mb-4" onClick={() => setSelectedPost(String(post.id))}>
+                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{post.content_text}</p>
                 </div>
 
                 {/* Tags */}
-                {post.tags && post.tags.length > 0 && (
+                {post.hashtags && post.hashtags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {post.tags.map((tag, idx) => (
+                    {post.hashtags.map((tag, idx) => (
                       <Badge key={idx} variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer text-xs">
                         #{tag}
                       </Badge>
@@ -223,17 +230,7 @@ export default function BlogPage() {
                     className={`hover:bg-pink-50 ${post.is_liked ? 'text-pink-600' : 'text-gray-600'}`}
                   >
                     <Heart className={`size-5 mr-2 ${post.is_liked ? 'fill-pink-600' : ''}`} />
-                    <span className="font-medium">{post.likes_count}</span>
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedPost(post.id)}
-                    className="text-gray-600 hover:bg-blue-50 hover:text-blue-600"
-                  >
-                    <MessageCircle className="size-5 mr-2" />
-                    <span className="font-medium">{post.comments_count || 0}</span>
+                    <span className="font-medium">{post.like_count}</span>
                   </Button>
 
                   <Button
