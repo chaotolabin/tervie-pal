@@ -27,16 +27,51 @@ export default function FoodQuickAdd({ onClose }: FoodQuickAddProps) {
   const handleLogFood = async (e: React.MouseEvent, foodId: number) => {
     e.stopPropagation(); // Prevent triggering onClick on parent div
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Xác định meal_type dựa trên thời gian hiện tại
+      const currentHour = new Date().getHours();
+      let mealType = 'snacks';
+      if (currentHour >= 5 && currentHour < 10) {
+        mealType = 'breakfast';
+      } else if (currentHour >= 10 && currentHour < 14) {
+        mealType = 'lunch';
+      } else if (currentHour >= 14 && currentHour < 20) {
+        mealType = 'dinner';
+      }
+      
+      // Thử lấy food detail để check xem có portions không
+      let usePortion = false;
+      let portionId: number | null = null;
+      
+      try {
+        const foodDetail = await FoodService.getDetail(foodId);
+        if (foodDetail.portions && foodDetail.portions.length > 0) {
+          // Nếu có portions, dùng portion đầu tiên
+          portionId = foodDetail.portions[0].id;
+          usePortion = true;
+        }
+      } catch (err) {
+        // Nếu không lấy được detail, dùng grams trực tiếp
+        console.log('Could not fetch food detail, using grams instead');
+      }
+      
+      // Tạo item dựa trên có portion hay không
+      const items = usePortion && portionId ? [
+        {
+          food_id: foodId,
+          portion_id: portionId,
+          quantity: 1
+        }
+      ] : [
+        {
+          food_id: foodId,
+          grams: 100 // Mặc định 100g, user có thể update sau
+        }
+      ];
+      
       await LogService.addFoodLog({
         logged_at: new Date().toISOString(),
-        items: [
-          {
-            food_id: foodId,
-            portion_id: 1, // Default portion, user can update later
-            quantity: 1
-          }
-        ]
+        meal_type: mealType,
+        items: items
       });
       toast.success("Đã ghi nhận món ăn vào nhật ký!");
       if (onClose) onClose();
@@ -44,7 +79,20 @@ export default function FoodQuickAdd({ onClose }: FoodQuickAddProps) {
       // Trigger refresh summary ở dashboard
       window.dispatchEvent(new CustomEvent('refreshDashboard'));
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Không thể lưu món ăn");
+      // Xử lý error message - có thể là string, array, hoặc object
+      let errorMsg = "Không thể lưu món ăn";
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMsg = detail;
+        } else if (Array.isArray(detail) && detail.length > 0) {
+          // FastAPI validation errors thường là array
+          errorMsg = detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
+        } else if (typeof detail === 'object') {
+          errorMsg = JSON.stringify(detail);
+        }
+      }
+      toast.error(errorMsg);
     }
   };
 

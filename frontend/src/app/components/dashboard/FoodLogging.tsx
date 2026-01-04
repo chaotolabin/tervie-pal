@@ -12,7 +12,19 @@ export default function FoodLogging({ foodLogs }: { foodLogs: any[] }) {
       window.dispatchEvent(new CustomEvent('refreshDashboard'));
       window.dispatchEvent(new CustomEvent('refreshFoodLogs'));
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Không thể xóa bữa ăn');
+      // Xử lý error message - có thể là string, array, hoặc object
+      let errorMsg = 'Không thể xóa bữa ăn';
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMsg = detail;
+        } else if (Array.isArray(detail) && detail.length > 0) {
+          errorMsg = detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
+        } else if (typeof detail === 'object') {
+          errorMsg = JSON.stringify(detail);
+        }
+      }
+      toast.error(errorMsg);
     }
   };
 
