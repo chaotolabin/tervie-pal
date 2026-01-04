@@ -152,7 +152,7 @@ export default function BlogPage() {
     <div className="max-w-2xl mx-auto py-6 px-4">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Cộng đồng</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Tervie Blog</h1>
         <Button 
           onClick={() => setShowCreatePost(true)}
           className="bg-gradient-to-r from-pink-500 to-purple-600 text-white"
@@ -198,75 +198,98 @@ export default function BlogPage() {
         ) : (
           feed.map((post) => {
             return (
-              <Card key={post.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="pt-6">
-                  {/* Author Info */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="size-10 border-2 border-pink-100">
-                        <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold">
-                          {post.user_id?.substring(0, 2).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-gray-900">User {post.user_id?.substring(0, 8)}</p>
-                        </div>
-                        <p className="text-xs text-gray-500">{formatDate(post.created_at)}</p>
+              <Card key={post.id} className="hover:shadow-md transition-shadow overflow-hidden">
+                <CardContent className="p-0">
+                  {/* Title - Clickable */}
+                  {post.title && (
+                    <div 
+                      className="p-6 pb-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => setSelectedPost(String(post.id))}
+                    >
+                      <h2 className="font-bold text-2xl text-gray-900 leading-tight">
+                        {post.title}
+                      </h2>
+                    </div>
+                  )}
+
+                  {/* Media Preview - Clickable */}
+                  {post.media && post.media.length > 0 && (
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => setSelectedPost(String(post.id))}
+                    >
+                      {post.media[0].media_type === 'video' ? (
+                        <video 
+                          src={post.media[0].url} 
+                          className="w-full aspect-video object-cover"
+                          poster={post.media[0].url}
+                        />
+                      ) : (
+                        <img 
+                          src={post.media[0].url} 
+                          alt={post.title} 
+                          className="w-full aspect-video object-cover"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  <div className="p-6 pt-4">
+                    {/* Tags */}
+                    {post.hashtags && post.hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {post.hashtags.map((tag, idx) => (
+                          <Badge key={idx} variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer">
+                            #{tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Meta Info */}
+                    <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="size-6">
+                          <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold">
+                            {post.user_id?.substring(0, 2).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>User {post.user_id?.substring(0, 8)}</span>
+                        <span>•</span>
+                        <span>{formatDate(post.created_at)}</span>
                       </div>
                     </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-6 pt-4 border-t">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLikePost(post.id);
+                        }}
+                        className={`hover:bg-pink-50 ${post.is_liked ? 'text-pink-600' : 'text-gray-600'}`}
+                      >
+                        <Heart className={`size-5 mr-2 ${post.is_liked ? 'fill-pink-600' : ''}`} />
+                        <span className="font-medium">{post.like_count}</span>
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSavePost(post.id);
+                        }}
+                        className={`ml-auto ${post.is_saved ? 'text-blue-600' : 'text-gray-600'} hover:bg-blue-50`}
+                      >
+                        <Bookmark className={`size-5 ${post.is_saved ? 'fill-blue-600' : ''}`} />
+                      </Button>
+                    </div>
                   </div>
-
-                {/* Title */}
-                {post.title && (
-                  <h3 className="font-bold text-lg text-gray-900 mb-2">{post.title}</h3>
-                )}
-
-                {/* Content */}
-                <div className="mb-4" onClick={() => setSelectedPost(String(post.id))}>
-                  <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{post.content_text}</p>
-                </div>
-
-                {/* Tags */}
-                {post.hashtags && post.hashtags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {post.hashtags.map((tag, idx) => (
-                      <Badge key={idx} variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer text-xs">
-                        #{tag}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-6 pt-3 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleLikePost(post.id);
-                    }}
-                    className={`hover:bg-pink-50 ${post.is_liked ? 'text-pink-600' : 'text-gray-600'}`}
-                  >
-                    <Heart className={`size-5 mr-2 ${post.is_liked ? 'fill-pink-600' : ''}`} />
-                    <span className="font-medium">{post.like_count}</span>
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSavePost(post.id);
-                    }}
-                    className={`ml-auto ${post.is_saved ? 'text-blue-600' : 'text-gray-600'} hover:bg-blue-50`}
-                  >
-                    <Bookmark className={`size-5 ${post.is_saved ? 'fill-blue-600' : ''}`} />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
             );
           })
         )}
