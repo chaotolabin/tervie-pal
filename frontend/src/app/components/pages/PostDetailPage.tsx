@@ -11,7 +11,7 @@ import { BlogService } from '../../../service/blog.service';
 // --- Interfaces khớp với Backend ---
 interface PostDetail {
   id: number;
-  user_id: string;
+  full_name: string;
   title?: string;
   content_text: string;
   created_at: string;
@@ -148,11 +148,11 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
             <div className="flex items-center gap-3">
               <Avatar className="size-12 border-2 border-pink-100">
                 <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold">
-                  {post.user_id?.substring(0, 2).toUpperCase() || 'U'}
+                  {post.full_name?.substring(0, 2).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-bold text-gray-900">User {post.user_id?.substring(0, 8)}</p>
+                <p className="font-bold text-gray-900">{post.full_name?.substring(0, 8)}</p>
                 <p className="text-xs text-gray-500">{formatDate(post.created_at)}</p>
               </div>
             </div>

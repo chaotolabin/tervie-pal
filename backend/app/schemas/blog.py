@@ -119,6 +119,7 @@ class PostDetail(BaseModel):
     """
     id: int = Field(..., description="ID bài viết")
     user_id: uuid.UUID = Field(..., description="UUID tác giả")
+    full_name: Optional[str] = Field(None, description="Tên đầy đủ của tác giả")
     title: Optional[str] = Field(None, description="Tiêu đề bài viết")
     content_text: str = Field(..., description="Nội dung text")
     like_count: int = Field(..., ge=0, description="Số lượt thích")
