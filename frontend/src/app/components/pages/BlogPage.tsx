@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, Bookmark, TrendingUp } from 'lucide-react';
+import { Heart, Bookmark, TrendingUp, Search, X, Rainbow } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { BlogService } from '../../../service/blog.service';
@@ -43,11 +44,44 @@ export default function BlogPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  
+  // Filter states
+  const [sort, setSort] = useState<'recent' | 'trending'>('recent');
+  const [hashtagFilter, setHashtagFilter] = useState<string>('');
+  const [debouncedHashtag, setDebouncedHashtag] = useState<string>('');
+  const [savedOnly, setSavedOnly] = useState(false);
+
+  // Debounce hashtag search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedHashtag(hashtagFilter);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [hashtagFilter]);
 
   useEffect(() => {
     const fetchFeed = async () => {
+      // Chỉ hiện loading spinner khi lần đầu load hoặc feed trống
+      if (feed.length === 0) {
+        setLoading(true);
+      }
+      
       try {
-        const res = await BlogService.getFeed({ limit: 20 });
+        const params: any = { 
+          limit: 20,
+          sort: sort
+        };
+        
+        if (debouncedHashtag) {
+          params.hashtag = debouncedHashtag.replace('#', '');
+        }
+        
+        if (savedOnly) {
+          params.saved = true;
+        }
+        
+        const res = await BlogService.getFeed(params);
         console.log('Feed response:', res);
         console.log('Feed items:', res.items);
         if (res.items && res.items.length > 0) {
@@ -65,7 +99,7 @@ export default function BlogPage() {
     if (!showCreatePost) {
       fetchFeed();
     }
-  }, [showCreatePost]);
+  }, [showCreatePost, sort, debouncedHashtag, savedOnly]);
 
   const handleLikePost = async (postId: number) => {
     const post = feed.find(p => p.id === postId);
@@ -163,16 +197,57 @@ export default function BlogPage() {
 
       {/* Filter Tabs */}
       <div className="flex gap-4 mb-6 pb-4 border-b overflow-x-auto">
-        <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-pink-50 text-pink-600 font-medium whitespace-nowrap">
+        <button 
+          onClick={() => setSort('recent')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+            sort === 'recent' ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <Rainbow className="size-4" />
+          Mới nhất
+        </button>
+        <button 
+          onClick={() => setSort('trending')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+            sort === 'trending' ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
           <TrendingUp className="size-4" />
           Xu hướng
         </button>
-        <button className="px-4 py-2 rounded-full text-gray-600 hover:bg-gray-100 whitespace-nowrap">
-          Đang theo dõi
+        <button 
+          onClick={() => setSavedOnly(!savedOnly)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+            savedOnly ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <Bookmark className="size-4" />
+          Đã lưu
         </button>
       </div>
 
-      {/* Trending Topics */}
+      {/* Hashtag Search */}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-5 text-gray-400" />
+          <Input
+            placeholder="Tìm kiếm theo hashtag (vd: giảmcân)..."
+            value={hashtagFilter}
+            onChange={(e) => setHashtagFilter(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {hashtagFilter && (
+            <button
+              onClick={() => setHashtagFilter('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Trending Topics
       <Card className="mb-6 border-pink-100">
         <CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-4">
@@ -187,7 +262,7 @@ export default function BlogPage() {
             ))}
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Posts Feed */}
       <div className="space-y-4">
@@ -212,28 +287,6 @@ export default function BlogPage() {
                     </div>
                   )}
 
-                  {/* Media Preview - Clickable */}
-                  {post.media && post.media.length > 0 && (
-                    <div 
-                      className="cursor-pointer"
-                      onClick={() => setSelectedPost(String(post.id))}
-                    >
-                      {post.media[0].media_type === 'video' ? (
-                        <video 
-                          src={post.media[0].url} 
-                          className="w-full aspect-video object-cover"
-                          poster={post.media[0].url}
-                        />
-                      ) : (
-                        <img 
-                          src={post.media[0].url} 
-                          alt={post.title} 
-                          className="w-full aspect-video object-cover"
-                        />
-                      )}
-                    </div>
-                  )}
-
                   <div className="p-6 pt-4">
                     {/* Tags */}
                     {post.hashtags && post.hashtags.length > 0 && (
@@ -254,7 +307,7 @@ export default function BlogPage() {
                             {post.full_name?.substring(0, 2).toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
-                        <span>User {post.full_name?.substring(0, 20)}</span>
+                        <span>{post.full_name?.substring(0, 20)}</span>
                         <span>•</span>
                         <span>{formatDate(post.created_at)}</span>
                       </div>
