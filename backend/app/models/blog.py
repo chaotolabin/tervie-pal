@@ -11,6 +11,10 @@ from sqlalchemy import Enum as SQLEnum
 
 from app.models.base import Base, TimestampMixin
 
+# Import để tránh circular import - chỉ dùng trong TYPE_CHECKING
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.models.auth import User
 
 # Enum cho media type
 class MediaType(str, enum.Enum):
@@ -71,6 +75,12 @@ class Post(Base, TimestampMixin):
     )
     
     # Relationships
+    user: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[user_id],
+        lazy="selectin"
+    )
+    
     media: Mapped[List["PostMedia"]] = relationship(
         "PostMedia",
         back_populates="post",

@@ -337,9 +337,15 @@ class BlogService:
         is_saved: bool = False
     ) -> PostDetail:
         """Convert Post model to PostDetail schema"""
+        # Lấy full_name từ user.profile nếu có
+        full_name = None
+        if post.user and post.user.profile:
+            full_name = post.user.profile.full_name
+        
         return PostDetail(
             id=post.id,
             user_id=post.user_id,
+            full_name=full_name,
             title=post.title,
             content_text=post.content_text,
             like_count=post.like_count,

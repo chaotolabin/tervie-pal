@@ -10,6 +10,7 @@ from sqlalchemy import select, delete, update, func, and_, or_, desc, asc
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.blog import Post, PostMedia, PostLike, PostSave, Hashtag, PostHashtag
+from app.models.auth import User
 
 
 class BlogRepository:
@@ -41,12 +42,13 @@ class BlogRepository:
         post_id: int,
         include_deleted: bool = False
     ) -> Optional[Post]:
-        """Lấy post theo ID, kèm media và hashtags"""
+        """Lấy post theo ID, kèm media, hashtags và user profile"""
         query = (
             select(Post)
             .options(
                 selectinload(Post.media),
-                selectinload(Post.hashtags)
+                selectinload(Post.hashtags),
+                selectinload(Post.user).selectinload(User.profile)
             )
             .where(Post.id == post_id)
         )
@@ -346,7 +348,8 @@ class BlogRepository:
             select(Post)
             .options(
                 selectinload(Post.media),
-                selectinload(Post.hashtags)
+                selectinload(Post.hashtags),
+                selectinload(Post.user).selectinload(User.profile)
             )
             .where(Post.deleted_at.is_(None))
         )
