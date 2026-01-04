@@ -41,7 +41,8 @@ async def get_current_user_info(
                 id=current_user.id,
                 username=current_user.username,
                 email=current_user.email,
-                role=current_user.role
+                role=current_user.role,
+                created_at=current_user.created_at
             ),
             profile=profile_schema
         )

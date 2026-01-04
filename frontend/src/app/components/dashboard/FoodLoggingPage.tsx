@@ -85,7 +85,18 @@ export default function FoodLoggingPage() {
       fetchData();
     };
     
-    const handleRefreshFoodLogs = () => {
+    const handleRefreshFoodLogs = (event?: any) => {
+      // Nếu event có thông tin về ngày, kiểm tra xem có cần thay đổi date không
+      if (event?.detail?.date) {
+        const eventDate = event.detail.date;
+        // Nếu ngày trong event khác với ngày hiện tại, cập nhật date
+        if (eventDate !== date) {
+          setDate(eventDate);
+          // fetchData sẽ được gọi tự động khi date thay đổi
+          return;
+        }
+      }
+      // Nếu không có thông tin ngày hoặc cùng ngày, refresh ngay
       fetchData();
     };
     
@@ -265,12 +276,17 @@ export default function FoodLoggingPage() {
       </div>
 
       {/* Danh sách log */}
-      {data ? (
+      {data && foodLogs.length > 0 ? (
         <FoodLogging foodLogs={foodLogs} />
+      ) : data && foodLogs.length === 0 ? (
+        <div className="bg-white rounded-xl shadow p-4">
+          <h3 className="font-bold text-lg mb-4">Bữa ăn {selectedDateOption === 'today' ? 'hôm nay' : selectedDateOption === 'yesterday' ? 'hôm qua' : `ngày ${date}`}</h3>
+          <p className="text-gray-400">Chưa có dữ liệu ăn uống.</p>
+        </div>
       ) : (
         <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-bold text-lg mb-4">Bữa ăn hôm nay</h3>
-          <p className="text-gray-400">Chưa có dữ liệu ăn uống.</p>
+          <h3 className="font-bold text-lg mb-4">Bữa ăn</h3>
+          <p className="text-gray-400">Đang tải dữ liệu...</p>
         </div>
       )}
     </div>

@@ -190,51 +190,15 @@ export default function UserProfileDashboard({ onLogout }: UserProfileDashboardP
       // Store goal in state for use in render
       setGoal(goalData);
 
-      // Calculate statistics
-      // TODO: Connect API endpoint here - Count total meals logged
-      // For now, we'll estimate or you can add a dedicated API endpoint
+      // Calculate statistics - Lấy tổng số thực tế từ API
       let mealsLogged = 0;
       let workoutsCompleted = 0;
       
-      // Try to get a sample of recent logs to estimate
       try {
-        const today = new Date().toISOString().split('T')[0];
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
-        
-        // Sample a few dates to estimate
-        const sampleDates: string[] = [];
-        for (let i = 0; i < 7; i++) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          sampleDates.push(date.toISOString().split('T')[0]);
-        }
-        
-        const logPromises = sampleDates.map((date: string) => 
-          Promise.allSettled([
-            LogService.getDailyFoodLogs(date),
-            LogService.getDailyExerciseLogs(date),
-          ])
-        );
-        
-        const logResults = await Promise.all(logPromises);
-        let totalMeals = 0;
-        let totalWorkouts = 0;
-        
-        logResults.forEach((settledPair) => {
-          const [foodLogsResult, exerciseLogsResult] = settledPair;
-          if (foodLogsResult.status === 'fulfilled') {
-            totalMeals += foodLogsResult.value.length;
-          }
-          if (exerciseLogsResult.status === 'fulfilled') {
-            totalWorkouts += exerciseLogsResult.value.length;
-          }
-        });
-        
-        // Estimate total based on sample (multiply by ~4.3 for 30 days from 7 days)
-        mealsLogged = Math.round(totalMeals * 4.3);
-        workoutsCompleted = Math.round(totalWorkouts * 4.3);
+        // Gọi API để lấy tổng số logs thực tế từ lúc đăng ký
+        const stats = await LogService.getUserLogStats();
+        mealsLogged = stats.total_food_logs || 0;
+        workoutsCompleted = stats.total_exercise_logs || 0;
       } catch (err) {
         console.warn('Could not fetch log statistics:', err);
         // Use default values if API fails

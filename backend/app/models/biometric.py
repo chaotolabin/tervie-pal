@@ -38,14 +38,14 @@ class BiometricsLog(Base):
     
     weight_kg: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(5, 2),
-        nullable=False,
-        comment="Cân nặng (kg)"
+        nullable=True,
+        comment="Cân nặng (kg). Có thể NULL nếu chỉ cập nhật chiều cao."
     )
     
     height_cm: Mapped[Optional[Decimal]] = mapped_column(
         Numeric(5, 2),
-        nullable=False,
-        comment="Chiều cao (cm)"
+        nullable=True,
+        comment="Chiều cao (cm). Có thể NULL nếu chỉ cập nhật cân nặng."
     )
 
     bmi: Mapped[Optional[Decimal]] = mapped_column(

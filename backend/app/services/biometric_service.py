@@ -103,8 +103,10 @@ class BiometricService:
         Side Effects:
         - Nếu user có goal, goal sẽ được recalculate với weight/height mới
         """
-        # Tính BMI tự động
-        bmi = BiometricService.calculate_bmi(data.weight_kg, data.height_cm)
+        # Tính BMI tự động chỉ khi có cả weight và height
+        bmi = None
+        if data.weight_kg and data.height_cm:
+            bmi = BiometricService.calculate_bmi(data.weight_kg, data.height_cm)
         
         # Kiểm tra nếu đã có log cho user và logged_at này
         existing_query = select(BiometricsLog).where(
@@ -122,14 +124,15 @@ class BiometricService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Biometrics log at this time already exists. Use PATCH to update."
             )
-
-        # Tạo record mới
+        
+        # Tạo record mới - chỉ lưu giá trị được nhập
+        from decimal import Decimal
         db_log = BiometricsLog(
             user_id=user_id,
             logged_at=data.logged_at,
-            weight_kg=data.weight_kg,
-            height_cm=data.height_cm,
-            bmi=bmi
+            weight_kg=Decimal(str(data.weight_kg)) if data.weight_kg else None,
+            height_cm=Decimal(str(data.height_cm)) if data.height_cm else None,
+            bmi=Decimal(str(bmi)) if bmi else None
         )
         
         db.add(db_log)
