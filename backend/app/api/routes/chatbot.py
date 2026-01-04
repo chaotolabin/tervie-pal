@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+# chatbot.py
+
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
@@ -20,9 +22,13 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest, db: Session = Depends(get_db)):
-    """Chatbot endpoint"""
-    chatbot = ChatbotService(db)
+async def chat(
+    request: ChatRequest, 
+    db: Session = Depends(get_db),
+    user_id: str = Header(None, alias="X-User-ID")  # ✅ Lấy từ header
+):
+  
+    chatbot = ChatbotService(db, user_id=user_id)
     result = chatbot.chat(request.message)
     return result
 

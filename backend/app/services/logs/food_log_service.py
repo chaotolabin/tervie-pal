@@ -11,7 +11,7 @@ from fastapi import HTTPException, status
 
 from app.models.log import FoodLogEntry, FoodLogItem
 from app.models.food import Food, FoodNutrient, FoodPortion
-from app.schemas.log_schema import (
+from app.schemas.log import (
     FoodLogEntryCreate,
     FoodLogEntryPatch,
     FoodLogItemUpdate,

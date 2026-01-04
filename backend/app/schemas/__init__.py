@@ -21,6 +21,51 @@ from .users import (
 from .settings import ChangePasswordRequest
 from .common import ErrorResponse, GenericMessageResponse
 from .streak import StreakStatus, StreakDayResponse, StreakResponse, StreakWeekResponse
+from .goals import (
+    GoalType,
+    ActivityLevel,
+    GoalCreateRequest,
+    GoalPatchRequest,
+    GoalResponse,
+    GoalCalculateRequest,
+    GoalCalculateResponse,
+)
+from .biometric import (
+    BiometricsCreateRequest,
+    BiometricsPatchRequest,
+    BiometricsLogResponse,
+    BiometricsListResponse,
+)
+from .blog import (
+    MediaType,
+    FeedSort,
+    PostMediaIn,
+    PostMediaOut,
+    PostCreateRequest,
+    PostPatchRequest,
+    PostDetail,
+    FeedItem,
+    FeedResponse,
+    HashtagOut,
+    HashtagSearchResponse,
+    FeedQueryParams,
+)
+from .admin import (
+    AdminDashboardStatsResponse,
+    AdminSimpleDashboardResponse,
+    UserStatsResponse,
+    LogStatsResponse,
+    RetentionMetricsResponse,
+    BlogStatsResponse,
+    StreakStatsResponse,
+    AdminUserListResponse,
+    AdminUserDetailResponse,
+    UserRolePatchRequest as AdminUserRolePatchRequest,
+    StreakAdjustRequest,
+    AdminPostListResponse,
+    PostDeleteRequest,
+    AdminActionResponse,
+)
 
 __all__ = [
     # Auth schemas
@@ -48,10 +93,55 @@ __all__ = [
     # Common schemas
     "ErrorResponse",
     "GenericMessageResponse",
-    
+
     # Streak schemas
     "StreakStatus",
     "StreakDayResponse",
     "StreakResponse",
     "StreakWeekResponse",
+
+    # Goals schemas
+    "GoalType",
+    "ActivityLevel",
+    "GoalCreateRequest",
+    "GoalPatchRequest",
+    "GoalResponse",
+    "GoalCalculateRequest",
+    "GoalCalculateResponse",
+
+    # Biometric schemas
+    "BiometricsCreateRequest",
+    "BiometricsPatchRequest",
+    "BiometricsLogResponse",
+    "BiometricsListResponse",
+
+    # Blog schemas
+    "MediaType",
+    "FeedSort",
+    "PostMediaIn",
+    "PostMediaOut",
+    "PostCreateRequest",
+    "PostPatchRequest",
+    "PostDetail",
+    "FeedItem",
+    "FeedResponse",
+    "HashtagOut",
+    "HashtagSearchResponse",
+    "FeedQueryParams",
+
+    # Admin schemas
+    "AdminDashboardStatsResponse",
+    "AdminSimpleDashboardResponse",
+    "UserStatsResponse",
+    "LogStatsResponse",
+    "RetentionMetricsResponse",
+    "BlogStatsResponse",
+    "StreakStatsResponse",
+    "AdminUserListResponse",
+    "AdminUserDetailResponse",
+    "AdminUserRolePatchRequest",
+    "StreakAdjustRequest",
+    "AdminPostListResponse",
+    "PostDeleteRequest",
+    "AdminActionResponse",
 ]

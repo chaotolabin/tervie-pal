@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # ChromaDB Configuration
     CHROMA_DB_PATH: str = "./chroma_db"
     
+    # Can cap nhat gia tri nay de phu hop voi frontend
+    FRONTEND_URL: Optional[str] = "http://testUrl.com"  # URL frontend
+    
+    # ImageKit Configuration (optional)
     # imagekit.io Configuration (optional)
     IMAGEKIT_PRIVATE_KEY: Optional[str] = None
     IMAGEKIT_PUBLIC_KEY: Optional[str] = None
@@ -26,7 +30,6 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USERNAME: Optional[str] = None  # your-email@gmail.com
     SMTP_PASSWORD: Optional[str] = None  # App Password (16 chars)
-
     class Config:
         env_file = ".env"
 

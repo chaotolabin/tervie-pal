@@ -10,7 +10,7 @@ from sqlalchemy import select, and_, desc
 from fastapi import HTTPException, status
 
 from app.models.support import SupportTicket, TicketStatus, TicketCategory
-from app.schemas.support_schema import (
+from app.schemas.support import (
     SupportTicketCreateRequest,
     AdminTicketPatchRequest
 )

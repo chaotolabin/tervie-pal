@@ -12,7 +12,7 @@ from fastapi import HTTPException, status
 from app.models.log import ExerciseLogEntry, ExerciseLogItem
 from app.models.exercise import Exercise
 from app.models.biometric import BiometricsLog
-from app.schemas.log_schema import (
+from app.schemas.log import (
     ExerciseLogEntryCreate,
     ExerciseLogEntryPatch,
     ExerciseLogItemUpdate

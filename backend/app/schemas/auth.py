@@ -56,6 +56,7 @@ class LogoutRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     """Request body for forgot password"""
     email: EmailStr
+    frontend_url: Optional[str] = None  # URL của frontend để redirect sau khi reset
     
 
 

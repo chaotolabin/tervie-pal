@@ -5,6 +5,7 @@ from .refresh_token_repository import RefreshTokenRepository
 from .profile_repository import ProfileRepository
 from .goal_repository import GoalRepository
 from .biometrics_repository import BiometricsRepository
+from .blog_repository import BlogRepository 
 
 __all__ = [
     "UserRepository",
@@ -13,4 +14,5 @@ __all__ = [
     "ProfileRepository",
     "GoalRepository",
     "BiometricsRepository",
+    "BlogRepository",  
 ]

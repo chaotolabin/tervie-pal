@@ -20,6 +20,8 @@ depends_on = None
 
 def upgrade() -> None:
     # Drop old ENUM types and tables if they exist (clean slate)
+    op.execute(text("DROP TABLE IF EXISTS biometrics_logs CASCADE;"))
+    op.execute(text("DROP TABLE IF EXISTS goals CASCADE;"))
     op.execute(text("DROP TABLE IF EXISTS refresh_sessions CASCADE;"))
     op.execute(text("DROP TABLE IF EXISTS profiles CASCADE;"))
     op.execute(text("DROP TABLE IF EXISTS users CASCADE;"))
@@ -72,6 +74,36 @@ def upgrade() -> None:
         );
     """))
     
+    # Create goals table
+    op.execute(text("""
+        CREATE TABLE goals (
+            user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            goal_type TEXT NOT NULL,
+            target_weight_kg NUMERIC(5, 2),
+            daily_calorie_target NUMERIC(6, 2) NOT NULL,
+            protein_ratio NUMERIC(3, 2),
+            fat_ratio NUMERIC(3, 2),
+            carb_ratio NUMERIC(3, 2),
+            weekly_exercise_min INTEGER,
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+    """))
+    
+    # Create biometrics_logs table
+    op.execute(text("""
+        CREATE TABLE biometrics_logs (
+            id BIGSERIAL PRIMARY KEY,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            logged_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            weight_kg NUMERIC(5, 2) NOT NULL,
+            height_cm NUMERIC(5, 2),
+            bmi NUMERIC(5, 2),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+        );
+    """))
+    
     # Create indexes
     op.execute(text("""
         CREATE INDEX ix_refresh_sessions_user_id ON refresh_sessions(user_id) 
@@ -81,6 +113,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Drop tables
+    op.drop_table('biometrics_logs')
+    op.drop_table('goals')
     op.drop_table('refresh_sessions')
     op.drop_table('profiles')
     op.drop_table('users')

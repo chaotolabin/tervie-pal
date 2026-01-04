@@ -143,11 +143,14 @@ class FeedItem(PostDetail):
 
 class FeedResponse(BaseModel):
     """
-    Response cho GET /feed - Cursor-based pagination.
-    next_cursor = None khi hết data.
+    Response cho GET /feed - Offset/Limit pagination.
     """
     items: List[FeedItem] = Field(..., description="Danh sách bài viết")
-    next_cursor: Optional[str] = Field(None, description="Cursor cho trang tiếp theo")
+    page: int = Field(..., description="Trang hiện tại (bắt đầu từ 1)")
+    limit: int = Field(..., description="Số lượng items mỗi trang")
+    total_count: int = Field(..., description="Tổng số bài viết")
+    total_pages: int = Field(..., description="Tổng số trang")
+    has_next: bool = Field(..., description="Còn trang tiếp theo không")
 
 
 # ==================== Hashtag Schemas ====================
@@ -171,5 +174,24 @@ class FeedQueryParams(BaseModel):
     hashtag: Optional[str] = Field(None, description="Lọc theo hashtag")
     author_id: Optional[uuid.UUID] = Field(None, description="Lọc theo tác giả")
     saved: Optional[bool] = Field(None, description="Chỉ lấy bài đã lưu")
-    limit: int = Field(20, ge=1, le=100, description="Số lượng items")
-    cursor: Optional[str] = Field(None, description="Cursor pagination")
+    limit: int = Field(15, ge=1, le=100, description="Số lượng items mỗi trang")
+    page: int = Field(1, ge=1, description="Số trang (bắt đầu từ 1)")
+
+
+# ==================== Media Upload Schemas ====================
+class MediaUploadResponse(BaseModel):
+    """Response sau khi upload file lên ImageKit"""
+    url: str = Field(..., description="URL của file trên ImageKit")
+    file_id: str = Field(..., description="ImageKit file ID (dùng để xóa)")
+    file_name: str = Field(..., description="Tên file trên ImageKit")
+    media_type: MediaType = Field(..., description="Loại media: image hoặc video")
+    mime_type: Optional[str] = Field(None, description="MIME type của file")
+    width: Optional[int] = Field(None, description="Chiều rộng (pixels) - chỉ có với ảnh")
+    height: Optional[int] = Field(None, description="Chiều cao (pixels) - chỉ có với ảnh")
+    size_bytes: int = Field(..., description="Kích thước file (bytes)")
+    sort_order: int = Field(0, description="Thứ tự sắp xếp (khi upload nhiều file)")
+
+
+class MultipleMediaUploadResponse(BaseModel):
+    """Response khi upload nhiều files"""
+    items: List[MediaUploadResponse] = Field(..., description="Danh sách files đã upload")

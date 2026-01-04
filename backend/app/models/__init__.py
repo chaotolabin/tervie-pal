@@ -11,7 +11,7 @@ from app.models.auth import (
     Goal,
     UserRole,
     Gender,
-    GoalType
+    GoalType,
 )
 
 # Password Reset models
@@ -59,7 +59,8 @@ from app.models.blog import (
 # Streak models
 from app.models.streak import (
     StreakDayCache,
-    StreakStatus
+    StreakStatus,
+    UserStreakState
 )
 
 # Export all models
@@ -77,8 +78,8 @@ __all__ = [
     "Gender",
     "GoalType",
     
-    # Signup
-    "SignupSession",
+    # Password Reset
+    "PasswordResetToken",
     
     # Food
     "Food",
@@ -114,4 +115,5 @@ __all__ = [
     # Streak
     "StreakDayCache",
     "StreakStatus",
+    "UserStreakState",
 ]

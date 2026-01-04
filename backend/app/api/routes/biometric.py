@@ -12,7 +12,6 @@ from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.auth import User
 from app.services.biometric_service import BiometricService
-
 from app.schemas.biometric import (
     BiometricsCreateRequest,
     BiometricsPatchRequest,
@@ -227,6 +226,7 @@ def delete_biometrics_log(
         user_id=current_user.id
     )
     # FastAPI tự động trả về 204 No Content
+
 
 @router.get(
     "/summary",
