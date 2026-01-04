@@ -147,10 +147,15 @@ export default function FoodAddModal({
       onClose();
       if (onSuccess) onSuccess();
       
-      // Trigger refresh dashboard, food logs và streak
-      window.dispatchEvent(new CustomEvent('refreshDashboard'));
-      window.dispatchEvent(new CustomEvent('refreshFoodLogs'));
-      window.dispatchEvent(new CustomEvent('refreshStreak'));
+      // Trigger refresh dashboard, food logs và streak với delay nhỏ để đảm bảo backend đã xử lý xong
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('refreshDashboard'));
+        // Dispatch event với thông tin ngày để FoodLoggingPage có thể refresh đúng ngày
+        window.dispatchEvent(new CustomEvent('refreshFoodLogs', { 
+          detail: { date: selectedDate } 
+        }));
+        window.dispatchEvent(new CustomEvent('refreshStreak'));
+      }, 300);
     } catch (error: any) {
       let errorMsg = 'Không thể thêm món ăn';
       if (error.response?.data?.detail) {

@@ -25,36 +25,57 @@ export default function BiometricsQuickAdd({ onClose }: BiometricsQuickAddProps)
   };
 
   const handleSave = async () => {
-    if (!weight) {
-      toast.error('Vui lòng nhập cân nặng');
-      return;
-    }
-
-    if (!height) {
-      toast.error('Vui lòng nhập chiều cao');
+    // Chỉ cần ít nhất một trong hai
+    if (!weight && !height) {
+      toast.error('Vui lòng nhập ít nhất một trong hai: cân nặng hoặc chiều cao');
       return;
     }
 
     try {
-      const weightKg = weightUnit === 'kg' ? parseFloat(weight) : parseFloat(weight) * 0.453592;
-      const heightCm = heightUnit === 'cm' ? parseFloat(height) : parseFloat(height) * 0.0254 * 100;
+      let weightKg: number | undefined = undefined;
+      let heightCm: number | undefined = undefined;
       
-      if (!heightCm || heightCm <= 0) {
-        toast.error('Chiều cao không hợp lệ');
-        return;
+      if (weight) {
+        weightKg = weightUnit === 'kg' ? parseFloat(weight) : parseFloat(weight) * 0.453592;
+        if (!weightKg || weightKg <= 0) {
+          toast.error('Cân nặng không hợp lệ');
+          return;
+        }
+      }
+      
+      if (height) {
+        heightCm = heightUnit === 'cm' ? parseFloat(height) : parseFloat(height) * 0.0254 * 100;
+        if (!heightCm || heightCm <= 0) {
+          toast.error('Chiều cao không hợp lệ');
+          return;
+        }
       }
       
       const { BiometricService } = await import('../../../../service/biometric.service');
-      await BiometricService.createLog({
-        logged_at: new Date().toISOString(),
-        weight_kg: weightKg,
-        height_cm: heightCm
-      });
+      const payload: { logged_at: string; weight_kg?: number; height_cm?: number } = {
+        logged_at: new Date().toISOString()
+      };
+      
+      if (weightKg !== undefined) {
+        payload.weight_kg = weightKg;
+      }
+      
+      if (heightCm !== undefined) {
+        payload.height_cm = heightCm;
+      }
+      
+      await BiometricService.createLog(payload);
       
       toast.success('Đã cập nhật chỉ số cơ thể!');
+      
+      // Trigger refresh để cập nhật dashboard và tính lại mục tiêu calo
+      window.dispatchEvent(new CustomEvent('refreshDashboard'));
+      window.dispatchEvent(new CustomEvent('refreshProfile'));
+      
       onClose();
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Không thể lưu chỉ số');
+      const errorMsg = error.response?.data?.detail || error.message || 'Không thể lưu chỉ số';
+      toast.error(errorMsg);
     }
   };
 

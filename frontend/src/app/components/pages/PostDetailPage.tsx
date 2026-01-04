@@ -9,23 +9,19 @@ import { toast } from 'sonner';
 import { BlogService } from '../../../service/blog.service';
 
 // --- Interfaces khớp với Backend ---
-interface Author {
-  id: string;
-  username: string;
-  avatar_url?: string;
-  streak_count?: number;
-}
-
 interface PostDetail {
-  id: string;
-  content: string;
+  id: number;
+  user_id: string;
+  title?: string;
+  content_text: string;
   created_at: string;
-  author: Author;
-  likes_count: number;
+  updated_at?: string;
+  like_count: number;
+  save_count: number;
   is_liked: boolean;
   is_saved: boolean;
-  tags?: string[];
-  media?: { url: string; type: 'image' | 'video' }[];
+  hashtags?: string[];
+  media?: { id: string; url: string; media_type: string; width?: number; height?: number }[];
 }
 
 interface PostDetailPageProps {
@@ -69,7 +65,7 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
     setPost({
       ...post,
       is_liked: newIsLiked,
-      likes_count: newIsLiked ? post.likes_count + 1 : post.likes_count - 1
+      like_count: newIsLiked ? post.like_count + 1 : post.like_count - 1
     });
 
     try {
@@ -148,23 +144,15 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
       {/* Post Card */}
       <Card className="border-none shadow-md overflow-hidden">
         <CardHeader className="pb-4">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
               <Avatar className="size-12 border-2 border-pink-100">
-                <AvatarImage src={post.author.avatar_url} />
                 <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold">
-                  {post.author.username.charAt(0).toUpperCase()}
+                  {post.user_id?.substring(0, 2).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-bold text-gray-900">{post.author.username}</p>
-                  {post.author.streak_count && (
-                    <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
-                      {post.author.streak_count} ngày 🔥
-                    </Badge>
-                  )}
-                </div>
+                <p className="font-bold text-gray-900">User {post.user_id?.substring(0, 8)}</p>
                 <p className="text-xs text-gray-500">{formatDate(post.created_at)}</p>
               </div>
             </div>
@@ -181,33 +169,38 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+
+          {/* Blog Title */}
+          <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-6">
+            {post.title || "Untitled Post"}
+          </h1>
         </CardHeader>
 
-        <CardContent className="space-y-4">
-          {/* Content */}
-          <div className="prose prose-sm max-w-none">
-            <p className="whitespace-pre-wrap text-gray-800 text-base leading-relaxed">{post.content}</p>
-          </div>
-
-          {/* Media (Images/Videos) */}
+        <CardContent className="space-y-6">
+          {/* Media (Images/Videos) - Blog format: media first */}
           {post.media && post.media.length > 0 && (
-            <div className={`grid gap-2 ${post.media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <div className={`grid gap-3 ${post.media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {post.media.map((item, idx) => (
-                <div key={idx} className="rounded-xl overflow-hidden bg-gray-100 border">
-                  {item.type === 'image' ? (
-                     <img src={item.url} alt="Post content" className="w-full h-full object-cover max-h-[500px]" />
+                <div key={idx} className="rounded-xl overflow-hidden bg-gray-100 border shadow-sm">
+                  {item.media_type === 'image' ? (
+                     <img src={item.url} alt="Post content" className="w-full h-full object-cover max-h-[600px]" />
                   ) : (
-                     <video src={item.url} controls className="w-full h-full object-cover" />
+                     <video src={item.url} controls className="w-full h-full object-cover max-h-[600px]" />
                   )}
                 </div>
               ))}
             </div>
           )}
 
+          {/* Content - After media like a blog */}
+          <div className="prose prose-lg max-w-none">
+            <p className="whitespace-pre-wrap text-gray-800 text-lg leading-relaxed">{post.content_text}</p>
+          </div>
+
           {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
+          {post.hashtags && post.hashtags.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2">
-              {post.tags.map((tag, idx) => (
+              {post.hashtags.map((tag, idx) => (
                 <Badge key={idx} variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                   #{tag}
                 </Badge>
@@ -224,7 +217,7 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
               className={`hover:bg-pink-50 ${post.is_liked ? 'text-pink-600' : 'text-gray-600'}`}
             >
               <Heart className={`size-5 mr-2 ${post.is_liked ? 'fill-pink-600' : ''}`} />
-              <span className="font-medium">{post.likes_count}</span>
+              <span className="font-medium">{post.like_count}</span>
             </Button>
             
             <Button

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tervie-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PROJECT_NAME=Tervie Pal
+      - PROJECT_VERSION=1.0.0
+      - DATABASE_URL=postgresql://postgres.ktxalsscztqdkvvpxldb:kh0ngc0Pass.word@aws-1-ap-south-1.pooler.supabase.com:6543/postgres
+      - IMAGEKIT_PRIVATE_KEY=private_mhsOeWhWcHr5AlIRTk/Tc/cH5cc=
+      - IMAGEKIT_PUBLIC_KEY=public_RZs0gOGV4d1e4WJg9TnDkBX1s+E=
+      - IMAGEKIT_URL=https://ik.imagekit.io/chaotolabin
+      - GEMINI_API_KEY=AIzaSyDumcCCrDLNZRE0inUZ9_e5UotwID79Bl0
+      - CHROMA_DB_PATH=/app/chroma_db
+      - SMTP_USERNAME=your-email@gmail.com
+      - SMTP_PASSWORD=your-app-password
+      - FRONTEND_URL=http://localhost
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tervie-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

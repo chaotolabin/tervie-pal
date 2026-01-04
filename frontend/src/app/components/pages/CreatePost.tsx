@@ -8,25 +8,35 @@ import {
   Video, 
   ArrowLeft 
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Textarea } from '../../components/ui/textarea';
-import { Input } from '../../components/ui/input';
-import { Card, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
+import { Card, CardContent } from '../ui/card';
+import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
-import { BlogService } from '../../services/blog.service';
-import { useNavigate } from 'react-router-dom';
+import { BlogService } from '../../../service/blog.service';
 
 interface MediaItem {
   url: string;
-  type: 'image' | 'video';
-  file?: File; 
+  file_id?: string;
+  file_name?: string;
+  media_type: string;
+  mime_type?: string;
+  width?: number;
+  height?: number;
+  size_bytes?: number;
+  sort_order?: number;
 }
 
-export default function CreatePostPage() {
-  const navigate = useNavigate();
+interface CreatePostPageProps {
+  onBack: () => void;
+  onPostCreated?: () => void;
+}
+
+export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPageProps) {
   
   const [content, setContent] = useState('');
+  const [title, setTitle] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [mediaList, setMediaList] = useState<MediaItem[]>([]);
@@ -61,9 +71,17 @@ export default function CreatePostPage() {
         const uploadPromises = files.map(file => BlogService.uploadMedia(file));
         const results = await Promise.all(uploadPromises);
         
+        // Lưu toàn bộ metadata từ ImageKit
         const newMedia = results.map(res => ({
           url: res.url,
-          type: res.media_type || (res.url.endsWith('.mp4') ? 'video' : 'image')
+          file_id: res.file_id,
+          file_name: res.file_name,
+          media_type: res.media_type,
+          mime_type: res.mime_type,
+          width: res.width,
+          height: res.height,
+          size_bytes: res.size_bytes,
+          sort_order: res.sort_order
         }));
 
         setMediaList([...mediaList, ...newMedia]);
@@ -83,6 +101,11 @@ export default function CreatePostPage() {
   };
 
   const handleSubmit = async () => {
+    if (!title.trim()) {
+      toast.error('Vui lòng nhập tiêu đề bài viết');
+      return;
+    }
+
     if (!content.trim() && mediaList.length === 0) {
       toast.error('Vui lòng nhập nội dung hoặc thêm ảnh/video');
       return;
@@ -90,16 +113,49 @@ export default function CreatePostPage() {
 
     setIsSubmitting(true);
     try {
-      await BlogService.createPost({
-        content: content,
-        tags: tags,
-        media: mediaList.map(m => ({ url: m.url, type: m.type }))
-      });
+      // Gửi đầy đủ media metadata cho backend
+      const mediaPayload = mediaList.map((m, index) => ({
+        url: m.url,
+        file_id: m.file_id,
+        file_name: m.file_name,
+        media_type: m.media_type,
+        mime_type: m.mime_type,
+        width: m.width,
+        height: m.height,
+        size_bytes: m.size_bytes,
+        sort_order: index
+      }));
+
+      const payload = {
+        title: title.trim(),
+        content_text: content.trim(),
+        hashtags: tags,
+        media: mediaPayload
+      };
+
+      console.log('Creating post with payload:', payload);
+
+      await BlogService.createPost(payload);
       
       toast.success('Đăng bài thành công!');
-      navigate('/community'); 
-    } catch (error) {
-      toast.error('Đăng bài thất bại. Vui lòng thử lại.');
+      onPostCreated?.();
+      onBack();
+    } catch (error: any) {
+      console.error('Create post error:', error);
+      console.error('Error response:', error.response?.data);
+      
+      // Handle error message properly
+      let errorMsg = 'Đăng bài thất bại. Vui lòng thử lại.';
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMsg = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          errorMsg = error.response.data.detail.map((e: any) => e.msg || e.message || String(e)).join(', ');
+        } else {
+          errorMsg = JSON.stringify(error.response.data.detail);
+        }
+      }
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -109,7 +165,7 @@ export default function CreatePostPage() {
     <div className="max-w-2xl mx-auto space-y-6 pb-10">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="size-5" />
         </Button>
         <h1 className="text-2xl font-bold">Tạo bài viết mới</h1>
@@ -118,6 +174,16 @@ export default function CreatePostPage() {
       <Card className="border-none shadow-md">
         <CardContent className="p-6 space-y-6">
           
+          {/* Title Input */}
+          <div className="space-y-2">
+            <Input
+              placeholder="Tiêu đề bài viết..."
+              className="text-xl font-semibold border-none focus-visible:ring-0 p-0 h-auto"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
           {/* Content Input */}
           <div className="space-y-2">
             <Textarea
@@ -133,7 +199,7 @@ export default function CreatePostPage() {
             <div className="grid grid-cols-2 gap-2">
               {mediaList.map((media, idx) => (
                 <div key={idx} className="relative group rounded-xl overflow-hidden bg-gray-100 aspect-video">
-                  {media.type === 'video' ? (
+                  {media.media_type === 'video' ? (
                     <video src={media.url} className="w-full h-full object-cover" controls />
                   ) : (
                     <img src={media.url} alt="preview" className="w-full h-full object-cover" />
@@ -219,7 +285,7 @@ export default function CreatePostPage() {
 
               <Button 
                 onClick={handleSubmit} 
-                disabled={isSubmitting || isUploading || (!content && mediaList.length === 0)}
+                disabled={isSubmitting || isUploading || !title.trim() || (!content.trim() && mediaList.length === 0)}
                 className="bg-gradient-to-r from-pink-500 to-purple-600 gap-2"
               >
                 {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

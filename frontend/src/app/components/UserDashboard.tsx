@@ -110,8 +110,8 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
     { id: 'home', label: 'Tổng quan', icon: Home },
     { id: 'food', label: 'Dinh dưỡng', icon: Utensils },
     { id: 'exercise', label: 'Tập luyện', icon: Activity },
-    { id: 'progress', label: 'Tiến độ', icon: TrendingUp },
-    { id: 'blog', label: 'Cộng đồng', icon: MessageCircle },
+    // { id: 'progress', label: 'Tiến độ', icon: TrendingUp }, // Commented out
+    { id: 'blog', label: 'Tervie Blog', icon: MessageCircle },
     { id: 'help', label: 'Trợ giúp', icon: HelpCircle },
     { id: 'profile', label: 'Cá nhân', icon: UserIcon },
   ];
@@ -135,8 +135,8 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
       case 'exercise':
         return <ExerciseLogging />;
       
-      case 'progress':
-        return <Progress />;
+      // case 'progress':
+      //   return <Progress />; // Commented out
       
       case 'blog':
         return <BlogPage />;

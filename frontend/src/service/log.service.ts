@@ -85,5 +85,12 @@ export const LogService = {
   getSummary: async (date: string): Promise<DailyNutritionSummary> => {
     const response = await apiClient.get(`/logs/summary/${date}`);
     return response.data;
+  },
+
+  // ========== STATISTICS ==========
+  // Lấy thống kê tổng số logs của user
+  getUserLogStats: async (): Promise<{ total_food_logs: number; total_exercise_logs: number }> => {
+    const response = await apiClient.get('/logs/stats');
+    return response.data;
   }
 };
