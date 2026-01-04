@@ -230,13 +230,12 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
                 </div>
               </div>
 
-              {/* Milestone Progress */}
-              <div className="space-y-2 pt-2 border-t border-gray-100">
+              {/* Milestone Progress - Commented out */}
+              {/* <div className="space-y-2 pt-2 border-t border-gray-100">
                 <p className="text-sm text-gray-600">
                   Mốc tiếp theo: <span className="font-semibold">{nextMilestone} ngày</span>
                 </p>
                 
-                {/* Progress Bar */}
                 <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div 
                     className="absolute left-0 top-0 h-full bg-orange-500 transition-all duration-300"
@@ -244,12 +243,11 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
                   />
                 </div>
                 
-                {/* Progress Text */}
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>{currentStreak}/{nextMilestone}</span>
                   <span>{Math.round(milestoneProgress)}%</span>
                 </div>
-              </div>
+              </div> */}
 
               {/* Motivational Message */}
               <div className="pt-2">
