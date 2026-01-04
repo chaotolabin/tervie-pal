@@ -30,20 +30,54 @@ export default function Analytics() {
     const fetchAdminData = async () => {
       setLoading(true);
       try {
-        // Giả định bạn có một endpoint admin tổng hợp các model này
         const { AdminService } = await import('../../../service/admin.service');
-        const data = await AdminService.getStreakDashboard();
+        const data = await AdminService.getStreakDashboard('30d', 10);
         
         // Map backend response to frontend format
         const streakStats = data.streak_stats;
         setSummary({
-          avg_current_streak: streakStats?.avg_current_streak || 0,
+          avg_current_streak: streakStats?.average_streak || streakStats?.avg_current_streak || 0,
           max_longest_streak: streakStats?.highest_streak || 0,
           total_users_active: streakStats?.users_with_streak || 0
         });
-        // TODO: Map distribution and activity from backend response
-        setDistribution([]);
-        setActivity([]);
+        
+        // Create distribution from top streak users
+        if (streakStats?.top_streak_users && streakStats.top_streak_users.length > 0) {
+          const dist: StreakDistribution[] = [
+            { range: '0-7 ngày', count: 0 },
+            { range: '8-30 ngày', count: 0 },
+            { range: '30+ ngày', count: 0 }
+          ];
+          
+          streakStats.top_streak_users.forEach((user: any) => {
+            const streak = user.current_streak || 0;
+            if (streak <= 7) dist[0].count++;
+            else if (streak <= 30) dist[1].count++;
+            else dist[2].count++;
+          });
+          
+          setDistribution(dist);
+        } else {
+          setDistribution([]);
+        }
+        
+        // Activity data - get from daily stats
+        try {
+          const dailyData = await AdminService.getDailyStats(7);
+          if (dailyData.items && dailyData.items.length > 0) {
+            const activityData = dailyData.items.map((item: any) => ({
+              date: new Date(item.date_log).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+              green_count: item.users_hit_calorie_target || 0,
+              yellow_count: (item.active_users || 0) - (item.users_hit_calorie_target || 0)
+            }));
+            setActivity(activityData);
+          } else {
+            setActivity([]);
+          }
+        } catch (e) {
+          console.error("Error fetching daily stats:", e);
+          setActivity([]);
+        }
       } catch (error) {
         console.error("Lỗi lấy dữ liệu từ Backend:", error);
       } finally {

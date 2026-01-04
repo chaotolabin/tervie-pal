@@ -12,6 +12,7 @@ export interface FoodLogItemCreateByGrams {
 
 export interface FoodLogEntryCreate {
   logged_at: string; // ISO DateTime
+  meal_type: string; // breakfast, lunch, dinner, snacks
   items: (FoodLogItemCreateByPortion | FoodLogItemCreateByGrams)[];
 }
 

@@ -1,30 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LogService } from '../../../service/log.service';
+import { GoalService } from '../../../service/goals.service';
 import FoodLogging from './FoodLogging';
 import FoodQuickAdd from './quick-add/foodquickadd';
+import NutrientTargets from './NutrientTargets';
+import { Calendar } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Input } from '../ui/input';
+import { toast } from 'sonner';
 
 export default function FoodLoggingPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDateOption, setSelectedDateOption] = useState<string>('today'); // 'today', 'yesterday', '2days', 'custom'
+  const [customDate, setCustomDate] = useState<string>(''); // Cho custom date picker
   const [data, setData] = useState<any>(null);
+  const [goal, setGoal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await LogService.getDailyLogs(date);
-      setData(res);
+      // Fetch daily logs and goals in parallel
+      const [logsRes, goalsRes] = await Promise.all([
+        LogService.getDailyLogs(date).catch(() => null),
+        GoalService.getCurrentGoal().catch(() => null), // Goals might not exist, so catch error
+      ]);
+      
+      if (logsRes) {
+        console.log('Daily logs response:', logsRes);
+        setData(logsRes);
+      }
+      
+      if (goalsRes) {
+        setGoal(goalsRes);
+      }
     } catch (error: any) {
       console.error('Error fetching daily logs:', error);
-      // Nếu lỗi 401, có thể token hết hạn - sẽ được xử lý bởi interceptor
+      
+      // Xử lý các loại lỗi khác nhau
       if (error.response?.status === 401) {
-        // Token sẽ được refresh tự động bởi api interceptor
-        // Chỉ cần set data null để hiển thị empty state
+        // Token hết hạn - interceptor sẽ tự động refresh và retry request
+        // Đợi một chút để interceptor xử lý, sau đó retry
+        setTimeout(async () => {
+          try {
+            const retryRes = await LogService.getDailyLogs(date);
+            setData(retryRes);
+            setError(null);
+          } catch (retryError: any) {
+            // Nếu vẫn lỗi sau khi retry, hiển thị lỗi
+            setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            toast.error('Phiên đăng nhập đã hết hạn');
+          } finally {
+            setLoading(false);
+          }
+        }, 1500);
+        return;
+      } else if (error.response?.status === 403) {
+        setError('Bạn không có quyền truy cập trang này');
+        toast.error('Bạn không có quyền truy cập trang dinh dưỡng');
+      } else if (error.response?.status >= 500) {
+        setError('Lỗi server. Vui lòng thử lại sau.');
+        toast.error('Lỗi server. Vui lòng thử lại sau.');
+      } else if (error.message === 'Network Error' || !error.response) {
+        setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+        toast.error('Không thể kết nối đến server');
+      } else {
+        const errorMsg = formatErrorMessage(error, 'Có lỗi xảy ra khi tải dữ liệu');
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
       setData(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [date]);
 
   useEffect(() => {
     fetchData();
@@ -45,7 +96,54 @@ export default function FoodLoggingPage() {
       window.removeEventListener('refreshDashboard', handleRefresh);
       window.removeEventListener('refreshFoodLogs', handleRefreshFoodLogs);
     };
-  }, [date]);
+  }, [date, fetchData]);
+
+  // Helper function để lấy date từ option
+  const getDateFromOption = (option: string): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    switch (option) {
+      case 'today':
+        return today.toISOString().split('T')[0];
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+      case '2days':
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        return twoDaysAgo.toISOString().split('T')[0];
+      default:
+        return today.toISOString().split('T')[0];
+    }
+  };
+
+  // Khi selectedDateOption thay đổi, cập nhật date (trừ custom)
+  useEffect(() => {
+    if (selectedDateOption !== 'custom') {
+      const newDate = getDateFromOption(selectedDateOption);
+      setDate(newDate);
+    }
+  }, [selectedDateOption]);
+
+  // Xử lý khi thay đổi date option
+  const handleDateOptionChange = (option: string) => {
+    setSelectedDateOption(option);
+    if (option === 'custom') {
+      // Nếu chọn custom, mở date picker với ngày hiện tại
+      setCustomDate(date);
+    } else {
+      const newDate = getDateFromOption(option);
+      setDate(newDate);
+    }
+  };
+
+  // Xử lý khi thay đổi custom date
+  const handleCustomDateChange = (newDate: string) => {
+    setCustomDate(newDate);
+    setDate(newDate);
+  };
 
   if (loading) {
     return (
@@ -56,39 +154,105 @@ export default function FoodLoggingPage() {
     );
   }
 
+  // Debug: Log current state
+  console.log('FoodLoggingPage render:', { loading, error, data, hasSummary: !!data?.summary });
+
+  // Đảm bảo luôn có giá trị mặc định để tránh lỗi render
+  const summary = data?.summary || null;
+  const foodLogs = data?.food_logs || [];
+
+  // Helper function để convert giá trị thành số an toàn
+  const toNumber = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const num = typeof value === 'string' ? parseFloat(value) : Number(value);
+    return isNaN(num) ? 0 : num;
+  };
+
+  // Helper function để format error message từ API response
+  const formatErrorMessage = (error: any, defaultMsg: string = 'Có lỗi xảy ra'): string => {
+    if (error?.response?.data?.detail) {
+      const detail = error.response.data.detail;
+      if (typeof detail === 'string') {
+        return detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        // FastAPI validation errors thường là array
+        return detail.map((err: any) => err.msg || JSON.stringify(err)).join(', ');
+      } else if (typeof detail === 'object') {
+        return JSON.stringify(detail);
+      }
+    }
+    return error?.message || defaultMsg;
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Dinh dưỡng</h2>
-        <input 
-          type="date" 
-          value={date} 
-          onChange={(e) => setDate(e.target.value)} 
-          className="border p-2 rounded"
-        />
+        
+        {/* Date Filter với các option */}
+        <div className="flex items-center gap-2">
+          <Calendar className="size-4 text-gray-500" />
+          <Select value={selectedDateOption} onValueChange={handleDateOptionChange}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Hôm nay</SelectItem>
+              <SelectItem value="yesterday">Hôm qua</SelectItem>
+              <SelectItem value="2days">2 ngày trước</SelectItem>
+              <SelectItem value="custom">Chọn ngày khác...</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* Custom Date Picker - chỉ hiển thị khi chọn "Chọn ngày khác..." */}
+          {selectedDateOption === 'custom' && (
+            <Input
+              type="date"
+              value={customDate || date}
+              onChange={(e) => handleCustomDateChange(e.target.value)}
+              className="w-auto"
+            />
+          )}
+        </div>
       </div>
 
-      {/* Tóm tắt dinh dưỡng */}
-      {data?.summary ? (
-        <div className="grid grid-cols-4 gap-4 bg-white p-6 rounded-xl shadow">
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Nạp vào</p>
-            <p className="font-bold text-xl">{data.summary.total_calories_consumed || 0} kcal</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Tiêu hao</p>
-            <p className="font-bold text-xl">{data.summary.total_calories_burned || 0} kcal</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Protein</p>
-            <p className="font-bold text-xl">{data.summary.total_protein_g?.toFixed(1) || 0} g</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Carbs</p>
-            <p className="font-bold text-xl">{data.summary.total_carbs_g?.toFixed(1) || 0} g</p>
-          </div>
+      {/* Hiển thị lỗi nếu có */}
+      {error && error !== 'Đang xác thực lại...' && (
+        <div className="bg-red-50 border border-red-200 p-4 rounded-xl">
+          <p className="text-red-600 text-center font-medium">{error}</p>
+          <button
+            onClick={fetchData}
+            className="mt-2 mx-auto block text-red-600 hover:text-red-700 underline text-sm"
+          >
+            Thử lại
+          </button>
         </div>
-      ) : (
+      )}
+
+      {/* Nutrient Targets with Progress Bars */}
+      {summary && (
+        <NutrientTargets
+          energy={{
+            consumed: toNumber(summary.total_calories_consumed),
+            target: toNumber(goal?.daily_calorie_target) || 2000, // Default to 2000 if no goal
+          }}
+          protein={{
+            consumed: toNumber(summary.total_protein_g),
+            target: toNumber(goal?.protein_grams) || 150, // Default to 150g if no goal
+          }}
+          carbs={{
+            consumed: toNumber(summary.total_carbs_g),
+            target: toNumber(goal?.carb_grams) || 200, // Default to 200g if no goal
+          }}
+          fat={{
+            consumed: toNumber(summary.total_fat_g || 0),
+            target: toNumber(goal?.fat_grams) || 65, // Default to 65g if no goal
+          }}
+          onRefresh={fetchData}
+        />
+      )}
+      
+      {!summary && !error && data && (
         <div className="bg-white p-6 rounded-xl shadow">
           <p className="text-gray-500 text-center">Chưa có dữ liệu dinh dưỡng cho ngày này.</p>
         </div>
@@ -101,7 +265,14 @@ export default function FoodLoggingPage() {
       </div>
 
       {/* Danh sách log */}
-      <FoodLogging foodLogs={data?.food_logs || []} />
+      {data ? (
+        <FoodLogging foodLogs={foodLogs} />
+      ) : (
+        <div className="bg-white rounded-xl shadow p-4">
+          <h3 className="font-bold text-lg mb-4">Bữa ăn hôm nay</h3>
+          <p className="text-gray-400">Chưa có dữ liệu ăn uống.</p>
+        </div>
+      )}
     </div>
   );
 }

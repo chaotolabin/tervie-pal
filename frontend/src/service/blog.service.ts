@@ -1,7 +1,7 @@
 import apiClient from './apiClient';
 
 export const BlogService = {
-  getFeed: async (params: { page?: number; sort?: string; hashtag?: string; author_id?: string; saved?: boolean }) => {
+  getFeed: async (params: { page?: number; sort?: string; hashtag?: string; author_id?: string; saved?: boolean, limit?: number }) => {
     const response = await apiClient.get('/blog/feed', { params });
     return response.data;
   },

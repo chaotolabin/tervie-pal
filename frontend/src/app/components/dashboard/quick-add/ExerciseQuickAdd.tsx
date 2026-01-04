@@ -58,8 +58,9 @@ export default function ExerciseQuickAdd({ onClose }: ExerciseQuickAddProps) {
       toast.success(`Đã thêm: ${selectedExercise.description}`);
       if (onClose) onClose();
       
-      // Trigger refresh summary ở dashboard
+      // Trigger refresh summary và streak ở dashboard
       window.dispatchEvent(new CustomEvent('refreshDashboard'));
+      window.dispatchEvent(new CustomEvent('refreshStreak'));
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Không thể lưu bài tập');
     } finally {

@@ -12,5 +12,10 @@ export const FoodService = {
   getDetail: async (foodId: number): Promise<FoodDetail> => {
     const response = await apiClient.get(`/foods/${foodId}`);
     return response.data;
+  },
+
+  createCustomFood: async (data: any): Promise<FoodDetail> => {
+    const response = await apiClient.post('/foods', data);
+    return response.data;
   }
 };

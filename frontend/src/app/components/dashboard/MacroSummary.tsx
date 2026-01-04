@@ -1,3 +1,4 @@
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Progress } from '../ui/progress';
 
@@ -85,7 +86,7 @@ export default function MacroSummary({ protein, carbs, fat, showChart = true }: 
               
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{totalCurrent}g</p>
+                  <p className="text-2xl font-bold">{totalCurrent.toFixed(2)}g</p>
                   <p className="text-xs text-gray-600">Tổng</p>
                 </div>
               </div>
@@ -108,7 +109,7 @@ export default function MacroSummary({ protein, carbs, fat, showChart = true }: 
                   </div>
                   <span className="text-sm">
                     <span className={isOverGoal ? 'text-red-600 font-semibold' : 'font-semibold'}>
-                      {macro.data.current}g
+                      {macro.data.current.toFixed(2)}g
                     </span>
                     <span className="text-gray-600"> / {macro.data.goal}g</span>
                   </span>
@@ -130,9 +131,9 @@ export default function MacroSummary({ protein, carbs, fat, showChart = true }: 
                   <span>{Math.round(percentage)}%</span>
                   <span>
                     {macro.data.goal - macro.data.current > 0 
-                      ? `Còn ${macro.data.goal - macro.data.current}g`
+                      ? `Còn ${(macro.data.goal - macro.data.current).toFixed(2)}g`
                       : isOverGoal 
-                      ? `Vượt ${macro.data.current - macro.data.goal}g`
+                      ? `Vượt ${(macro.data.current - macro.data.goal).toFixed(2)}g`
                       : 'Đã đạt mục tiêu'
                     }
                   </span>

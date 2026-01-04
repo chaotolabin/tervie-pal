@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HelpCircle, MessageSquare, Bug, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -22,10 +22,13 @@ interface FAQ {
 interface Ticket {
   id: number;
   subject: string;
-  user_name: string;
-  status: 'open' | 'handled';
-  priority: 'high' | 'medium' | 'low';
+  message: string;
+  username?: string | null;
+  user_id?: string | null;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  category?: string;
   created_at: string;
+  updated_at?: string | null;
 }
 
 interface Feedback {
@@ -47,6 +50,8 @@ export default function SupportManagement() {
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FAQ | null>(null);
   const [faqForm, setFaqForm] = useState({ question: '', answer: '', category: '' });
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [showTicketDialog, setShowTicketDialog] = useState(false);
 
   // 1. Fetch dữ liệu từ Backend
   useEffect(() => {
@@ -176,19 +181,42 @@ export default function SupportManagement() {
                 </TableHeader>
                 <TableBody>
                   {tickets.map((ticket) => (
-                    <TableRow key={ticket.id}>
+                    <TableRow 
+                      key={ticket.id}
+                      className="cursor-pointer hover:bg-gray-50"
+                      onClick={() => {
+                        setSelectedTicket(ticket);
+                        setShowTicketDialog(true);
+                      }}
+                    >
                       <TableCell className="text-gray-400">#{ticket.id}</TableCell>
                       <TableCell className="font-medium">{ticket.subject}</TableCell>
-                      <TableCell>{ticket.user_name}</TableCell>
                       <TableCell>
-                        <Badge variant={ticket.status === 'open' ? 'default' : 'secondary'}>
-                          {ticket.status === 'open' ? 'Đang chờ' : 'Đã giải quyết'}
+                        {ticket.username || (ticket.user_id ? `User ${ticket.user_id.substring(0, 8)}` : 'Guest')}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            ticket.status === 'open' ? 'default' : 
+                            ticket.status === 'in_progress' ? 'default' :
+                            'secondary'
+                          }
+                        >
+                          {ticket.status === 'open' ? 'Đang chờ' : 
+                           ticket.status === 'in_progress' ? 'Đang xử lý' :
+                           ticket.status === 'resolved' ? 'Đã giải quyết' :
+                           'Đã đóng'}
                         </Badge>
                       </TableCell>
                       <TableCell>{new Date(ticket.created_at).toLocaleDateString('vi-VN')}</TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         {ticket.status === 'open' && (
-                          <Button size="sm" onClick={() => handleUpdateTicketStatus(ticket.id, 'handled')}>Xong</Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleUpdateTicketStatus(ticket.id, 'resolved')}
+                          >
+                            Xong
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -259,6 +287,98 @@ export default function SupportManagement() {
             <Button variant="outline" onClick={() => setShowFaqDialog(false)}>Hủy</Button>
             <Button onClick={handleSaveFaq}>Lưu thay đổi</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Ticket Detail */}
+      <Dialog open={showTicketDialog} onOpenChange={setShowTicketDialog}>
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chi tiết yêu cầu hỗ trợ #{selectedTicket?.id}</DialogTitle>
+          </DialogHeader>
+          {selectedTicket && (
+            <div className="space-y-4 py-4">
+              <div className="grid gap-2">
+                <Label className="text-sm font-semibold">Tiêu đề</Label>
+                <p className="text-base font-medium">{selectedTicket.subject}</p>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label className="text-sm font-semibold">Người gửi</Label>
+                <p className="text-base">
+                  {selectedTicket.username || (selectedTicket.user_id ? `User ${selectedTicket.user_id.substring(0, 8)}` : 'Guest')}
+                  {selectedTicket.user_id && (
+                    <span className="text-gray-400 text-sm ml-2">({selectedTicket.user_id})</span>
+                  )}
+                </p>
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-sm font-semibold">Phân loại</Label>
+                <Badge variant="outline">
+                  {selectedTicket.category || 'Không phân loại'}
+                </Badge>
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-sm font-semibold">Trạng thái</Label>
+                <Badge 
+                  variant={
+                    selectedTicket.status === 'open' ? 'default' : 
+                    selectedTicket.status === 'in_progress' ? 'default' :
+                    'secondary'
+                  }
+                >
+                  {selectedTicket.status === 'open' ? 'Đang chờ' : 
+                   selectedTicket.status === 'in_progress' ? 'Đang xử lý' :
+                   selectedTicket.status === 'resolved' ? 'Đã giải quyết' :
+                   'Đã đóng'}
+                </Badge>
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-sm font-semibold">Nội dung</Label>
+                <div className="p-4 bg-gray-50 rounded-lg border">
+                  <p className="text-base whitespace-pre-wrap">{selectedTicket.message}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
+                <div>
+                  <Label className="text-xs">Ngày tạo</Label>
+                  <p>{new Date(selectedTicket.created_at).toLocaleString('vi-VN')}</p>
+                </div>
+                {selectedTicket.updated_at && (
+                  <div>
+                    <Label className="text-xs">Cập nhật lần cuối</Label>
+                    <p>{new Date(selectedTicket.updated_at).toLocaleString('vi-VN')}</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedTicket.status === 'open' && (
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      handleUpdateTicketStatus(selectedTicket.id, 'in_progress');
+                      setShowTicketDialog(false);
+                    }}
+                  >
+                    Đánh dấu đang xử lý
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      handleUpdateTicketStatus(selectedTicket.id, 'resolved');
+                      setShowTicketDialog(false);
+                    }}
+                  >
+                    Đánh dấu đã giải quyết
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
