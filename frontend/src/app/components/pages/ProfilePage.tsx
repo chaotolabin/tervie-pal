@@ -80,7 +80,6 @@ export default function ProfilePage() {
     );
   }
 
-  // --- Chế biến dữ liệu để hiển thị ---
   
   // 1. Thông tin cơ bản
   const currentWeight = biometrics.length > 0 ? biometrics[0].weight_kg : (userData?.profile?.weight_kg || 0);
