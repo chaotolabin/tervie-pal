@@ -38,7 +38,6 @@ router = APIRouter()
     **Filters:**
     - email: Tìm theo email (partial match)
     - role: Filter theo role (user/admin)
-    - status: Filter theo trạng thái (active/banned) - TODO
     
     **Pagination:**
     - page: Trang hiện tại (default: 1)
@@ -55,7 +54,6 @@ def list_users(
     page_size: int = Query(50, ge=1, le=200, description="Số items mỗi trang"),
     email: Optional[str] = Query(None, description="Filter theo email"),
     role: Optional[str] = Query(None, regex="^(user|admin)$", description="Filter theo role"),
-    status: Optional[str] = Query(None, description="Filter theo status (TODO)"),
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_current_admin_user)
 ):
@@ -69,8 +67,7 @@ def list_users(
         page=page,
         page_size=page_size,
         email_filter=email,
-        role_filter=role,
-        status_filter=status
+        role_filter=role
     )
     
     total_pages = ceil(total / page_size) if total > 0 else 0

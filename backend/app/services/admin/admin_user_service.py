@@ -28,8 +28,7 @@ class AdminUserService:
         page: int = 1,
         page_size: int = 50,
         email_filter: Optional[str] = None,
-        role_filter: Optional[str] = None,
-        status_filter: Optional[str] = None
+        role_filter: Optional[str] = None
     ) -> Tuple[List[AdminUserListItem], int]:
         """
         Lấy danh sách users với phân trang và filter
