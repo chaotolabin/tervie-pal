@@ -11,7 +11,12 @@ export const BlogService = {
     return response.data;
   },
 
-  createPost: async (data: { content: string; media?: any[]; hashtags?: string[]; title?: string }) => {
+  createPost: async (data: { 
+    content_text: string; 
+    media?: Array<{ url: string; media_type: string; sort_order?: number }>; 
+    hashtags?: string[]; 
+    title?: string 
+  }) => {
     const response = await apiClient.post('/blog/posts', data);
     return response.data;
   },

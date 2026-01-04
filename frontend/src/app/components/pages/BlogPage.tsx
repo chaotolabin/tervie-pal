@@ -7,6 +7,7 @@ import { Badge } from '../ui/badge';
 import { BlogService } from '../../../service/blog.service';
 import { toast } from 'sonner';
 import PostDetailPage from './PostDetailPage';
+import CreatePostPage from './CreatePost';
 
 interface Author {
   id: string;
@@ -41,6 +42,7 @@ export default function BlogPage() {
   const [feed, setFeed] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
+  const [showCreatePost, setShowCreatePost] = useState(false);
 
   useEffect(() => {
     const fetchFeed = async () => {
@@ -59,8 +61,11 @@ export default function BlogPage() {
         setLoading(false);
       }
     };
-    fetchFeed();
-  }, []);
+    
+    if (!showCreatePost) {
+      fetchFeed();
+    }
+  }, [showCreatePost]);
 
   const handleLikePost = async (postId: number) => {
     const post = feed.find(p => p.id === postId);
@@ -123,6 +128,18 @@ export default function BlogPage() {
     return <PostDetailPage postId={selectedPost} onBack={() => setSelectedPost(null)} />;
   }
 
+  if (showCreatePost) {
+    return (
+      <CreatePostPage 
+        onBack={() => setShowCreatePost(false)}
+        onPostCreated={() => {
+          setShowCreatePost(false);
+          setLoading(true);
+        }}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[50vh]">
@@ -136,7 +153,10 @@ export default function BlogPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Cộng đồng</h1>
-        <Button className="bg-gradient-to-r from-pink-500 to-purple-600 text-white">
+        <Button 
+          onClick={() => setShowCreatePost(true)}
+          className="bg-gradient-to-r from-pink-500 to-purple-600 text-white"
+        >
           Tạo bài viết
         </Button>
       </div>
