@@ -31,15 +31,42 @@ interface MediaItem {
 interface CreatePostPageProps {
   onBack: () => void;
   onPostCreated?: () => void;
+  editMode?: boolean;
+  existingPost?: {
+    id: number;
+    title?: string;
+    content_text: string;
+    hashtags?: string[];
+    media?: Array<{
+      id: number;
+      url: string;
+      media_type: string;
+      mime_type?: string;
+      width?: number;
+      height?: number;
+      size_bytes?: number;
+      sort_order?: number;
+    }>;
+  };
 }
 
-export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPageProps) {
+export default function CreatePostPage({ onBack, onPostCreated, editMode = false, existingPost }: CreatePostPageProps) {
   
-  const [content, setContent] = useState('');
-  const [title, setTitle] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [content, setContent] = useState(existingPost?.content_text || '');
+  const [title, setTitle] = useState(existingPost?.title || '');
+  const [tags, setTags] = useState<string[]>(existingPost?.hashtags || []);
   const [tagInput, setTagInput] = useState('');
-  const [mediaList, setMediaList] = useState<MediaItem[]>([]);
+  const [mediaList, setMediaList] = useState<MediaItem[]>(
+    existingPost?.media?.map(m => ({
+      url: m.url,
+      media_type: m.media_type,
+      mime_type: m.mime_type,
+      width: m.width,
+      height: m.height,
+      size_bytes: m.size_bytes,
+      sort_order: m.sort_order
+    })) || []
+  );
   
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,19 +160,26 @@ export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPage
         media: mediaPayload
       };
 
-      console.log('Creating post with payload:', payload);
+      console.log(`${editMode ? 'Updating' : 'Creating'} post with payload:`, payload);
 
-      await BlogService.createPost(payload);
+      if (editMode && existingPost) {
+        // Update existing post
+        await BlogService.updatePost(existingPost.id.toString(), payload);
+        toast.success('Cập nhật bài viết thành công!');
+      } else {
+        // Create new post
+        await BlogService.createPost(payload);
+        toast.success('Đăng bài thành công!');
+      }
       
-      toast.success('Đăng bài thành công!');
       onPostCreated?.();
       onBack();
     } catch (error: any) {
-      console.error('Create post error:', error);
+      console.error(`${editMode ? 'Update' : 'Create'} post error:`, error);
       console.error('Error response:', error.response?.data);
       
       // Handle error message properly
-      let errorMsg = 'Đăng bài thất bại. Vui lòng thử lại.';
+      let errorMsg = editMode ? 'Cập nhật bài viết thất bại. Vui lòng thử lại.' : 'Đăng bài thất bại. Vui lòng thử lại.';
       if (error.response?.data?.detail) {
         if (typeof error.response.data.detail === 'string') {
           errorMsg = error.response.data.detail;
@@ -168,7 +202,7 @@ export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPage
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="size-5" />
         </Button>
-        <h1 className="text-2xl font-bold">Tạo bài viết mới</h1>
+        <h1 className="text-2xl font-bold">{editMode ? 'Chỉnh sửa bài viết' : 'Tạo bài viết mới'}</h1>
       </div>
 
       <Card className="border-none shadow-md">
@@ -289,7 +323,7 @@ export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPage
                 className="bg-gradient-to-r from-pink-500 to-purple-600 gap-2"
               >
                 {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                Đăng bài
+                {editMode ? 'Cập nhật' : 'Đăng bài'}
               </Button>
             </div>
           </div>

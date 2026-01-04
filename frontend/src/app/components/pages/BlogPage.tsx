@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, Bookmark, TrendingUp, Search, X, Rainbow } from 'lucide-react';
+import { Heart, Bookmark, TrendingUp, Search, X, Rainbow, User } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -9,6 +9,7 @@ import { BlogService } from '../../../service/blog.service';
 import { toast } from 'sonner';
 import PostDetailPage from './PostDetailPage';
 import CreatePostPage from './CreatePost';
+import api from '../lib/api';
 
 interface Author {
   id: string;
@@ -44,12 +45,31 @@ export default function BlogPage() {
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   // Filter states
   const [sort, setSort] = useState<'recent' | 'trending'>('recent');
   const [hashtagFilter, setHashtagFilter] = useState<string>('');
   const [debouncedHashtag, setDebouncedHashtag] = useState<string>('');
   const [savedOnly, setSavedOnly] = useState(false);
+  const [myPostsOnly, setMyPostsOnly] = useState(false);
+
+  // Get current user ID from API
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await api.get('/users/me');
+        const userId = response.data.user?.id;
+        console.log('[BlogPage] Current user ID:', userId);
+        setCurrentUserId(userId || null);
+      } catch (error) {
+        console.error('[BlogPage] Error fetching current user:', error);
+        setCurrentUserId(null);
+      }
+    };
+    fetchCurrentUser();
+  }, []);
 
   // Debounce hashtag search
   useEffect(() => {
@@ -81,6 +101,11 @@ export default function BlogPage() {
           params.saved = true;
         }
         
+        if (myPostsOnly && currentUserId) {
+          params.author_id = currentUserId;
+          console.log('[BlogPage] Filtering by my posts, author_id:', currentUserId);
+        }
+        
         const res = await BlogService.getFeed(params);
         console.log('Feed response:', res);
         console.log('Feed items:', res.items);
@@ -99,7 +124,7 @@ export default function BlogPage() {
     if (!showCreatePost) {
       fetchFeed();
     }
-  }, [showCreatePost, sort, debouncedHashtag, savedOnly]);
+  }, [showCreatePost, sort, debouncedHashtag, savedOnly, myPostsOnly, currentUserId]);
 
   const handleLikePost = async (postId: number) => {
     const post = feed.find(p => p.id === postId);
@@ -159,17 +184,42 @@ export default function BlogPage() {
   };
 
   if (selectedPost) {
-    return <PostDetailPage postId={selectedPost} onBack={() => setSelectedPost(null)} />;
-  }
-
-  if (showCreatePost) {
     return (
-      <CreatePostPage 
-        onBack={() => setShowCreatePost(false)}
-        onPostCreated={() => {
-          setShowCreatePost(false);
+      <PostDetailPage 
+        postId={selectedPost} 
+        onBack={() => setSelectedPost(null)}
+        currentUserId={currentUserId}
+        onPostDeleted={() => {
+          console.log('[BlogPage] Post deleted, refetching feed...');
+          setSelectedPost(null);
+          // Trigger re-fetch by toggling loading
+          setFeed([]);
           setLoading(true);
         }}
+        onEditPost={(post) => {
+          console.log('[BlogPage] Editing post:', post.id);
+          setSelectedPost(null);
+          setEditingPost(post);
+        }}
+      />
+    );
+  }
+
+  if (showCreatePost || editingPost) {
+    return (
+      <CreatePostPage 
+        onBack={() => {
+          setShowCreatePost(false);
+          setEditingPost(null);
+        }}
+        onPostCreated={() => {
+          setShowCreatePost(false);
+          setEditingPost(null);
+          setFeed([]);
+          setLoading(true);
+        }}
+        editMode={!!editingPost}
+        existingPost={editingPost || undefined}
       />
     );
   }
@@ -223,6 +273,15 @@ export default function BlogPage() {
         >
           <Bookmark className="size-4" />
           Đã lưu
+        </button>
+        <button 
+          onClick={() => setMyPostsOnly(!myPostsOnly)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+            myPostsOnly ? 'bg-green-50 text-green-600' : 'text-gray-600 hover:bg-gray-100'
+          }`}
+        >
+          <User className="size-4" />
+          Bài của tôi
         </button>
       </div>
 
