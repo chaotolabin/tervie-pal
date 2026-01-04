@@ -18,7 +18,7 @@ interface Author {
 
 interface Post {
   id: number;
-  user_id: string;
+  full_name: string;
   content_text: string;
   title?: string;
   created_at: string;
@@ -251,10 +251,10 @@ export default function BlogPage() {
                       <div className="flex items-center gap-2">
                         <Avatar className="size-6">
                           <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold">
-                            {post.user_id?.substring(0, 2).toUpperCase() || 'U'}
+                            {post.full_name?.substring(0, 2).toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>
-                        <span>User {post.user_id?.substring(0, 8)}</span>
+                        <span>User {post.full_name?.substring(0, 20)}</span>
                         <span>•</span>
                         <span>{formatDate(post.created_at)}</span>
                       </div>
