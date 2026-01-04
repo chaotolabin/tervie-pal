@@ -89,13 +89,15 @@ class AuthService:
         
         # Calculate daily calorie target using GoalService
         from app.services.goal_service import GoalService
-        daily_calorie = GoalService.calculate_daily_calorie(
+        
+        # Tính BMR (Basal Metabolic Rate)
+        bmr = GoalService.calculate_bmr(
             weight_kg=float(weight_kg),
             height_cm=float(height_cm),
             gender=gender,
             date_of_birth=date_of_birth
         )
-
+        
         # Tính TDEE (Total Daily Energy Expenditure)
         tdee = GoalService.calculate_tdee(bmr=bmr, baseline_activity=baseline_activity)
 
