@@ -32,42 +32,47 @@ interface StreakResponse {
 
 interface UserDashboardProps {
   onLogout: () => void;
+  userData?: UserMeResponse | null;
 }
 
 type Tab = 'home' | 'food' | 'exercise' | 'progress' | 'help' | 'profile';
 
-export default function UserDashboard({ onLogout }: UserDashboardProps) {
+export default function UserDashboard({ onLogout, userData: userDataProp }: UserDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   
   // State dữ liệu thực
-  const [userData, setUserData] = useState<UserMeResponse | null>(null);
+  const [userData, setUserData] = useState<UserMeResponse | null>(userDataProp || null);
   const [streakData, setStreakData] = useState<StreakResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch dữ liệu khi load Dashboard
+  // Fetch dữ liệu khi load Dashboard (chỉ streak, không fetch lại user)
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Gọi song song các API cần thiết
-        const [userRes, streakRes] = await Promise.all([
-          api.get('/users/me'),
-          api.get('/streak')
-        ]);
-
-        setUserData(userRes.data);
-        setStreakData(streakRes.data);
+        // Chỉ fetch streak nếu chưa có userData từ props
+        if (userDataProp) {
+          setUserData(userDataProp);
+          const streakRes = await api.get('/streak');
+          setStreakData(streakRes.data);
+        } else {
+          // Fallback: nếu không có userData từ props, fetch cả hai
+          const [userRes, streakRes] = await Promise.all([
+            api.get('/users/me'),
+            api.get('/streak')
+          ]);
+          setUserData(userRes.data);
+          setStreakData(streakRes.data);
+        }
       } catch (error) {
         console.error("Lỗi tải dữ liệu dashboard:", error);
-        // Nếu lỗi 401 (Unauthorized) thì logout
-        // onLogout(); 
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, []);
+  }, [userDataProp]);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
