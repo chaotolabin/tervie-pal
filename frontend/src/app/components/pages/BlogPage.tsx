@@ -162,31 +162,38 @@ export default function BlogPage() {
             <p>Chưa có bài viết nào</p>
           </div>
         ) : (
-          feed.map((post) => (
-            <Card key={post.id} className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="pt-6">
-                {/* Author Info */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="size-10 border-2 border-pink-100">
-                      <AvatarImage src={post.author.avatar_url} />
-                      <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold">
-                        {post.author.username.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-gray-900">{post.author.username}</p>
-                        {post.author.streak_count && post.author.streak_count > 0 && (
-                          <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
-                            {post.author.streak_count} ngày 🔥
-                          </Badge>
-                        )}
+          feed.map((post) => {
+            // Skip posts without author data
+            if (!post.author) {
+              console.warn('Post missing author:', post.id);
+              return null;
+            }
+            
+            return (
+              <Card key={post.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="pt-6">
+                  {/* Author Info */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="size-10 border-2 border-pink-100">
+                        <AvatarImage src={post.author?.avatar_url} />
+                        <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold">
+                          {post.author?.username?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-gray-900">{post.author?.username || 'Unknown'}</p>
+                          {post.author?.streak_count && post.author.streak_count > 0 && (
+                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
+                              {post.author.streak_count} ngày 🔥
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500">{formatDate(post.created_at)}</p>
                       </div>
-                      <p className="text-xs text-gray-500">{formatDate(post.created_at)}</p>
                     </div>
                   </div>
-                </div>
 
                 {/* Content */}
                 <div className="mb-4" onClick={() => setSelectedPost(post.id)}>
@@ -247,7 +254,8 @@ export default function BlogPage() {
                 </div>
               </CardContent>
             </Card>
-          ))
+            );
+          })
         )}
       </div>
     </div>
