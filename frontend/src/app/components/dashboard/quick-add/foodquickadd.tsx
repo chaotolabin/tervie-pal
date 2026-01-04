@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { foodService } from '../../../../lib/services/foodService';
+import { food.service } from '../../../../service/food.service';
 import { Search, Plus, Calculator } from 'lucide-react';
 
 export default function FoodQuickAdd() {
@@ -12,14 +12,13 @@ export default function FoodQuickAdd() {
     if (query.length > 1) {
       const delaySearch = setTimeout(async () => {
         const data = await foodService.searchFoods(query);
-        setResults(data.items); // Lấy từ FoodSearchResponse.items
+        setResults(data.items); 
       }, 500);
       return () => clearTimeout(delaySearch);
     }
   }, [query]);
 
   const handleLogFood = async (foodId: number) => {
-    // Chỗ này sẽ gọi tiếp service logs.py (Bạn cần gửi file logs.py sau)
     console.log("Logging food ID:", foodId);
     alert("Đã ghi nhận món ăn vào nhật ký!");
   };

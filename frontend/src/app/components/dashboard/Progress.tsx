@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { API } from '../../../lib/api-client';
+import { API } from '../../../lib/api';
 
 export default function Progress() {
   const [goal, setGoal] = useState<any>(null);
