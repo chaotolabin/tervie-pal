@@ -51,7 +51,7 @@ router = APIRouter()
 def get_dashboard_stats(
     range: str = Query(
         "7d",
-        regex="^(7d|30d|90d)$",
+        pattern="^(7d|30d|90d)$",
         description="Khoảng thời gian: 7d, 30d, 90d"
     ),
     top_n: int = Query(
@@ -215,7 +215,7 @@ def get_daily_stats(
 def get_core_dashboard(
     range: str = Query(
         "7d",
-        regex="^(7d|30d|90d)$",
+        pattern="^(7d|30d|90d)$",
         description="Khoảng thời gian: 7d, 30d, 90d"
     ),
     db: Session = Depends(get_db),
@@ -263,7 +263,7 @@ def get_core_dashboard(
 def get_blog_dashboard(
     range: str = Query(
         "7d",
-        regex="^(7d|30d|90d)$",
+        pattern="^(7d|30d|90d)$",
         description="Khoảng thời gian: 7d, 30d, 90d"
     ),
     top_n: int = Query(
@@ -313,7 +313,7 @@ def get_blog_dashboard(
 def get_streak_dashboard(
     range: str = Query(
         "7d",
-        regex="^(7d|30d|90d)$",
+        pattern="^(7d|30d|90d)$",
         description="Khoảng thời gian (for consistency)"
     ),
     top_n: int = Query(

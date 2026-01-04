@@ -53,7 +53,7 @@ def list_users(
     page: int = Query(1, ge=1, description="Trang hiện tại"),
     page_size: int = Query(50, ge=1, le=200, description="Số items mỗi trang"),
     email: Optional[str] = Query(None, description="Filter theo email"),
-    role: Optional[str] = Query(None, regex="^(user|admin)$", description="Filter theo role"),
+    role: Optional[str] = Query(None, pattern="^(user|admin)$", description="Filter theo role"),
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_current_admin_user)
 ):
