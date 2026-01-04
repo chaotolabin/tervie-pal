@@ -18,8 +18,14 @@ import { BlogService } from '../../../service/blog.service';
 
 interface MediaItem {
   url: string;
-  type: 'image' | 'video';
-  file?: File; 
+  file_id?: string;
+  file_name?: string;
+  media_type: string;
+  mime_type?: string;
+  width?: number;
+  height?: number;
+  size_bytes?: number;
+  sort_order?: number;
 }
 
 interface CreatePostPageProps {
@@ -65,9 +71,17 @@ export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPage
         const uploadPromises = files.map(file => BlogService.uploadMedia(file));
         const results = await Promise.all(uploadPromises);
         
+        // Lưu toàn bộ metadata từ ImageKit
         const newMedia = results.map(res => ({
           url: res.url,
-          type: res.media_type || (res.url.endsWith('.mp4') ? 'video' : 'image')
+          file_id: res.file_id,
+          file_name: res.file_name,
+          media_type: res.media_type,
+          mime_type: res.mime_type,
+          width: res.width,
+          height: res.height,
+          size_bytes: res.size_bytes,
+          sort_order: res.sort_order
         }));
 
         setMediaList([...mediaList, ...newMedia]);
@@ -99,10 +113,16 @@ export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPage
 
     setIsSubmitting(true);
     try {
-      // Prepare media array theo đúng format backend
+      // Gửi đầy đủ media metadata cho backend
       const mediaPayload = mediaList.map((m, index) => ({
         url: m.url,
-        media_type: m.type,
+        file_id: m.file_id,
+        file_name: m.file_name,
+        media_type: m.media_type,
+        mime_type: m.mime_type,
+        width: m.width,
+        height: m.height,
+        size_bytes: m.size_bytes,
         sort_order: index
       }));
 
@@ -179,7 +199,7 @@ export default function CreatePostPage({ onBack, onPostCreated }: CreatePostPage
             <div className="grid grid-cols-2 gap-2">
               {mediaList.map((media, idx) => (
                 <div key={idx} className="relative group rounded-xl overflow-hidden bg-gray-100 aspect-video">
-                  {media.type === 'video' ? (
+                  {media.media_type === 'video' ? (
                     <video src={media.url} className="w-full h-full object-cover" controls />
                   ) : (
                     <img src={media.url} alt="preview" className="w-full h-full object-cover" />

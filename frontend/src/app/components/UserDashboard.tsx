@@ -111,7 +111,7 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
     { id: 'food', label: 'Dinh dưỡng', icon: Utensils },
     { id: 'exercise', label: 'Tập luyện', icon: Activity },
     // { id: 'progress', label: 'Tiến độ', icon: TrendingUp }, // Commented out
-    { id: 'blog', label: 'Cộng đồng', icon: MessageCircle },
+    { id: 'blog', label: 'Tervie Blog', icon: MessageCircle },
     { id: 'help', label: 'Trợ giúp', icon: HelpCircle },
     { id: 'profile', label: 'Cá nhân', icon: UserIcon },
   ];
