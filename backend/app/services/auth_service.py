@@ -67,6 +67,22 @@ class AuthService:
         user_agent = user_data.get("user_agent", "Unknown")
         ip_address = user_data.get("ip_address", "0.0.0.0")
         
+        # Validate biometrics ranges to prevent calculation errors
+        height_cm_float = float(height_cm)
+        weight_kg_float = float(weight_kg)
+        
+        if height_cm_float < 50 or height_cm_float > 300:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Chiều cao phải từ 50-300 cm"
+            )
+        
+        if weight_kg_float < 10 or weight_kg_float > 500:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cân nặng phải từ 10-500 kg"
+            )
+        
         # Create user
         user = UserRepository.create(
             db,
@@ -92,8 +108,8 @@ class AuthService:
         
         # Tính BMR (Basal Metabolic Rate)
         bmr = GoalService.calculate_bmr(
-            weight_kg=float(weight_kg),
-            height_cm=float(height_cm),
+            weight_kg=weight_kg_float,
+            height_cm=height_cm_float,
             gender=gender,
             date_of_birth=date_of_birth
         )
@@ -117,18 +133,21 @@ class AuthService:
             )
         
         # Calculate macros
-        macros = GoalService.calculate_macros(daily_calorie, goal_type, baseline_activity, float(weight_kg))
+        macros = GoalService.calculate_macros(daily_calorie, goal_type, baseline_activity, weight_kg_float)
                 
-        # Create goal
+        # Create goal - convert daily_calorie to Decimal
+        from decimal import Decimal
         GoalRepository.create(
             db=db,
             user_id=user.id,
             goal_type=goal_type,
             target_weight_kg=goal_weight_kg,
-            daily_calorie_target=daily_calorie,
+            daily_calorie_target=Decimal(str(round(daily_calorie, 2))),
             protein_grams=macros["protein_grams"],
             fat_grams=macros["fat_grams"],
             carb_grams=macros["carb_grams"],
+            baseline_activity=baseline_activity,
+            weekly_goal=weekly_goal,
             weekly_exercise_min=weekly_exercise_min
         )
         
@@ -181,17 +200,22 @@ class AuthService:
         # Find user
         user = UserRepository.get_by_email_or_username(db, email_or_username)
         if not user:
+            print(f"[LOGIN] User not found: {email_or_username}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email/username or password"
             )
         
         # Verify password
-        if not verify_password(password, user.password_hash):
+        password_valid = verify_password(password, user.password_hash)
+        if not password_valid:
+            print(f"[LOGIN] Password verification failed for user: {user.email} (username: {user.username})")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email/username or password"
             )
+        
+        print(f"[LOGIN] Successfully logged in user: {user.email} (username: {user.username})")
         
         # Create tokens
         access_token = create_access_token(user.id)

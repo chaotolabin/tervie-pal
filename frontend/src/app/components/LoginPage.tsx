@@ -11,9 +11,10 @@ interface LoginPageProps {
   onLogin: (role?: 'user' | 'admin') => void;
   onBack: () => void;
   onSignup: () => void;
+  onForgotPassword: () => void;
 }
 
-export default function LoginPage({ onLogin, onBack, onSignup }: LoginPageProps) {
+export default function LoginPage({ onLogin, onBack, onSignup, onForgotPassword }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -79,7 +80,16 @@ export default function LoginPage({ onLogin, onBack, onSignup }: LoginPageProps)
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Mật khẩu</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Mật khẩu</Label>
+                  <button
+                    type="button"
+                    onClick={onForgotPassword}
+                    className="text-sm text-pink-600 hover:underline"
+                  >
+                    Quên mật khẩu?
+                  </button>
+                </div>
                 <Input
                   id="password"
                   type="password"

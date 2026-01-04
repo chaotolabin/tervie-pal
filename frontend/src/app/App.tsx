@@ -4,11 +4,13 @@ import { Toaster } from './components/ui/sonner';
 import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
+import ForgotPasswordPage from './components/ForgotPasswordPage';
+import ResetPasswordPage from './components/ResetPasswordPage';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import api from './components/lib/api';
 
-type Page = 'landing' | 'login' | 'signup' | 'dashboard' | 'admin';
+type Page = 'landing' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard' | 'admin';
 type UserRole = 'user' | 'admin' | null;
 
 export default function App() {
@@ -19,6 +21,15 @@ export default function App() {
 
   // Kiểm tra authentication khi app khởi động
   useEffect(() => {
+    // Kiểm tra nếu có token trong URL (reset password)
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+    if (resetToken && !isAuthenticated) {
+      setCurrentPage('reset-password');
+      setIsCheckingAuth(false);
+      return;
+    }
+
     const checkAuth = async () => {
       const accessToken = localStorage.getItem('access_token');
       const refreshToken = localStorage.getItem('refresh_token');
@@ -116,11 +127,32 @@ export default function App() {
     }
 
     if (!isAuthenticated && currentPage === 'login') {
-      return <LoginPage onLogin={handleLogin} onBack={() => setCurrentPage('landing')} onSignup={() => setCurrentPage('signup')} />;
+      return <LoginPage 
+        onLogin={handleLogin} 
+        onBack={() => setCurrentPage('landing')} 
+        onSignup={() => setCurrentPage('signup')}
+        onForgotPassword={() => setCurrentPage('forgot-password')}
+      />;
     }
 
     if (!isAuthenticated && currentPage === 'signup') {
       return <SignupPage onSignup={handleLogin} onBack={() => setCurrentPage('landing')} onLogin={() => setCurrentPage('login')} />;
+    }
+
+    if (!isAuthenticated && currentPage === 'forgot-password') {
+      return <ForgotPasswordPage onBack={() => setCurrentPage('login')} />;
+    }
+
+    if (!isAuthenticated && currentPage === 'reset-password') {
+      // Lấy token từ URL query params
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      
+      return <ResetPasswordPage 
+        onBack={() => setCurrentPage('login')} 
+        onSuccess={() => setCurrentPage('login')}
+        token={token || undefined}
+      />;
     }
 
     if (isAuthenticated && userRole === 'admin') {

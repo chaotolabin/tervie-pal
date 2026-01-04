@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Filter, Clock, Flame, Dumbbell, Loader2, Trash2, Calendar } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
@@ -39,11 +39,15 @@ export default function ExerciseLogging() {
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
   const [allLogs, setAllLogs] = useState<ExerciseLog[]>([]); // Lưu tất cả logs để filter
   const [searchResults, setSearchResults] = useState<ExerciseSearchResult[]>([]);
+  const [allMajorHeadings, setAllMajorHeadings] = useState<string[]>([]); // Tất cả major headings để hiển thị categories
+  const [recentExercises, setRecentExercises] = useState<ExerciseSearchResult[]>([]); // Bài tập gần đây
   
   // State UI
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchMajorHeading, setSearchMajorHeading] = useState<string>('all'); // Filter major heading trong search
   const [loading, setLoading] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState<'history' | 'search'>('history'); // Tab chính: history hoặc search
+  const [searchTab, setSearchTab] = useState<'recent' | 'browse'>('browse'); // Tab trong search: recent hoặc browse
   
   // State cho filter
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -66,6 +70,20 @@ export default function ExerciseLogging() {
       // Backend trả về logs trong object exercise_logs với items bên trong
       const exerciseEntries = res.data.exercise_logs || [];
       
+      // Debug: log để kiểm tra
+      console.log('=== FETCH LOGS DEBUG ===');
+      console.log('Date:', date);
+      console.log('Full response:', res.data);
+      console.log('Exercise entries count:', exerciseEntries.length);
+      exerciseEntries.forEach((entry: any, idx: number) => {
+        console.log(`Entry ${idx}:`, {
+          id: entry.id,
+          logged_at: entry.logged_at,
+          items_count: entry.items?.length || 0,
+          items: entry.items
+        });
+      });
+      
       // Lấy tất cả exercise_ids cần fetch
       const exerciseIds = new Set<number>();
       exerciseEntries.forEach((entry: any) => {
@@ -78,23 +96,36 @@ export default function ExerciseLogging() {
         }
       });
 
-      // Fetch thông tin exercises một lần
+      // Fetch thông tin exercises - Tối ưu: chỉ fetch nếu cần thiết
+      // Backend đã trả về met_value_snapshot, có thể dùng luôn nếu có
       const exerciseMap = new Map<number, any>();
+      console.log('Exercise IDs to fetch:', Array.from(exerciseIds));
       if (exerciseIds.size > 0) {
         try {
-          // Fetch từng exercise (có thể tối ưu bằng cách tạo endpoint batch)
-          const exercisePromises = Array.from(exerciseIds).map(async (exerciseId) => {
-            try {
-              const exerciseRes = await api.get(`/exercises/${exerciseId}`);
-              exerciseMap.set(exerciseId, exerciseRes.data);
-            } catch (err) {
-              console.error(`Failed to fetch exercise ${exerciseId}:`, err);
-            }
-          });
-          await Promise.all(exercisePromises);
+          // Batch fetch với Promise.all - giới hạn số lượng đồng thời
+          const exerciseIdsArray = Array.from(exerciseIds);
+          const batchSize = 10; // Fetch 10 exercises cùng lúc
+          
+          for (let i = 0; i < exerciseIdsArray.length; i += batchSize) {
+            const batch = exerciseIdsArray.slice(i, i + batchSize);
+            console.log(`Fetching exercise batch ${i / batchSize + 1}:`, batch);
+            const exercisePromises = batch.map(async (exerciseId) => {
+              try {
+                const exerciseRes = await api.get(`/exercises/${exerciseId}`);
+                exerciseMap.set(exerciseId, exerciseRes.data);
+                console.log(`✓ Fetched exercise ${exerciseId}:`, exerciseRes.data.description);
+              } catch (err) {
+                console.error(`✗ Failed to fetch exercise ${exerciseId}:`, err);
+              }
+            });
+            await Promise.all(exercisePromises);
+          }
+          console.log('Exercise map size:', exerciseMap.size);
         } catch (err) {
           console.error("Error fetching exercises:", err);
         }
+      } else {
+        console.warn('No exercise IDs to fetch!');
       }
 
       // Flatten items từ các entries thành danh sách logs
@@ -103,7 +134,7 @@ export default function ExerciseLogging() {
         if (entry.items && entry.items.length > 0) {
           entry.items.forEach((item: any) => {
             const exercise = exerciseMap.get(item.exercise_id);
-            flattenedLogs.push({
+            const logItem: ExerciseLog = {
               id: item.id, // item.id
               entry_id: entry.id, // entry.id - cần để xóa
               exercise: exercise ? {
@@ -120,13 +151,22 @@ export default function ExerciseLogging() {
               duration_minutes: parseFloat(item.duration_min || 0),
               calories_burned: parseFloat(item.calories || 0),
               logged_at: entry.logged_at
-            });
+            };
+            flattenedLogs.push(logItem);
+            console.log('Added log item:', logItem);
           });
+        } else {
+          console.warn('Entry has no items:', entry);
         }
       });
+      
+      console.log('Total flattened logs:', flattenedLogs.length);
       setAllLogs(flattenedLogs);
       // Áp dụng filter
       applyFilters(flattenedLogs, selectedMajorHeading);
+      
+      // Debug: log để kiểm tra
+      console.log('=== END FETCH LOGS DEBUG ===');
     } catch (error) {
       console.error("Lỗi tải logs:", error);
       setAllLogs([]);
@@ -145,6 +185,7 @@ export default function ExerciseLogging() {
       filtered = filtered.filter(log => log.exercise.major_heading === majorHeading);
     }
     
+    console.log('Applying filters - Total logs:', logsToFilter.length, 'Filtered:', filtered.length, 'Major heading:', majorHeading);
     setLogs(filtered);
   };
 
@@ -159,30 +200,213 @@ export default function ExerciseLogging() {
     return Array.from(headings).sort();
   };
 
+  // Sử dụng useRef để track lần mount đầu tiên và date đã fetch
+  const isFirstMount = useRef(true);
+  const lastFetchedDate = useRef<string | null>(null);
+  
+  // Fetch logs ngay khi component mount - Đảm bảo luôn load logs cho ngày hôm nay
   useEffect(() => {
-    fetchLogs(selectedDate);
+    if (!isFirstMount.current) return; // Chỉ chạy lần đầu
+    
+    const today = new Date().toISOString().split('T')[0];
+    // Fetch logs cho ngày hôm nay ngay khi component mount
+    // Không phụ thuộc vào selectedDate ban đầu
+    console.log('Component mounted, fetching logs for today:', today);
+    lastFetchedDate.current = today;
+    fetchLogs(today).catch(err => {
+      console.error('Error fetching logs on mount:', err);
+      lastFetchedDate.current = null; // Reset nếu lỗi
+    });
+    
+    // Đánh dấu đã mount
+    isFirstMount.current = false;
+  }, []); // Chỉ chạy một lần khi mount
+
+  // Khi selectedDateOption thay đổi, cập nhật selectedDate
+  useEffect(() => {
+    if (selectedDateOption !== 'custom') {
+      const date = getDateFromOption(selectedDateOption);
+      setSelectedDate(date);
+    }
+  }, [selectedDateOption]);
+
+  // Fetch logs khi selectedDate thay đổi (KHÔNG phải lần mount đầu)
+  useEffect(() => {
+    // Skip nếu đây là lần mount đầu (đã fetch ở useEffect trên)
+    if (isFirstMount.current) {
+      return;
+    }
+    
+    // Chỉ fetch nếu selectedDate thay đổi và chưa fetch cho date này
+    if (selectedDate && selectedDate !== lastFetchedDate.current) {
+      console.log('Selected date changed, fetching logs for:', selectedDate, '(last fetched:', lastFetchedDate.current, ')');
+      lastFetchedDate.current = selectedDate;
+      fetchLogs(selectedDate);
+    } else {
+      console.log('Skipping fetch - date unchanged or already fetched:', selectedDate, '(last fetched:', lastFetchedDate.current, ')');
+    }
   }, [selectedDate]);
+
+  // Khi chuyển sang tab "Tìm kiếm", tự động load exercises nếu chưa có - Tối ưu: lazy load
+  useEffect(() => {
+    if (activeMainTab === 'search' && !searchQuery.trim() && searchResults.length === 0 && !loading) {
+      // Chỉ load khi user thực sự cần (không load ngay)
+      // User có thể search hoặc click category để load
+      // Hoặc load với limit nhỏ hơn
+      const triggerSearch = async () => {
+        setLoading(true);
+        try {
+          const params: any = { q: '', limit: 20 }; // Giảm từ 100 xuống 20 cho lần đầu
+          if (searchMajorHeading !== 'all') {
+            params.major_heading = searchMajorHeading;
+          }
+          const res = await api.get('/exercises/search', { params });
+          setSearchResults(res.data.items || []);
+        } catch (error) {
+          console.error("Lỗi tải exercises:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      // Delay nhỏ để không block UI
+      const timeoutId = setTimeout(triggerSearch, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [activeMainTab]);
 
   // Khi major_heading filter thay đổi, áp dụng filter lại
   useEffect(() => {
     applyFilters(allLogs, selectedMajorHeading);
   }, [selectedMajorHeading]);
 
-  // 2. Xử lý tìm kiếm bài tập (Debounce đơn giản)
+  // 2. Lấy danh sách tất cả major headings - Lazy load khi cần
+  const fetchMajorHeadings = async () => {
+    // Nếu đã có rồi, không fetch lại
+    if (allMajorHeadings.length > 0) return;
+    
+    try {
+      // Chỉ fetch với limit nhỏ để lấy sample, sau đó extract unique major_headings
+      // Hoặc có thể extract từ logs hiện có trước
+      const headingsFromLogs = new Set<string>();
+      allLogs.forEach(log => {
+        if (log.exercise.major_heading) {
+          headingsFromLogs.add(log.exercise.major_heading);
+        }
+      });
+      
+      // Nếu đã có đủ từ logs, dùng luôn
+      if (headingsFromLogs.size >= 5) {
+        setAllMajorHeadings(Array.from(headingsFromLogs).sort());
+        return;
+      }
+      
+      // Nếu chưa đủ, fetch thêm từ API nhưng với limit nhỏ hơn
+      const res = await api.get('/exercises/search', {
+        params: { q: '', limit: 30 } // Giảm từ 100 xuống 30
+      });
+      res.data.items?.forEach((ex: any) => {
+        if (ex.major_heading) {
+          headingsFromLogs.add(ex.major_heading);
+        }
+      });
+      setAllMajorHeadings(Array.from(headingsFromLogs).sort());
+    } catch (error) {
+      console.error("Lỗi lấy major headings:", error);
+    }
+  };
+
+  // 3. Lấy bài tập gần đây (từ logs) - Tối ưu: dùng data từ logs thay vì fetch lại
+  useEffect(() => {
+    if (allLogs.length === 0) return;
+    
+    try {
+      // Lấy exercise_ids từ logs gần đây (7 ngày) và dùng data đã có
+      const today = new Date();
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const recentExercisesMap = new Map<number, ExerciseSearchResult>();
+      allLogs.forEach(log => {
+        const logDate = new Date(log.logged_at);
+        if (logDate >= sevenDaysAgo && log.exercise.id) {
+          // Dùng data đã có từ logs thay vì fetch lại
+          if (!recentExercisesMap.has(log.exercise.id)) {
+            recentExercisesMap.set(log.exercise.id, {
+              id: log.exercise.id,
+              description: log.exercise.description,
+              major_heading: log.exercise.major_heading,
+              met_value: log.exercise.met_value
+            });
+          }
+        }
+      });
+      
+      // Chỉ fetch những exercises chưa có đầy đủ thông tin (nếu cần)
+      const exercisesToFetch: number[] = [];
+      Array.from(recentExercisesMap.values()).slice(0, 10).forEach(ex => {
+        if (!ex.description || ex.description === 'Unknown') {
+          exercisesToFetch.push(ex.id);
+        }
+      });
+      
+      // Chỉ fetch những cái cần thiết
+      if (exercisesToFetch.length > 0) {
+        const fetchPromises = exercisesToFetch.map(async (id) => {
+          try {
+            const res = await api.get(`/exercises/${id}`);
+            recentExercisesMap.set(id, {
+              id: res.data.id,
+              description: res.data.description,
+              major_heading: res.data.major_heading,
+              met_value: res.data.met_value
+            });
+          } catch (err) {
+            console.error(`Failed to fetch exercise ${id}:`, err);
+          }
+        });
+        Promise.all(fetchPromises).then(() => {
+          setRecentExercises(Array.from(recentExercisesMap.values()).slice(0, 10));
+        });
+      } else {
+        setRecentExercises(Array.from(recentExercisesMap.values()).slice(0, 10));
+      }
+    } catch (error) {
+      console.error("Lỗi lấy bài tập gần đây:", error);
+    }
+  }, [allLogs]);
+
+  // 4. Xử lý tìm kiếm bài tập (Debounce đơn giản) - Tối ưu: giảm limit ban đầu
   useEffect(() => {
     const searchExercises = async () => {
-      if (!searchQuery.trim()) {
-        setSearchResults([]);
-        setIsSearching(false);
+      // Nếu có search query, tự động chuyển sang tab "Tìm kiếm"
+      if (searchQuery.trim() && activeMainTab !== 'search') {
+        setActiveMainTab('search');
+      }
+
+      // Chỉ search khi đang ở tab "Tìm kiếm" hoặc có search query
+      if (activeMainTab !== 'search' && !searchQuery.trim()) {
         return;
       }
 
-      setIsSearching(true);
       setLoading(true);
       try {
-        const res = await api.get('/exercises/search', {
-          params: { q: searchQuery, limit: 10 }
-        });
+        // Giảm limit ban đầu để load nhanh hơn, có thể load thêm sau
+        const params: any = { limit: 30 }; // Giảm từ 100 xuống 30
+        
+        // Nếu có search query, thêm vào params
+        if (searchQuery.trim()) {
+          params.q = searchQuery;
+        } else {
+          // Nếu không có query nhưng đang ở tab search, search với q rỗng để lấy tất cả
+          params.q = '';
+        }
+        
+        // Nếu có filter major heading, thêm vào
+        if (searchMajorHeading !== 'all') {
+          params.major_heading = searchMajorHeading;
+        }
+        
+        const res = await api.get('/exercises/search', { params });
         setSearchResults(res.data.items || []);
       } catch (error) {
         console.error("Lỗi tìm kiếm:", error);
@@ -193,9 +417,9 @@ export default function ExerciseLogging() {
 
     const timeoutId = setTimeout(searchExercises, 500);
     return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
+  }, [searchQuery, searchMajorHeading, activeMainTab]);
 
-  // 3. Xử lý Log bài tập
+  // 5. Xử lý Log bài tập
   const handleLogExercise = async () => {
     if (!selectedExercise || !duration) return;
     
@@ -220,10 +444,39 @@ export default function ExerciseLogging() {
       toast.success(`Đã thêm: ${selectedExercise.description}`);
       setSelectedExercise(null); // Đóng modal
       setSearchQuery(''); // Reset tìm kiếm
+      
+      // Refresh lại list với ngày mà bài tập được thêm vào (exerciseDate)
+      // Nếu exerciseDate khác selectedDate, cập nhật selectedDate để hiển thị đúng
+      if (exerciseDate !== selectedDate) {
+        // Tìm option tương ứng với exerciseDate
+        const today = new Date().toISOString().split('T')[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const twoDaysAgo = new Date();
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        const twoDaysAgoStr = twoDaysAgo.toISOString().split('T')[0];
+        
+        if (exerciseDate === today) {
+          setSelectedDateOption('today');
+          setSelectedDate(exerciseDate);
+        } else if (exerciseDate === yesterdayStr) {
+          setSelectedDateOption('yesterday');
+          setSelectedDate(exerciseDate);
+        } else if (exerciseDate === twoDaysAgoStr) {
+          setSelectedDateOption('2days');
+          setSelectedDate(exerciseDate);
+        } else {
+          setSelectedDateOption('custom');
+          setCustomDate(exerciseDate);
+          setSelectedDate(exerciseDate);
+        }
+      }
+      
+      await fetchLogs(exerciseDate);
+      
       // Reset exerciseDate về hôm nay sau khi thêm
       setExerciseDate(new Date().toISOString().split('T')[0]);
-      // Refresh lại list với ngày đã chọn (có thể là ngày khác hôm nay)
-      await fetchLogs(selectedDate);
       
       // Trigger refresh summary ở dashboard bằng cách dispatch custom event
       window.dispatchEvent(new CustomEvent('refreshDashboard'));
@@ -234,7 +487,7 @@ export default function ExerciseLogging() {
     }
   };
 
-  // 4. Xử lý xóa bài tập
+  // 6. Xử lý xóa bài tập
   const handleDeleteExercise = async (entryId: number, exerciseName: string) => {
     if (!confirm(`Bạn có chắc muốn xóa "${exerciseName}"?`)) {
       return;
@@ -252,6 +505,29 @@ export default function ExerciseLogging() {
     }
   };
 
+  // Helper để tính ngày dựa trên option
+  const getDateFromOption = (option: string): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    switch (option) {
+      case 'today':
+        return today.toISOString().split('T')[0];
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+      case '2days':
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        return twoDaysAgo.toISOString().split('T')[0];
+      case 'custom':
+        return customDate || today.toISOString().split('T')[0];
+      default:
+        return today.toISOString().split('T')[0];
+    }
+  };
+
   // Helper tính độ nặng nhẹ dựa trên MET
   const getIntensity = (met: number) => {
     if (met < 3) return { label: 'Nhẹ', color: 'bg-green-100 text-green-700' };
@@ -259,22 +535,36 @@ export default function ExerciseLogging() {
     return { label: 'Cao', color: 'bg-red-100 text-red-700' };
   };
 
+  // Xử lý khi thay đổi date option
+  const handleDateOptionChange = (option: string) => {
+    setSelectedDateOption(option);
+    if (option === 'custom') {
+      // Nếu chọn custom, mở date picker với ngày hiện tại
+      setCustomDate(selectedDate);
+    } else {
+      const date = getDateFromOption(option);
+      setSelectedDate(date);
+    }
+  };
+
+  // Xử lý khi thay đổi custom date
+  const handleCustomDateChange = (date: string) => {
+    setCustomDate(date);
+    setSelectedDate(date);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Tập luyện</h2>
-        <Button onClick={() => document.getElementById('exercise-search')?.focus()}>
-          <Plus className="size-4 mr-2" />
-          Thêm mới
-        </Button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar - Dùng chung cho cả 2 tab */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
         <Input
           id="exercise-search"
-          placeholder="Thêm mới bài tập (Chạy bộ, Gym, Yoga...)"
+          placeholder={activeMainTab === 'search' ? "Tìm kiếm bài tập..." : "Thêm mới bài tập (Chạy bộ, Gym, Yoga...)"}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -287,27 +577,57 @@ export default function ExerciseLogging() {
       </div>
 
       {/* Tabs: Chuyển đổi giữa Kết quả tìm kiếm và Lịch sử */}
-      <Tabs defaultValue="history" value={isSearching ? 'search' : 'history'} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="history" onClick={() => { setSearchQuery(''); setIsSearching(false); }}>
-            Lịch sử tập luyện
-          </TabsTrigger>
-          <TabsTrigger value="search">Tìm kiếm</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeMainTab} onValueChange={(v) => setActiveMainTab(v as 'history' | 'search')} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger 
+              value="history" 
+              onClick={() => { 
+                // Không clear search query khi chuyển tab, để giữ lại cho lần sau
+              }}
+            >
+              Lịch sử tập luyện
+            </TabsTrigger>
+            <TabsTrigger 
+              value="search"
+              onClick={() => {
+                // Focus vào search input khi chuyển sang tab tìm kiếm
+                setTimeout(() => {
+                  document.getElementById('exercise-search')?.focus();
+                }, 100);
+              }}
+            >
+              Tìm kiếm
+            </TabsTrigger>
+          </TabsList>
 
         {/* Tab 1: Lịch sử Log (Dữ liệu từ API /logs/daily) */}
         <TabsContent value="history" className="space-y-3 mt-4">
           {/* Filters: Date và Major Heading - Đặt trong tab Lịch sử */}
-          <div className="flex gap-3 items-center pb-3 border-b">
-            {/* Date Picker */}
+          <div className="flex gap-3 items-center pb-3 border-b flex-wrap">
+            {/* Date Filter với các option */}
             <div className="flex items-center gap-2">
               <Calendar className="size-4 text-gray-500" />
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-auto"
-              />
+              <Select value={selectedDateOption} onValueChange={handleDateOptionChange}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Hôm nay</SelectItem>
+                  <SelectItem value="yesterday">Hôm qua</SelectItem>
+                  <SelectItem value="2days">2 ngày trước</SelectItem>
+                  <SelectItem value="custom">Chọn ngày khác...</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Custom Date Picker - chỉ hiển thị khi chọn "Chọn ngày khác..." */}
+              {selectedDateOption === 'custom' && (
+                <Input
+                  type="date"
+                  value={customDate || selectedDate}
+                  onChange={(e) => handleCustomDateChange(e.target.value)}
+                  className="w-auto"
+                />
+              )}
             </div>
 
             {/* Major Heading Filter */}
@@ -394,31 +714,187 @@ export default function ExerciseLogging() {
           )}
         </TabsContent>
 
-        {/* Tab 2: Kết quả tìm kiếm (Dữ liệu từ API /exercises/search) */}
-        <TabsContent value="search" className="space-y-3 mt-4">
-          {searchResults.map((ex) => (
-            <Card 
-              key={ex.id} 
-              className="hover:border-blue-500 cursor-pointer transition-colors"
-              onClick={() => setSelectedExercise(ex)}
+        {/* Tab 2: Tìm kiếm bài tập */}
+        <TabsContent value="search" className="space-y-4 mt-4">
+          {/* Filter major heading - Chỉ hiển thị khi ở tab search */}
+          <div className="flex gap-2 items-center">
+            <Filter className="size-4 text-gray-500" />
+            <Select 
+              value={searchMajorHeading} 
+              onValueChange={setSearchMajorHeading}
+              onOpenChange={(open) => {
+                // Lazy load major headings khi mở dropdown
+                if (open && allMajorHeadings.length === 0) {
+                  fetchMajorHeadings();
+                }
+              }}
             >
-              <CardContent className="p-4 flex justify-between items-center">
-                <div>
-                  <h3 className="font-semibold">{ex.description}</h3>
-                  <p className="text-sm text-gray-500">{ex.major_heading}</p>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Tất cả nhóm" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả nhóm</SelectItem>
+                {allMajorHeadings.length > 0 ? (
+                  allMajorHeadings.map((heading) => (
+                    <SelectItem key={heading} value={heading}>
+                      {heading}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="loading" disabled>Đang tải...</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tabs: Most Recent và Browse All */}
+          <Tabs value={searchTab} onValueChange={(v) => setSearchTab(v as 'recent' | 'browse')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="recent">Gần đây</TabsTrigger>
+              <TabsTrigger value="browse">Duyệt tất cả</TabsTrigger>
+            </TabsList>
+
+            {/* Tab: Gần đây */}
+            <TabsContent value="recent" className="mt-4">
+              {/* Luôn hiển thị kết quả tìm kiếm nếu có, nếu không thì hiển thị bài tập gần đây */}
+              {searchResults.length > 0 ? (
+                // Hiển thị kết quả tìm kiếm
+                <div className="space-y-2">
+                  {searchResults.map((ex) => (
+                    <Card 
+                      key={ex.id} 
+                      className="hover:border-blue-500 cursor-pointer transition-colors"
+                      onClick={() => setSelectedExercise(ex)}
+                    >
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold">{ex.description}</h3>
+                          <p className="text-sm text-gray-500">{ex.major_heading}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">MET: {ex.met_value}</Badge>
+                          <Plus className="size-4 text-blue-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {loading && (
+                    <div className="text-center py-4">
+                      <Loader2 className="size-5 animate-spin text-pink-600 mx-auto" />
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">MET: {ex.met_value}</Badge>
-                  <Plus className="size-4 text-blue-600" />
+              ) : !loading ? (
+                // Nếu không có kết quả và không đang loading, hiển thị bài tập gần đây
+                <div className="space-y-2">
+                  {recentExercises.length > 0 ? (
+                    recentExercises.map((ex) => (
+                      <Card 
+                        key={ex.id} 
+                        className="hover:border-blue-500 cursor-pointer transition-colors"
+                        onClick={() => setSelectedExercise(ex)}
+                      >
+                        <CardContent className="p-4 flex justify-between items-center">
+                          <div>
+                            <h3 className="font-semibold">{ex.description}</h3>
+                            <p className="text-sm text-gray-500">{ex.major_heading}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">MET: {ex.met_value}</Badge>
+                            <Plus className="size-4 text-blue-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      Chưa có bài tập gần đây. Hãy tìm kiếm để thêm bài tập mới.
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-          {searchQuery && searchResults.length === 0 && !loading && (
-            <div className="text-center py-8 text-gray-500">
-              Không tìm thấy bài tập nào phù hợp.
-            </div>
-          )}
+              ) : (
+                <div className="text-center py-8">
+                  <Loader2 className="size-6 animate-spin text-pink-600 mx-auto mb-2" />
+                  <p className="text-gray-500">Đang tải...</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Tab: Duyệt tất cả - Grid categories hoặc search results */}
+            <TabsContent value="browse" className="mt-4">
+              {searchResults.length > 0 ? (
+                // Nếu có results (từ search hoặc category click), hiển thị kết quả
+                <div className="space-y-2">
+                  {searchResults.map((ex) => (
+                    <Card 
+                      key={ex.id} 
+                      className="hover:border-blue-500 cursor-pointer transition-colors"
+                      onClick={() => setSelectedExercise(ex)}
+                    >
+                      <CardContent className="p-4 flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold">{ex.description}</h3>
+                          <p className="text-sm text-gray-500">{ex.major_heading}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">MET: {ex.met_value}</Badge>
+                          <Plus className="size-4 text-blue-600" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {loading && (
+                    <div className="text-center py-4">
+                      <Loader2 className="size-5 animate-spin text-pink-600 mx-auto" />
+                    </div>
+                  )}
+                </div>
+              ) : !loading ? (
+                // Nếu không có results và không đang loading, hiển thị grid categories
+                <div className="grid grid-cols-3 gap-4">
+                  {allMajorHeadings.length > 0 ? (
+                    allMajorHeadings.map((heading) => (
+                      <Card
+                        key={heading}
+                        className="hover:border-blue-500 cursor-pointer transition-colors h-24 flex items-center justify-center"
+                        onClick={async () => {
+                          setSearchMajorHeading(heading);
+                          setSearchQuery('');
+                          setLoading(true);
+                          try {
+                            // Fetch exercises trong category này
+                            const res = await api.get('/exercises/search', {
+                              params: { q: '', major_heading: heading, limit: 50 }
+                            });
+                            setSearchResults(res.data.items || []);
+                            // Đảm bảo đang ở tab search
+                            setActiveMainTab('search');
+                          } catch (error) {
+                            console.error("Lỗi tải exercises:", error);
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                      >
+                        <CardContent className="p-4 text-center">
+                          <p className="font-semibold text-sm">{heading}</p>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="col-span-3 text-center py-8 text-gray-500">
+                      Đang tải danh mục...
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Loader2 className="size-6 animate-spin text-pink-600 mx-auto mb-2" />
+                  <p className="text-gray-500">Đang tải...</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
 
