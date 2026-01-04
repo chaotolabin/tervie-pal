@@ -39,7 +39,12 @@ class StreakDayCache(Base):
     
     status: Mapped[StreakStatus] = mapped_column(
         # String(20),
-        SQLEnum(StreakStatus, name="streak_status_enum"),
+        SQLEnum(
+            StreakStatus, 
+            name="streak_status_enum", 
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x]  # Đảm bảo sử dụng enum value
+        ),
         nullable=False,
         comment="Trạng thái: green (on-time), yellow (late)"
     )
