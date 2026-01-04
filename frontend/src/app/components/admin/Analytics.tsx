@@ -1,196 +1,158 @@
-import { TrendingUp, Users, Activity, Target } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Flame, Trophy, Activity, Users, Calendar, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
-const userGrowthData = [
-  { month: 'T7', newUsers: 120, totalUsers: 850 },
-  { month: 'T8', newUsers: 150, totalUsers: 1000 },
-  { month: 'T9', newUsers: 180, totalUsers: 1180 },
-  { month: 'T10', newUsers: 220, totalUsers: 1400 },
-  { month: 'T11', newUsers: 280, totalUsers: 1680 },
-  { month: 'T12', newUsers: 170, totalUsers: 1850 },
-];
+interface StreakSummary {
+  avg_current_streak: number;
+  max_longest_streak: number;
+  total_users_active: number;
+}
 
-const retentionData = [
-  { cohort: 'Tuần 1', day1: 100, day7: 45, day30: 22 },
-  { cohort: 'Tuần 2', day1: 100, day7: 48, day30: 25 },
-  { cohort: 'Tuần 3', day1: 100, day7: 52, day30: 28 },
-  { cohort: 'Tuần 4', day1: 100, day7: 55, day30: 30 },
-];
+interface StreakDistribution {
+  range: string;
+  count: number;
+}
 
-const activityData = [
-  { date: '25/12', meals: 4250, exercises: 1820, biometrics: 850 },
-  { date: '26/12', meals: 4380, exercises: 1950, biometrics: 920 },
-  { date: '27/12', meals: 4520, exercises: 2100, biometrics: 980 },
-  { date: '28/12', meals: 4680, exercises: 2050, biometrics: 1020 },
-  { date: '29/12', meals: 4850, exercises: 2200, biometrics: 1150 },
-  { date: '30/12', meals: 3920, exercises: 1680, biometrics: 850 },
-  { date: '31/12', meals: 3650, exercises: 1520, biometrics: 720 },
-];
+interface ActivityStatus {
+  date: string;
+  green_count: number;  // Status: green (đúng hạn)
+  yellow_count: number; // Status: yellow (trễ)
+}
 
 export default function Analytics() {
+  const [summary, setSummary] = useState<StreakSummary | null>(null);
+  const [distribution, setDistribution] = useState<StreakDistribution[]>([]);
+  const [activity, setActivity] = useState<ActivityStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      setLoading(true);
+      try {
+        // Giả định bạn có một endpoint admin tổng hợp các model này
+        const response = await fetch('/api/v1/admin/analytics/dashboard');
+        const data = await response.json();
+        
+        setSummary(data.summary);
+        setDistribution(data.distribution);
+        setActivity(data.activity);
+      } catch (error) {
+        console.error("Lỗi lấy dữ liệu từ Backend:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, []);
+
+  const COLORS = ['#22c55e', '#eab308', '#94a3b8']; // Green, Yellow, Gray
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center h-96">
+      <Loader2 className="animate-spin text-blue-500 size-10 mb-4" />
+      <p className="text-slate-500">Đang tải dữ liệu từ hệ thống Streak...</p>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Phân tích & Thống kê</h1>
-          <p className="text-gray-600 mt-1">Dữ liệu chi tiết về người dùng và hoạt động</p>
-        </div>
-        <Select defaultValue="30d">
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">7 ngày</SelectItem>
-            <SelectItem value="30d">30 ngày</SelectItem>
-            <SelectItem value="90d">90 ngày</SelectItem>
-            <SelectItem value="1y">1 năm</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="space-y-6 p-6">
+      <header>
+        <h1 className="text-3xl font-bold tracking-tight">Thống kê Hệ thống</h1>
+        <p className="text-muted-foreground">Dữ liệu tổng hợp từ UserStreakState và StreakDayCache</p>
+      </header>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">DAU</p>
-                <p className="text-3xl font-bold">856</p>
-              </div>
-              <Users className="size-10 text-blue-500" />
-            </div>
-            <p className="text-sm text-green-600">+5.2% vs hôm qua</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">WAU</p>
-                <p className="text-3xl font-bold">1,280</p>
-              </div>
-              <Activity className="size-10 text-green-500" />
-            </div>
-            <p className="text-sm text-green-600">+8.1% vs tuần trước</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">MAU</p>
-                <p className="text-3xl font-bold">1,650</p>
-              </div>
-              <TrendingUp className="size-10 text-purple-500" />
-            </div>
-            <p className="text-sm text-green-600">+12.5% vs tháng trước</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <p className="text-sm text-gray-600">Retention</p>
-                <p className="text-3xl font-bold">30%</p>
-              </div>
-              <Target className="size-10 text-orange-500" />
-            </div>
-            <p className="text-sm text-gray-600">30-day retention</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* User Growth Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Tăng trưởng người dùng</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={userGrowthData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
-              <Tooltip />
-              <Legend />
-              <Line yAxisId="left" type="monotone" dataKey="newUsers" stroke="#3b82f6" strokeWidth={2} name="Người dùng mới" />
-              <Line yAxisId="right" type="monotone" dataKey="totalUsers" stroke="#10b981" strokeWidth={2} name="Tổng người dùng" />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Activity Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Hoạt động người dùng - 7 ngày qua</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={activityData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="meals" fill="#8b5cf6" name="Bữa ăn" />
-              <Bar dataKey="exercises" fill="#f97316" name="Bài tập" />
-              <Bar dataKey="biometrics" fill="#06b6d4" name="Chỉ số" />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Retention Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Retention (Tỷ lệ giữ chân)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={retentionData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="cohort" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="day1" stroke="#3b82f6" strokeWidth={2} name="Day 1" />
-              <Line type="monotone" dataKey="day7" stroke="#10b981" strokeWidth={2} name="Day 7" />
-              <Line type="monotone" dataKey="day30" stroke="#f59e0b" strokeWidth={2} name="Day 30" />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Additional Stats */}
+      {/* 1. Metric Cards: Lấy từ UserStreakState */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card className="border-orange-100 bg-orange-50/30">
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-1">Avg. Sessions/User</p>
-            <p className="text-3xl font-bold">4.2</p>
-            <p className="text-sm text-green-600 mt-1">+0.3 vs tháng trước</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-orange-600 uppercase">Streak TB hiện tại</p>
+                <h3 className="text-3xl font-bold text-orange-700 mt-1">{summary?.avg_current_streak.toFixed(1)}</h3>
+              </div>
+              <Flame className="size-8 text-orange-500 fill-orange-500" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-yellow-100 bg-yellow-50/30">
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-1">Avg. Session Duration</p>
-            <p className="text-3xl font-bold">5:32</p>
-            <p className="text-sm text-gray-600 mt-1">phút</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-yellow-600 uppercase">Kỷ lục Hệ thống</p>
+                <h3 className="text-3xl font-bold text-yellow-700 mt-1">{summary?.max_longest_streak} ngày</h3>
+              </div>
+              <Trophy className="size-8 text-yellow-500 fill-yellow-500" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-blue-100 bg-blue-50/30">
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-1">Churn Rate</p>
-            <p className="text-3xl font-bold">8.5%</p>
-            <p className="text-sm text-red-600 mt-1">-1.2% vs tháng trước</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-sm font-medium text-blue-600 uppercase">User đang hoạt động</p>
+                <h3 className="text-3xl font-bold text-blue-700 mt-1">{summary?.total_users_active}</h3>
+              </div>
+              <Users className="size-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 2. Biểu đồ phân bổ Streak: Dựa trên current_streak của users */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Activity className="size-5" /> Phân bổ độ chăm chỉ
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={distribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="count"
+                  nameKey="range"
+                >
+                  {distribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend verticalAlign="bottom" height={36}/>
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* 3. Biểu đồ Trạng thái: Dựa trên StreakDayCache (Green vs Yellow) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Calendar className="size-5" /> Chất lượng hoàn thành (7 ngày qua)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={activity}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="green_count" name="Đúng hạn (Green)" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="yellow_count" name="Trễ hạn (Yellow)" fill="#eab308" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

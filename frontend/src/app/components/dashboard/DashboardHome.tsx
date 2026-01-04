@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import StreakWidget from './StreakWidget';
+import MacroSummary from './MacroSummary';
 
 interface DashboardHomeProps {
   onQuickAdd: () => void;
@@ -39,7 +41,7 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
       </div>
 
       {/* Calories Summary */}
-      <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+      <Card className="bg-gradient-to-br from-pink-500 to-purple-600 text-white">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Flame className="size-5" />
@@ -79,7 +81,7 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <TrendingDown className="size-5 text-blue-600" />
+            <TrendingDown className="size-5 text-cyan-600" />
             Cân nặng
           </CardTitle>
         </CardHeader>
@@ -94,63 +96,22 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
               <XAxis dataKey="date" />
               <YAxis domain={[72, 76]} />
               <Tooltip />
-              <Line type="monotone" dataKey="weight" stroke="#3b82f6" strokeWidth={2} />
+              <Line type="monotone" dataKey="weight" stroke="#06b6d4" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Macros Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Protein</span>
-              <span className="font-semibold">85g</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-red-500" style={{ width: '75%' }} />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">75% / 110g</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Carbs</span>
-              <span className="font-semibold">220g</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500" style={{ width: '88%' }} />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">88% / 250g</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">Fat</span>
-              <span className="font-semibold">52g</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-yellow-500" style={{ width: '65%' }} />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">65% / 80g</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Macros Summary - Using new component */}
+      <MacroSummary
+        protein={{ current: 85, goal: 110 }}
+        carbs={{ current: 220, goal: 250 }}
+        fat={{ current: 52, goal: 80 }}
+      />
 
       {/* Streak & Quick Actions */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-          <CardContent className="pt-6">
-            <Target className="size-8 mb-2 opacity-80" />
-            <p className="text-2xl font-bold">7 ngày</p>
-            <p className="text-sm opacity-90">Streak hiện tại 🔥</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <StreakWidget currentStreak={7} longestStreak={30} />
 
         <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
           <CardContent className="pt-6 flex flex-col h-full">
@@ -164,10 +125,10 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
       </div>
 
       {/* Quick Add CTA */}
-      <Card className="border-2 border-dashed border-gray-300 hover:border-green-500 transition-colors cursor-pointer" onClick={onQuickAdd}>
+      <Card className="border-2 border-dashed border-gray-300 hover:border-pink-500 transition-colors cursor-pointer" onClick={onQuickAdd}>
         <CardContent className="pt-6 text-center">
-          <div className="size-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Apple className="size-6 text-green-600" />
+          <div className="size-12 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Apple className="size-6 text-pink-600" />
           </div>
           <p className="font-semibold mb-1">Thêm nhanh</p>
           <p className="text-sm text-gray-600">Ghi nhận thực phẩm hoặc bài tập</p>
