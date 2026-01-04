@@ -62,8 +62,25 @@ def admin_list_all_tickets(
         cursor=cursor
     )
     
+    # Convert tickets to response models (username đã được gán trong service)
+    ticket_responses = []
+    for ticket in tickets:
+        # Tạo dict từ ticket attributes và thêm username
+        ticket_dict = {
+            "id": ticket.id,
+            "user_id": ticket.user_id,
+            "username": getattr(ticket, 'username', None),  # Lấy username đã được gán
+            "subject": ticket.subject,
+            "message": ticket.message,
+            "category": ticket.category,
+            "status": ticket.status,
+            "created_at": ticket.created_at,
+            "updated_at": ticket.updated_at
+        }
+        ticket_responses.append(SupportTicketResponse(**ticket_dict))
+    
     return SupportTicketListResponse(
-        items=tickets,
+        items=ticket_responses,
         next_cursor=next_cursor
     )
 
