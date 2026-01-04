@@ -11,6 +11,7 @@ from sqlalchemy import and_, func, exists, literal
 from app.models.streak import StreakDayCache, UserStreakState, StreakStatus
 from app.models.log import FoodLogEntry, ExerciseLogEntry
 from app.schemas.streak import StreakDayResponse, StreakResponse, StreakWeekResponse
+from app.utils.timezone import get_local_today, local_date_to_utc_range
 
 
 class StreakService:
@@ -53,7 +54,7 @@ class StreakService:
         Kiểm tra nhanh: hôm nay có ít nhất 1 food log HOẶC 1 exercise log không?
         Sử dụng EXISTS subquery thay vì COUNT để tối ưu performance
         """
-        today = date.today()
+        today = get_local_today()
         return StreakService._check_date_completion(db, user_id, today)
     
     @staticmethod
@@ -67,17 +68,22 @@ class StreakService:
         Args:
             db: Database session
             user_id: UUID của user
-            target_date: Ngày cần kiểm tra
+            target_date: Ngày cần kiểm tra (local date)
         
         Returns:
             bool: True nếu đã có ít nhất 1 food log hoặc 1 exercise log trong ngày đó
         """
+        # Convert local date sang UTC datetime range
+        start_dt, end_dt = local_date_to_utc_range(target_date)
+        
         # EXISTS query nhanh hơn COUNT khi chỉ cần biết có/không
+        # Sử dụng range comparison thay vì func.date() để đảm bảo đúng timezone
         has_food = db.query(
             exists().where(
                 and_(
                     FoodLogEntry.user_id == user_id,
-                    func.date(FoodLogEntry.logged_at) == target_date,
+                    FoodLogEntry.logged_at >= start_dt,
+                    FoodLogEntry.logged_at <= end_dt,
                     FoodLogEntry.deleted_at.is_(None)
                 )
             )
@@ -87,7 +93,8 @@ class StreakService:
             exists().where(
                 and_(
                     ExerciseLogEntry.user_id == user_id,
-                    func.date(ExerciseLogEntry.logged_at) == target_date,
+                    ExerciseLogEntry.logged_at >= start_dt,
+                    ExerciseLogEntry.logged_at <= end_dt,
                     ExerciseLogEntry.deleted_at.is_(None)
                 )
             )
@@ -110,7 +117,7 @@ class StreakService:
         2. Với ngày hôm nay: check logs nếu chưa cache
         3. Với ngày quá khứ: check logs nếu chưa cache (có thể là YELLOW nếu có log)
         """
-        today = date.today()
+        today = get_local_today()
         start_day = end_day - timedelta(days=6)
         
         # 1. Query batch cached days
@@ -158,7 +165,7 @@ class StreakService:
         
         Complexity: O(1) database round-trips (2-3 queries max)
         """
-        today = date.today()
+        today = get_local_today()
         
         # 1. Lấy streak state từ cache (không tính lại!)
         streak_state = db.query(UserStreakState).filter(
@@ -203,7 +210,7 @@ class StreakService:
         - Nếu last_on_time_day = hôm qua => check hôm nay xem có tiếp tục không
         - Nếu last_on_time_day < hôm qua - 1 => streak đã reset
         """
-        today = date.today()
+        today = get_local_today()
         yesterday = today - timedelta(days=1)
         
         # Nếu chưa có last_on_time_day => streak = 0
@@ -245,7 +252,7 @@ class StreakService:
         OPTIMIZED: Batch query thay vì 7 queries riêng lẻ
         """
         if end_day is None:
-            end_day = date.today()
+            end_day = get_local_today()
         
         week_days = StreakService._get_week_statuses(db, user_id, end_day)
         
@@ -271,7 +278,7 @@ class StreakService:
         - Nếu log ngày quá khứ và hoàn thành → set YELLOW
         - Chỉ cộng streak state khi log ngày hôm nay (GREEN)
         """
-        today = date.today()
+        today = get_local_today()
         
         # Không xử lý log ngày tương lai
         if log_date > today:
@@ -380,7 +387,7 @@ class StreakService:
         Tính status của hôm nay (green/yellow/none) - LEGACY
         Giữ lại cho backward compatibility
         """
-        today = date.today()
+        today = get_local_today()
         
         # Check cache trước
         cached = db.query(StreakDayCache).filter(
@@ -405,7 +412,7 @@ class StreakService:
         Lấy status của một ngày cụ thể - LEGACY
         Giữ lại cho backward compatibility
         """
-        today = date.today()
+        today = get_local_today()
         
         # Check cache
         cached = db.query(StreakDayCache).filter(
@@ -435,7 +442,7 @@ class StreakService:
         
         ⚠️ KHÔNG nên gọi method này trong API hot path
         """
-        today = date.today()
+        today = get_local_today()
         
         # Query batch cached days
         cached_days = db.query(StreakDayCache).filter(
@@ -486,7 +493,7 @@ class StreakService:
         Giữ lại cho admin batch jobs
         """
         current_streak, longest_streak = StreakService.calculate_streak(db, user_id)
-        today = date.today()
+        today = get_local_today()
         
         streak_state = db.query(UserStreakState).filter(
             UserStreakState.user_id == user_id

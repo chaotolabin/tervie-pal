@@ -42,7 +42,13 @@ export default function FoodAddModal({
   
   // Form state
   const [mealType, setMealType] = useState<string>('snacks');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [usePortion, setUsePortion] = useState<boolean>(true);
   const [selectedPortionId, setSelectedPortionId] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<string>('1');
@@ -58,8 +64,12 @@ export default function FoodAddModal({
   // Auto-detect meal type based on current time and reset date when modal opens
   useEffect(() => {
     if (open) {
-      // Reset date to today when modal opens
-      setSelectedDate(new Date().toISOString().split('T')[0]);
+      // Reset date to today when modal opens (local timezone)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      setSelectedDate(`${year}-${month}-${day}`);
       
       const currentHour = new Date().getHours();
       if (currentHour >= 5 && currentHour < 10) {

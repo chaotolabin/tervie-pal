@@ -8,9 +8,10 @@ import { Calendar } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
 import { toast } from 'sonner';
+import { getLocalDateString, getDaysAgoDateString } from '../../../utils/dateUtils';
 
 export default function FoodLoggingPage() {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalDateString());
   const [selectedDateOption, setSelectedDateOption] = useState<string>('today'); // 'today', 'yesterday', '2days', 'custom'
   const [customDate, setCustomDate] = useState<string>(''); // Cho custom date picker
   const [data, setData] = useState<any>(null);
@@ -111,22 +112,15 @@ export default function FoodLoggingPage() {
 
   // Helper function để lấy date từ option
   const getDateFromOption = (option: string): string => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
     switch (option) {
       case 'today':
-        return today.toISOString().split('T')[0];
+        return getLocalDateString();
       case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        return yesterday.toISOString().split('T')[0];
+        return getDaysAgoDateString(1);
       case '2days':
-        const twoDaysAgo = new Date(today);
-        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-        return twoDaysAgo.toISOString().split('T')[0];
+        return getDaysAgoDateString(2);
       default:
-        return today.toISOString().split('T')[0];
+        return getLocalDateString();
     }
   };
 

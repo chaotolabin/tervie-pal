@@ -21,6 +21,7 @@ from app.schemas.admin import (
     StreakUserItem,
     DailyStatItem,
 )
+from app.utils.timezone import local_date_to_utc_range
 
 
 class AdminDashboardService:
@@ -384,9 +385,8 @@ class AdminDashboardService:
         """
         from decimal import Decimal
         
-        # Thời gian bắt đầu/kết thúc ngày
-        start_of_day = datetime.combine(target_date, datetime.min.time()).replace(tzinfo=timezone.utc)
-        end_of_day = datetime.combine(target_date, datetime.max.time()).replace(tzinfo=timezone.utc)
+        # Thời gian bắt đầu/kết thúc ngày (convert local date sang UTC datetime range)
+        start_of_day, end_of_day = local_date_to_utc_range(target_date)
         
         # =============== NHÓM 1: USER & TĂNG TRƯỞNG ===============
         total_users = db.query(func.count(User.id)).filter(

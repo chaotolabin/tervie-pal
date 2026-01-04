@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { logService } from '../../../../service/apiClient';
+import { LogService } from '../../../service/log.service';
 import FoodLogging from '../dashboard/FoodLogging';
 import ExerciseQuickAdd from '../dashboard/quick-add/ExerciseQuickAdd';
+import { getLocalDateString } from '../../../utils/dateUtils';
 
 export default function DiaryPage() {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalDateString());
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Gọi endpoint /logs/{target_date}
-        const res = await logService.getDailyLogs(date);
+        const res = await LogService.getDailyLogs(date);
         setData(res);
       } catch (error) {
         console.error('Error fetching daily logs:', error);
