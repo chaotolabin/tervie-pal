@@ -42,7 +42,7 @@ from app.schemas.common import ErrorResponse
 
 
 # ==================== Router Setup ====================
-router = APIRouter(tags=["Blog"])
+router = APIRouter(prefix="/blog", tags=["Blog"])
 
 
 # ==================== MEDIA UPLOAD ====================
