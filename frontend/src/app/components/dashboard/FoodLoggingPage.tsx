@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LogService } from '../../../service/log.service';
+import { GoalService } from '../../../service/goals.service';
 import FoodLogging from './FoodLogging';
 import FoodQuickAdd from './quick-add/foodquickadd';
+import NutrientTargets from './NutrientTargets';
 import { toast } from 'sonner';
 
 export default function FoodLoggingPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [data, setData] = useState<any>(null);
+  const [goal, setGoal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,9 +17,20 @@ export default function FoodLoggingPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await LogService.getDailyLogs(date);
-      console.log('Daily logs response:', res);
-      setData(res);
+      // Fetch daily logs and goals in parallel
+      const [logsRes, goalsRes] = await Promise.all([
+        LogService.getDailyLogs(date).catch(() => null),
+        GoalService.getCurrentGoal().catch(() => null), // Goals might not exist, so catch error
+      ]);
+      
+      if (logsRes) {
+        console.log('Daily logs response:', logsRes);
+        setData(logsRes);
+      }
+      
+      if (goalsRes) {
+        setGoal(goalsRes);
+      }
     } catch (error: any) {
       console.error('Error fetching daily logs:', error);
       
@@ -143,31 +157,34 @@ export default function FoodLoggingPage() {
         </div>
       )}
 
-      {/* Tóm tắt dinh dưỡng */}
-      {summary ? (
-        <div className="grid grid-cols-4 gap-4 bg-white p-6 rounded-xl shadow">
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Nạp vào</p>
-            <p className="font-bold text-xl">{toNumber(summary.total_calories_consumed)} kcal</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Tiêu hao</p>
-            <p className="font-bold text-xl">{toNumber(summary.total_calories_burned)} kcal</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Protein</p>
-            <p className="font-bold text-xl">{toNumber(summary.total_protein_g).toFixed(1)} g</p>
-          </div>
-          <div className="text-center">
-            <p className="text-gray-500 text-sm">Carbs</p>
-            <p className="font-bold text-xl">{toNumber(summary.total_carbs_g).toFixed(1)} g</p>
-          </div>
-        </div>
-      ) : !error && data ? (
+      {/* Nutrient Targets with Progress Bars */}
+      {summary && (
+        <NutrientTargets
+          energy={{
+            consumed: toNumber(summary.total_calories_consumed),
+            target: toNumber(goal?.daily_calorie_target) || 2000, // Default to 2000 if no goal
+          }}
+          protein={{
+            consumed: toNumber(summary.total_protein_g),
+            target: toNumber(goal?.protein_grams) || 150, // Default to 150g if no goal
+          }}
+          carbs={{
+            consumed: toNumber(summary.total_carbs_g),
+            target: toNumber(goal?.carb_grams) || 200, // Default to 200g if no goal
+          }}
+          fat={{
+            consumed: toNumber(summary.total_fat_g || 0),
+            target: toNumber(goal?.fat_grams) || 65, // Default to 65g if no goal
+          }}
+          onRefresh={fetchData}
+        />
+      )}
+      
+      {!summary && !error && data && (
         <div className="bg-white p-6 rounded-xl shadow">
           <p className="text-gray-500 text-center">Chưa có dữ liệu dinh dưỡng cho ngày này.</p>
         </div>
-      ) : null}
+      )}
 
       {/* Thêm món ăn */}
       <div className="bg-white p-6 rounded-xl shadow">
