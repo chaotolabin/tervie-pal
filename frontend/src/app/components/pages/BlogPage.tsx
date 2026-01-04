@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, Share2, Bookmark, TrendingUp } from 'lucide-react';
+import { Heart, Bookmark, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -243,10 +243,6 @@ export default function BlogPage() {
                     className={`ml-auto ${post.is_saved ? 'text-blue-600' : 'text-gray-600'} hover:bg-blue-50`}
                   >
                     <Bookmark className={`size-5 ${post.is_saved ? 'fill-blue-600' : ''}`} />
-                  </Button>
-
-                  <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-100">
-                    <Share2 className="size-5" />
                   </Button>
                 </div>
               </CardContent>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, Share2, MoreVertical, Loader2, Bookmark } from 'lucide-react';
+import { ArrowLeft, Heart, MoreVertical, Loader2, Bookmark } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -234,10 +234,6 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
               className={`ml-auto ${post.is_saved ? 'text-blue-600' : 'text-gray-600'} hover:bg-blue-50 hover:text-blue-600`}
             >
               <Bookmark className={`size-5 ${post.is_saved ? 'fill-blue-600' : ''}`} />
-            </Button>
-            
-            <Button variant="ghost" size="sm" className="text-gray-600 hover:bg-gray-100">
-              <Share2 className="size-5" />
             </Button>
           </div>
         </CardContent>
