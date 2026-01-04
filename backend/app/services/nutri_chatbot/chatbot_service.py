@@ -1,11 +1,10 @@
-import google.generativeai as genai
 from sqlalchemy.orm import Session
 import json
 import re
 
 from app.core.settings import settings
-from app.services.nutri_chatbot.intent_classifier import IntentClassifier
-from app.services.nutri_chatbot.rag_service import RAGService
+# Lazy imports để tránh lỗi khi không có google-generativeai
+# IntentClassifier, RAGService sẽ được import trong __init__
 from app.services.nutri_chatbot.translate_service import TranslateService
 
 
@@ -28,8 +27,24 @@ class ChatbotService:
         self.db = db
         self.user_id = user_id
         
+        # Lazy import để tránh lỗi khi không có google-generativeai
+        try:
+            import google.generativeai as genai
+        except ImportError:
+            raise ImportError(
+                "google-generativeai package is not installed. "
+                "Please install it with: pip install google-generativeai"
+            )
+        
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not configured in settings")
+        
         genai.configure(api_key=settings.GEMINI_API_KEY)
         self.model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        # Lazy import các service con
+        from app.services.nutri_chatbot.intent_classifier import IntentClassifier
+        from app.services.nutri_chatbot.rag_service import RAGService
         
         self.intent_classifier = IntentClassifier()
         self.rag_service = RAGService(db)

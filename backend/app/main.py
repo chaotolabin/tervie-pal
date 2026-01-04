@@ -11,7 +11,6 @@ from app.core.database import get_db, engine
 from app.api.routes import (
     auth,
     users,
-    chatbot,
     biometric,
     food,
     exercise,
@@ -23,6 +22,14 @@ from app.api.routes import (
 )
 from app.api.routes import settings as settings_routes
 from app.api.routes.admin import router as admin_router
+
+# Conditional import cho chatbot - chỉ import nếu có thể
+try:
+    from app.api.routes import chatbot
+except ImportError as e:
+    # Nếu không thể import chatbot (do thiếu google-generativeai), bỏ qua
+    chatbot = None
+    print(f"⚠️  Chatbot module not available: {e}")
 
 # ==================== App Init ====================
 app = FastAPI(
@@ -57,7 +64,12 @@ app.include_router(streak.router, prefix="/api/v1")
 app.include_router(logs.router, prefix="/api/v1/logs")
 app.include_router(support.router, prefix="/api/v1/support")
 
-app.include_router(chatbot.router, prefix="/api/v1")  # ✅ giữ chatbot
+# Chỉ include chatbot router nếu import thành công
+if chatbot is not None:
+    app.include_router(chatbot.router, prefix="/api/v1")  # ✅ giữ chatbot
+else:
+    print("⚠️  Chatbot router not registered - google-generativeai package may be missing")
+
 app.include_router(blog.router, prefix="/api/v1")     # ✅ giữ blog
 
 app.include_router(admin_router, prefix="/api/v1/admin")

@@ -4,10 +4,15 @@ import { GoalService } from '../../../service/goals.service';
 import FoodLogging from './FoodLogging';
 import FoodQuickAdd from './quick-add/foodquickadd';
 import NutrientTargets from './NutrientTargets';
+import { Calendar } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Input } from '../ui/input';
 import { toast } from 'sonner';
 
 export default function FoodLoggingPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDateOption, setSelectedDateOption] = useState<string>('today'); // 'today', 'yesterday', '2days', 'custom'
+  const [customDate, setCustomDate] = useState<string>(''); // Cho custom date picker
   const [data, setData] = useState<any>(null);
   const [goal, setGoal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -132,16 +137,83 @@ export default function FoodLoggingPage() {
     return error?.message || defaultMsg;
   };
 
+  // Helper function để lấy date từ option
+  const getDateFromOption = (option: string): string => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    switch (option) {
+      case 'today':
+        return today.toISOString().split('T')[0];
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return yesterday.toISOString().split('T')[0];
+      case '2days':
+        const twoDaysAgo = new Date(today);
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        return twoDaysAgo.toISOString().split('T')[0];
+      default:
+        return today.toISOString().split('T')[0];
+    }
+  };
+
+  // Xử lý khi thay đổi date option
+  const handleDateOptionChange = (option: string) => {
+    setSelectedDateOption(option);
+    if (option === 'custom') {
+      // Nếu chọn custom, mở date picker với ngày hiện tại
+      setCustomDate(date);
+    } else {
+      const newDate = getDateFromOption(option);
+      setDate(newDate);
+    }
+  };
+
+  // Xử lý khi thay đổi custom date
+  const handleCustomDateChange = (newDate: string) => {
+    setCustomDate(newDate);
+    setDate(newDate);
+  };
+
+  // Khi selectedDateOption thay đổi, cập nhật date (trừ custom)
+  useEffect(() => {
+    if (selectedDateOption !== 'custom') {
+      const newDate = getDateFromOption(selectedDateOption);
+      setDate(newDate);
+    }
+  }, [selectedDateOption]);
+
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Dinh dưỡng</h2>
-        <input 
-          type="date" 
-          value={date} 
-          onChange={(e) => setDate(e.target.value)} 
-          className="border p-2 rounded"
-        />
+        
+        {/* Date Filter với các option */}
+        <div className="flex items-center gap-2">
+          <Calendar className="size-4 text-gray-500" />
+          <Select value={selectedDateOption} onValueChange={handleDateOptionChange}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Hôm nay</SelectItem>
+              <SelectItem value="yesterday">Hôm qua</SelectItem>
+              <SelectItem value="2days">2 ngày trước</SelectItem>
+              <SelectItem value="custom">Chọn ngày khác...</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* Custom Date Picker - chỉ hiển thị khi chọn "Chọn ngày khác..." */}
+          {selectedDateOption === 'custom' && (
+            <Input
+              type="date"
+              value={customDate || date}
+              onChange={(e) => handleCustomDateChange(e.target.value)}
+              className="w-auto"
+            />
+          )}
+        </div>
       </div>
 
       {/* Hiển thị lỗi nếu có */}
