@@ -243,7 +243,7 @@ export default function BlogPage() {
         <h1 className="text-3xl font-bold text-gray-900">Tervie Blog</h1>
         <Button 
           onClick={() => setShowCreatePost(true)}
-          className="bg-gradient-to-r from-pink-500 to-purple-600 text-white"
+          className="bg-[#f8c6d8] text-gray-800"
         >
           Tạo bài viết
         </Button>
@@ -366,7 +366,7 @@ export default function BlogPage() {
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                       <div className="flex items-center gap-2">
                         <Avatar className="size-6">
-                          <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold">
+                          <AvatarFallback className="bg-[#f8c6d8] text-gray-800 text-xs font-bold">
                             {post.full_name?.substring(0, 2).toUpperCase() || 'U'}
                           </AvatarFallback>
                         </Avatar>

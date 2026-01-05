@@ -396,7 +396,7 @@ export default function UserProfileDashboard({ onLogout }: UserProfileDashboardP
   return (
     <div className="space-y-6 pb-8">
       {/* ==================== HEADER SECTION ==================== */}
-      <Card className="bg-gradient-to-br from-pink-500 to-purple-600 text-white border-none shadow-lg">
+      <Card className="bg-[#f8c6d8] text-gray-800 border-none shadow-lg">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-4">
@@ -407,7 +407,7 @@ export default function UserProfileDashboard({ onLogout }: UserProfileDashboardP
                 <h2 className="text-2xl font-bold">{userInfo.name}</h2>
                 <p className="text-sm opacity-90">{userInfo.email}</p>
                 <Badge className="mt-2 bg-white/20 text-white border-white/30 hover:bg-white/30">
-                  Streak: {userInfo.streak} ngày 🔥
+                  Streak: {userInfo.streak} ngày
                 </Badge>
               </div>
             </div>
