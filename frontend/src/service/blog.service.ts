@@ -21,7 +21,12 @@ export const BlogService = {
     return response.data;
   },
 
-  updatePost: async (postId: string, data: { content?: string; media?: any[]; hashtags?: string[]; title?: string }) => {
+  updatePost: async (postId: string, data: { 
+    content_text?: string; 
+    media?: Array<{ url: string; media_type: string; mime_type?: string; width?: number; height?: number; size_bytes?: number; sort_order?: number }>; 
+    hashtags?: string[]; 
+    title?: string 
+  }) => {
     const response = await apiClient.patch(`/blog/posts/${postId}`, data);
     return response.data;
   },

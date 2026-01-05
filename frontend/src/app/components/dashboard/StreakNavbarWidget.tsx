@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Flame, Trophy } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '../ui/hover-card';
+import { Card, CardContent } from '../ui/card';
 import api from '../lib/api';
 
 interface StreakDay {
@@ -25,7 +26,6 @@ interface StreakNavbarWidgetProps {
 export default function StreakNavbarWidget({ streakData: streakDataProp }: StreakNavbarWidgetProps) {
   const [streak, setStreak] = useState<StreakResponse | null>(streakDataProp || null);
   const [loading, setLoading] = useState(!streakDataProp);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Calculate next milestone (default: 10, 30, 100, etc.)
   const calculateNextMilestone = (current: number): number => {
@@ -81,7 +81,27 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
   const currentStreak = streak?.current_streak || 0;
   const longestStreak = streak?.longest_streak || 0;
   const nextMilestone = streak?.next_milestone || calculateNextMilestone(currentStreak);
-  const milestoneProgress = Math.min((currentStreak / nextMilestone) * 100, 100);
+
+  // Get streak color based on length
+  const getStreakColor = () => {
+    if (currentStreak >= 30) return 'from-yellow-500 to-red-600';
+    if (currentStreak >= 7) return 'from-red-200 to-red-200';
+    return 'from-yellow-100 to-yellow-100';
+  }; 
+
+  // Get streak message
+  const getStreakMessage = () => {
+    if (currentStreak === 0) return 'Bắt đầu streak của bạn ngay nào!';
+    if (currentStreak < 7) return 'Đang khởi động tốt rùi nè ÒvÓ!';
+    if (currentStreak < 30) return 'Tiếp tục phát huy nữa nha -.-!';
+    return 'Streak đỉnh cao, OMG!';
+  };
+
+  // Get text color based on streak length
+  const getTextColor = () => {
+    if (currentStreak >= 0 && currentStreak < 30) return 'text-orange-800';
+    return 'text-white';
+  };
 
   // Get day names in Vietnamese
   const getDayName = (dateStr: string): string => {
@@ -111,159 +131,166 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
   }
 
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="flex items-center gap-2 hover:bg-orange-50 hover:text-orange-600 transition-colors cursor-pointer"
-        onClick={() => setIsModalOpen(true)}
-      >
-        <Flame className="size-4 text-orange-500" fill="currentColor" />
-        <span className="font-semibold text-base">{currentStreak}</span>
-      </Button>
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex items-center gap-2 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+        >
+          <Flame className="size-4 text-orange-500" fill="currentColor" />
+          <span className="font-semibold text-base">{currentStreak}</span>
+        </Button>
+      </HoverCardTrigger>
 
-      {/* Streak Detail Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Flame className="size-5 text-orange-500" fill="currentColor" />
-              Chi tiết Streak
-            </DialogTitle>
-          </DialogHeader>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
-            </div>
-          ) : streak ? (
-            <div className="space-y-6 py-4">
-              {/* Current Streak & Longest Streak */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Chuỗi hiện tại</p>
-                  <p className="text-3xl font-black text-orange-500">
-                    {currentStreak} <span className="text-base font-normal text-gray-400">ngày</span>
-                  </p>
-                </div>
-                
-                <div className="bg-yellow-50 px-4 py-3 rounded-lg flex items-center gap-2 border border-yellow-100">
-                  <Trophy className="size-5 text-yellow-600" />
-                  <div>
-                    <p className="text-xs text-yellow-600/80 mb-1">Kỷ lục</p>
-                    <p className="text-xl font-bold text-yellow-700">{longestStreak} ngày</p>
+      <HoverCardContent className="w-80 p-0 bg-transparent border-none shadow-none" align="end" sideOffset={8}>
+        <Card className={`bg-gradient-to-br ${getStreakColor()} ${getTextColor()} border-none shadow-xl`}>
+          <CardContent className="p-5">
+            <div className="space-y-4">
+              {/* Header with Circular Streak Display */}
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="size-20 rounded-full border-4 border-white/30 flex items-center justify-center bg-white/10">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold">{currentStreak}</p>
+                      <p className="text-xs opacity-90">ngày</p>
+                    </div>
                   </div>
+                  <div className="absolute -top-1 -right-1">
+                    <Flame className="size-6 text-orange-300 animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="flex-1">
+                  <p className="text-sm opacity-90">Streak hiện tại</p>
+                  <p className="font-semibold mt-1 text-base">{getStreakMessage()}</p>
+                  {longestStreak > 0 && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <Trophy className="size-3 opacity-75" />
+                      <p className="text-xs opacity-75">
+                        Kỷ lục: {longestStreak} ngày
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* 7 Days Status */}
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-gray-700">7 ngày gần nhất</p>
-                <div className="grid grid-cols-7 gap-2">
-                  {streak.week.map((item, index) => {
-                    const isToday = new Date().toISOString().split('T')[0] === item.day;
-                    
-                    // Map màu sắc theo status
-                    let bgColor = 'bg-gray-200';
-                    let borderColor = 'border-gray-300';
-                    let textColor = 'text-gray-500';
-                    let statusText = 'Chưa có';
+              {/* 7 Days Visualization */}
+              {streak?.week && streak.week.length > 0 && (
+                <div className="pt-3 border-t border-white/20">
+                  <p className="text-xs opacity-90 mb-3">7 ngày gần nhất</p>
+                  <div className="flex justify-between items-end">
+                    {streak.week.map((item, index) => {
+                      const date = new Date(item.day);
+                      const dayName = date.toLocaleDateString('vi-VN', { weekday: 'short' });
+                      
+                      // Map màu sắc theo status
+                      let bgColor = 'bg-white/20';
+                      let borderColor = 'border-white/30';
+                      let iconColor = 'text-white/60';
 
-                    if (item.status === 'green') {
-                      bgColor = 'bg-green-500';
-                      borderColor = 'border-green-600';
-                      textColor = 'text-white';
-                      statusText = 'Hoàn thành đúng hạn';
-                    } else if (item.status === 'yellow') {
-                      bgColor = 'bg-yellow-400';
-                      borderColor = 'border-yellow-500';
-                      textColor = 'text-white';
-                      statusText = 'Hoàn thành sau hạn';
-                    }
+                      if (item.status === 'green') {
+                        bgColor = 'bg-green-500';
+                        borderColor = 'border-green-600';
+                        iconColor = 'text-white';
+                      } else if (item.status === 'yellow') {
+                        bgColor = 'bg-yellow-400';
+                        borderColor = 'border-yellow-500';
+                        iconColor = 'text-white';
+                      }
 
-                    return (
-                      <div 
-                        key={index} 
-                        className="flex flex-col items-center gap-1.5"
-                        title={`${getDayName(item.day)} ${getFormattedDate(item.day)} - ${statusText}`}
-                      >
-                        <span className={`text-[10px] font-medium ${isToday ? 'text-orange-600 font-bold' : 'text-gray-500'}`}>
-                          {getDayName(item.day)}
-                        </span>
-                        <div 
-                          className={`
-                            size-10 rounded-full flex items-center justify-center border-2 transition-all
-                            ${bgColor} ${borderColor} ${textColor}
-                            ${isToday ? 'ring-2 ring-orange-400 ring-offset-2' : ''}
-                            ${item.status === 'green' ? 'shadow-md shadow-green-200' : ''}
-                          `}
-                        >
-                          {item.status === 'green' && (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="size-4">
-                              <path d="M20 6 9 17l-5-5" />
-                            </svg>
-                          )}
-                          {item.status === 'yellow' && (
-                            <span className="text-xs font-bold">!</span>
-                          )}
+                      const isToday = new Date().toISOString().split('T')[0] === item.day;
+
+                      return (
+                        <div key={index} className="flex flex-col items-center gap-2">
+                          <span className={`text-[10px] uppercase font-medium ${isToday ? 'opacity-100' : 'opacity-75'}`}>
+                            {dayName}
+                          </span>
+                          
+                          <div 
+                            className={`
+                              size-8 rounded-full flex items-center justify-center border-2 transition-all
+                              ${bgColor} ${borderColor} ${iconColor}
+                              ${isToday ? 'ring-2 ring-white/50 ring-offset-2 ring-offset-transparent' : ''}
+                            `}
+                            title={`${getDayName(item.day)} ${getFormattedDate(item.day)}`}
+                          >
+                            {item.status === 'green' && (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+                                <path d="M20 6 9 17l-5-5" />
+                              </svg>
+                            )}
+                            {item.status === 'yellow' && (
+                              <span className="text-xs font-bold">!</span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-[9px] text-gray-400">{getFormattedDate(item.day)}</span>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex justify-center gap-3 mt-3 pt-2 border-t border-white/10">
+                    <div className="flex items-center gap-1.5">
+                      <div className="size-3 rounded-full bg-green-500 border border-green-600 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="size-2 text-white">
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* Legend */}
-                <div className="flex justify-center gap-4 pt-2 border-t border-gray-100">
-                  <div className="flex items-center gap-1.5">
-                    <div className="size-3 rounded-full bg-green-500 border border-green-600"></div>
-                    <span className="text-xs text-gray-600">Đúng hạn</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="size-3 rounded-full bg-yellow-400 border border-yellow-500"></div>
-                    <span className="text-xs text-gray-600">Sau hạn</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="size-3 rounded-full bg-gray-200 border border-gray-300"></div>
-                    <span className="text-xs text-gray-600">Chưa có</span>
+                      <span className="text-[10px] opacity-75">Đúng hạn</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="size-3 rounded-full bg-yellow-400 border border-yellow-500 flex items-center justify-center">
+                        <span className="text-[8px] font-bold text-white">!</span>
+                      </div>
+                      <span className="text-[10px] opacity-75">Sau hạn</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="size-3 rounded-full bg-white/20 border border-white/30"></div>
+                      <span className="text-[10px] opacity-75">Chưa có</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Milestone Progress - Commented out */}
-              {/* <div className="space-y-2 pt-2 border-t border-gray-100">
-                <p className="text-sm text-gray-600">
-                  Mốc tiếp theo: <span className="font-semibold">{nextMilestone} ngày</span>
-                </p>
-                
-                <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="absolute left-0 top-0 h-full bg-orange-500 transition-all duration-300"
-                    style={{ width: `${milestoneProgress}%` }}
-                  />
+              {/* Progress to next milestone */}
+              {currentStreak > 0 && (
+                <div className="pt-3 border-t border-white/20">
+                  <div className="flex justify-between text-xs opacity-90 mb-2">
+                    <span>Mốc tiếp theo</span>
+                    <span>
+                      {currentStreak < 7 ? `${7 - currentStreak} ngày` :
+                       currentStreak < 30 ? `${30 - currentStreak} ngày` :
+                       currentStreak < 100 ? `${100 - currentStreak} ngày` :
+                       'Đã đạt 100 ngày! 🎉'}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white/60 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${currentStreak < 7 
+                          ? (currentStreak / 7) * 100 
+                          : currentStreak < 30 
+                          ? ((currentStreak - 7) / 23) * 100 
+                          : currentStreak < 100
+                          ? ((currentStreak - 30) / 70) * 100
+                          : 100}%`
+                      }}
+                    />
+                  </div>
                 </div>
-                
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{currentStreak}/{nextMilestone}</span>
-                  <span>{Math.round(milestoneProgress)}%</span>
-                </div>
-              </div> */}
+              )}
 
-              {/* Motivational Message */}
-              <div className="pt-2">
-                <p className="text-xs text-gray-500 text-center">
-                  Tiếp tục ghi nhận hàng ngày để duy trì streak!
-                </p>
-              </div>
+              {/* Motivational tip */}
+              <p className="text-xs text-center opacity-75 pt-2">
+                Nhớ ghi lại dinh dưỡng và tập luyện hàng ngày để duy trì streak!
+              </p>
             </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500 text-sm">
-              Chưa có dữ liệu streak
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </>
+          </CardContent>
+        </Card>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 

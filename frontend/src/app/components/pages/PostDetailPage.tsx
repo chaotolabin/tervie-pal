@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, MoreVertical, Loader2, Bookmark } from 'lucide-react';
+import { ArrowLeft, Heart, MoreVertical, Loader2, Bookmark, Trash2, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -11,6 +11,7 @@ import { BlogService } from '../../../service/blog.service';
 // --- Interfaces khớp với Backend ---
 interface PostDetail {
   id: number;
+  user_id: string;
   full_name: string;
   title?: string;
   content_text: string;
@@ -27,11 +28,18 @@ interface PostDetail {
 interface PostDetailPageProps {
   onBack: () => void;
   postId?: string;
+  currentUserId?: string | null;
+  onPostDeleted?: () => void;
+  onEditPost?: (post: PostDetail) => void;
 }
 
-export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) {
+export default function PostDetailPage({ onBack, postId, currentUserId, onPostDeleted, onEditPost }: PostDetailPageProps) {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  const isAuthor = post && currentUserId && post.user_id === currentUserId;
+  console.log('[PostDetailPage] isAuthor check:', { postUserId: post?.user_id, currentUserId, isAuthor });
 
   // 1. Fetch dữ liệu bài viết và bình luận
   useEffect(() => {
@@ -123,6 +131,52 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
     });
   };
 
+  // Handle delete post
+  const handleDeletePost = async () => {
+    console.log('[PostDetailPage] handleDeletePost called:', { postId, isAuthor, currentUserId });
+    
+    if (!post || !postId || !isAuthor) {
+      console.log('[PostDetailPage] Delete blocked - missing requirements');
+      return;
+    }
+    
+    const confirmDelete = window.confirm('Bạn có chắc chắn muốn xóa bài viết này?');
+    if (!confirmDelete) {
+      console.log('[PostDetailPage] User cancelled deletion');
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      console.log('[PostDetailPage] Calling BlogService.deletePost...');
+      await BlogService.deletePost(postId);
+      console.log('[PostDetailPage] Post deleted successfully');
+      toast.success('Đã xóa bài viết');
+      onPostDeleted?.();
+      onBack();
+    } catch (error) {
+      console.error('[PostDetailPage] Delete error:', error);
+      toast.error('Lỗi khi xóa bài viết');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Handle edit post
+  const handleEditPost = () => {
+    console.log('[PostDetailPage] Edit button clicked for post:', postId);
+    if (!post || !isAuthor) {
+      console.log('[PostDetailPage] Edit blocked - not author or post missing');
+      toast.error('Bạn không có quyền chỉnh sửa bài viết này');
+      return;
+    }
+    if (onEditPost) {
+      onEditPost(post);
+    } else {
+      toast.info('Tính năng chỉnh sửa đang phát triển');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[50vh]">
@@ -164,8 +218,22 @@ export default function PostDetailPage({ onBack, postId }: PostDetailPageProps) 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {isAuthor && (
+                  <>
+                    <DropdownMenuItem onSelect={handleDeletePost} disabled={deleting} className="text-red-600">
+                      <Trash2 className="size-4 mr-2" />
+                      {deleting ? 'Đang xóa...' : 'Xóa bài viết'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleEditPost}>
+                      <Edit className="size-4 mr-2" />
+                      Chỉnh sửa bài viết
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem>Sao chép liên kết</DropdownMenuItem>
-                <DropdownMenuItem className="text-red-600">Báo cáo bài viết</DropdownMenuItem>
+                {!isAuthor && (
+                  <DropdownMenuItem className="text-red-600">Báo cáo bài viết</DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
