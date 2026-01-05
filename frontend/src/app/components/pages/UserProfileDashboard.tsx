@@ -484,7 +484,7 @@ export default function UserProfileDashboard({ onLogout }: UserProfileDashboardP
                     <Button 
                       onClick={handleUpdateGoal} 
                       disabled={editingGoal || !selectedGoalType || !selectedActivityLevel}
-                      className="bg-gradient-to-r from-pink-500 to-purple-600"
+                      className="bg-[#f8c6d8] text-gray-800 hover:bg-pink-200"
                     >
                       {editingGoal ? 'Đang cập nhật...' : 'Cập nhật'}
                     </Button>
