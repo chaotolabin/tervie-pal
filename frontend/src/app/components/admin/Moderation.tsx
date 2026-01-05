@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, Dumbbell, FileText, Check, X, Loader2, Trash2 } from 'lucide-react';
+import { Utensils, Dumbbell, FileText, Check, X, Loader2, Trash2, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 
 // --- Định nghĩa Interfaces theo Schema API của bạn ---
 
@@ -72,13 +73,13 @@ export default function Moderation() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold">Hệ thống Kiểm duyệt</h1>
-        <p className="text-muted-foreground">Quản lý và kiểm duyệt nội dung trong hệ thống</p>
+        <h1 className="text-3xl font-bold">Hệ thống kiểm duyệt</h1>
+        <p className="text-muted-foreground">Quản lý và kiểm duyệt nội dung từ người dùng trong hệ thống</p>
       </div>
 
       <Tabs defaultValue="blog">
         <TabsList className="w-[400px]">
-          <TabsTrigger value="blog">Bài viết Blog</TabsTrigger>
+          <TabsTrigger value="blog">Bài viết</TabsTrigger>
           <TabsTrigger value="foods">Thực phẩm ({foods.length})</TabsTrigger>
           <TabsTrigger value="exercises">Bài tập ({exercises.length})</TabsTrigger>
         </TabsList>
@@ -181,6 +182,9 @@ function BlogPostsModeration() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -199,6 +203,24 @@ function BlogPostsModeration() {
     fetchPosts();
   }, [page]);
 
+  const openPostDetail = async (post: any) => {
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      // Thử lấy full content từ BlogService nếu có
+      const { BlogService } = await import('../../../service/blog.service');
+      const detail = await BlogService.getPost(post.id.toString());
+      setSelectedPost(detail);
+    } catch (error) {
+      console.error('Không thể tải chi tiết bài viết:', error);
+      // Fallback: dùng data từ danh sách nếu không gọi được API
+      setSelectedPost(post);
+      toast.error('Không thể tải chi tiết bài viết đầy đủ, hiển thị bản tóm tắt.');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const handleDeletePost = async (postId: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa bài viết này?')) return;
     
@@ -207,6 +229,10 @@ function BlogPostsModeration() {
       await AdminService.deletePost(postId, 'Xóa bởi admin');
       toast.success('Đã xóa bài viết');
       setPosts(posts.filter(p => p.id !== postId));
+      if (selectedPost?.id === postId) {
+        setDetailOpen(false);
+        setSelectedPost(null);
+      }
     } catch (error) {
       toast.error('Không thể xóa bài viết');
     }
@@ -221,9 +247,10 @@ function BlogPostsModeration() {
   }
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <Table>
+    <>
+      <Card>
+        <CardContent className="pt-6">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
@@ -244,20 +271,30 @@ function BlogPostsModeration() {
               </TableRow>
             ) : (
               posts.map((post) => (
-                <TableRow key={post.id}>
+                <TableRow
+                  key={post.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => openPostDetail(post)}
+                >
                   <TableCell className="text-gray-400">#{post.id}</TableCell>
                   <TableCell>
                     <div className="text-sm">
                       <div className="font-medium">{post.username}</div>
-                      <div className="text-gray-400 text-xs">{post.user_id?.toString().substring(0, 8)}</div>
+                      <div className="text-gray-400 text-xs">
+                        {post.user_id?.toString().substring(0, 8)}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="max-w-md">
                       {post.title && (
-                        <div className="font-semibold text-gray-900 mb-1">{post.title}</div>
+                        <div className="font-semibold text-gray-900 mb-1">
+                          {post.title}
+                        </div>
                       )}
-                      <div className="text-sm text-gray-600 truncate">{post.content_preview}</div>
+                      <div className="text-sm text-gray-600 truncate">
+                        {post.content_preview}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -273,22 +310,27 @@ function BlogPostsModeration() {
                   <TableCell className="text-sm text-gray-600">
                     {new Date(post.created_at).toLocaleDateString('vi-VN')}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      size="sm" 
-                      variant="destructive"
-                      onClick={() => handleDeletePost(post.id)}
-                    >
-                      <Trash2 className="size-4 mr-1" />
-                      Xóa
-                    </Button>
+                  <TableCell
+                    className="text-right"
+                    onClick={(e) => e.stopPropagation()} // tránh mở modal khi bấm nút
+                  >
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeletePost(post.id)}
+                      >
+                        <Trash2 className="size-4 mr-1" />
+                        Xóa
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-        
+
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t">
@@ -297,14 +339,14 @@ function BlogPostsModeration() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Trước
               </button>
               <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -314,6 +356,96 @@ function BlogPostsModeration() {
           </div>
         )}
       </CardContent>
-    </Card>
+      </Card>
+
+      {/* Article Detail Modal */}
+      <Dialog
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open) setSelectedPost(null);
+        }}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <DialogTitle className="text-2xl font-bold">
+                {selectedPost?.title ||
+                  (selectedPost ? `Bài viết #${selectedPost.id}` : 'Chi tiết bài viết')}
+              </DialogTitle>
+              {selectedPost && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Tác giả:{' '}
+                  <span className="font-medium text-gray-800">
+                    {selectedPost.full_name || selectedPost.username || 'Không rõ tác giả'}
+                  </span>
+                  {selectedPost.created_at && (
+                    <>
+                      {' • '}
+                      <span>
+                        {new Date(selectedPost.created_at).toLocaleString('vi-VN')}
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+
+        </DialogHeader>
+
+          {detailLoading && (
+            <div className="flex items-center justify-center py-8 text-gray-500 gap-2">
+              <Loader2 className="size-5 animate-spin" />
+              Đang tải nội dung bài viết...
+            </div>
+          )}
+
+          {!detailLoading && selectedPost && (
+            <div className="space-y-4 mt-2">
+              {/* Ảnh (nếu có) */}
+              {Array.isArray(selectedPost.media) && selectedPost.media.length > 0 && (
+                <div className="rounded-xl overflow-hidden bg-gray-100">
+                  <img
+                    src={selectedPost.media[0].url}
+                    alt={selectedPost.title || 'Article image'}
+                    className="w-full max-h-80 object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Nội dung chính */}
+              <div className="prose max-w-none text-gray-800">
+                {selectedPost.content_html ? (
+                  <div
+                    className="prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: selectedPost.content_html }}
+                  />
+                ) : selectedPost.content_text ? (
+                  <p className="whitespace-pre-wrap">{selectedPost.content_text}</p>
+                ) : (
+                  <p className="whitespace-pre-wrap">
+                    {selectedPost.content_preview || 'Không có nội dung để hiển thị'}
+                  </p>
+                )}
+              </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (!selectedPost) return;
+                  handleDeletePost(selectedPost.id);
+                }}
+              >
+                <Trash2 className="size-4 mr-1" />
+                Xóa bài viết
+              </Button>
+            </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

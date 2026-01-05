@@ -178,16 +178,15 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
               {/* 7 Days Visualization */}
               {streak?.week && streak.week.length > 0 && (
                 <div className="pt-3 border-t border-white/20">
-                  <p className="text-xs opacity-90 mb-3">7 ngày gần nhất</p>
                   <div className="flex justify-between items-end">
                     {streak.week.map((item, index) => {
                       const date = new Date(item.day);
                       const dayName = date.toLocaleDateString('vi-VN', { weekday: 'short' });
                       
                       // Map màu sắc theo status
-                      let bgColor = 'bg-white/20';
-                      let borderColor = 'border-white/30';
-                      let iconColor = 'text-white/60';
+                      let bgColor = 'bg-gray-200';
+                      let borderColor = 'border-gray-300';
+                      let iconColor = 'text-gray-400';
 
                       if (item.status === 'green') {
                         bgColor = 'bg-green-500';
@@ -197,6 +196,10 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
                         bgColor = 'bg-yellow-400';
                         borderColor = 'border-yellow-500';
                         iconColor = 'text-white';
+                      } else if (item.status === 'gray') {
+                        bgColor = 'bg-gray-200';
+                        borderColor = 'border-gray-300';
+                        iconColor = 'text-gray-400';
                       }
 
                       const isToday = new Date().toISOString().split('T')[0] === item.day;
@@ -246,7 +249,7 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
                       <span className="text-[10px] opacity-75">Sau hạn</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="size-3 rounded-full bg-white/20 border border-white/30"></div>
+                      <div className="size-3 rounded-full bg-gray-200 border border-gray-300"></div>
                       <span className="text-[10px] opacity-75">Chưa có</span>
                     </div>
                   </div>
@@ -262,12 +265,12 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
                       {currentStreak < 7 ? `${7 - currentStreak} ngày` :
                        currentStreak < 30 ? `${30 - currentStreak} ngày` :
                        currentStreak < 100 ? `${100 - currentStreak} ngày` :
-                       'Đã đạt 100 ngày! 🎉'}
+                       'Đã đạt 100 ngày! Giỏi quá nè 🎉'}
                     </span>
                   </div>
-                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                  <div className="h-2 bg-orange-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-white/60 rounded-full transition-all duration-500"
+                      className="h-full bg-orange-500 rounded-full transition-all duration-500"
                       style={{
                         width: `${currentStreak < 7 
                           ? (currentStreak / 7) * 100 
@@ -284,7 +287,7 @@ export default function StreakNavbarWidget({ streakData: streakDataProp }: Strea
 
               {/* Motivational tip */}
               <p className="text-xs text-center opacity-75 pt-2">
-                Nhớ ghi lại dinh dưỡng và tập luyện hàng ngày để duy trì streak!
+                Nhớ cập nhật hàng ngày để duy trì chuỗi streak bạn nhé! :&gt;
               </p>
             </div>
           </CardContent>

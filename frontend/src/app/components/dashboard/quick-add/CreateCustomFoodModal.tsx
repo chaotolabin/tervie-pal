@@ -45,6 +45,7 @@ export default function CreateCustomFoodModal({
     { nutrient_name: 'fat', unit: 'g', amount_per_100g: '' },
   ]);
   const [portions, setPortions] = useState<Portion[]>([]);
+  const [isContribution, setIsContribution] = useState(false);
 
   const addNutrient = () => {
     setNutrients([...nutrients, { nutrient_name: '', unit: 'g', amount_per_100g: '' }]);
@@ -107,6 +108,11 @@ export default function CreateCustomFoodModal({
         })),
       };
 
+      // Nếu user chọn đóng góp cho cộng đồng, gửi thêm cờ is_contribution
+      if (isContribution) {
+        payload.is_contribution = true;
+      }
+
       if (validPortions.length > 0) {
         payload.portions = validPortions.map(p => ({
           amount: parseFloat(p.amount),
@@ -132,6 +138,7 @@ export default function CreateCustomFoodModal({
         { nutrient_name: 'fat', unit: 'g', amount_per_100g: '' },
       ]);
       setPortions([]);
+      setIsContribution(false);
       onClose();
     } catch (error: any) {
       let errorMsg = 'Không thể tạo món ăn';
@@ -304,6 +311,20 @@ export default function CreateCustomFoodModal({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Đóng góp cho cộng đồng */}
+          <div className="flex items-center gap-2 pt-2 border-t">
+            <input
+              id="contribute"
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300"
+              checked={isContribution}
+              onChange={(e) => setIsContribution(e.target.checked)}
+            />
+            <Label htmlFor="contribute" className="text-sm text-gray-700">
+              Bạn có muốn đóng góp cho cộng đồng không?
+            </Label>
           </div>
 
           {/* Submit Button */}
