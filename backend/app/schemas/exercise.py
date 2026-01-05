@@ -3,6 +3,7 @@ Pydantic Schemas cho Exercise Module
 Chuyển đổi từ OpenAPI spec thành Pydantic models
 """
 from typing import Optional, List
+from datetime import datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field
 import uuid
@@ -29,6 +30,10 @@ class ExerciseCreateRequest(BaseModel):
         le=99.99,
         decimal_places=2,
         example=8.3
+    )
+    is_contribution: bool = Field(
+        default=False,
+        description="Có đóng góp cho cộng đồng không"
     )
 
 
@@ -61,9 +66,17 @@ class ExerciseResponse(BaseModel):
     major_heading: Optional[str] = None
     description: str
     met_value: Decimal
+    is_contribution: bool = False
+    contribution_status: Optional[str] = None
+    created_at: Optional[datetime] = None
+    creator_username: Optional[str] = None
+    creator_email: Optional[str] = None
 
     class Config:
         from_attributes = True  # Cho phép convert từ SQLAlchemy model
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
 
 
 class ExerciseListItem(ExerciseResponse):

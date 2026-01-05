@@ -3,6 +3,7 @@ import { Home, Utensils, Activity, TrendingUp, MessageCircle, HelpCircle, User a
 import { Button } from './ui/button';
 import DashboardHome from './dashboard/DashboardHome';
 import StreakNavbarWidget from './dashboard/StreakNavbarWidget';
+import NotificationBell from './dashboard/NotificationBell';
 import UserDropdown from './dashboard/UserDropdown';
 import FoodLoggingPage from './dashboard/FoodLoggingPage';
 import ExerciseLogging from './dashboard/ExerciseLogging';
@@ -165,6 +166,11 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
           {/* Streak Widget */}
           <div className="relative z-20">
             <StreakNavbarWidget streakData={streakData} />
+          </div>
+          
+          {/* Notification Bell */}
+          <div className="relative z-20">
+            <NotificationBell onNavigate={(tab) => setActiveTab(tab as Tab)} />
           </div>
           
           {/* User Dropdown */}

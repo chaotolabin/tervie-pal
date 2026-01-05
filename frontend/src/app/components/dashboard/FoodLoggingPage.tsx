@@ -9,9 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Input } from '../ui/input';
 import { toast } from 'sonner';
 import { getLocalDateString, getDaysAgoDateString } from '../../../utils/dateUtils';
+import { useDateParam } from '../../../hooks/useDateParam';
 
 export default function FoodLoggingPage() {
-  const [date, setDate] = useState(getLocalDateString());
+  // Use scoped date hook - URL sync is enabled for Nutrition page
+  const { date, setDate } = useDateParam({ enabled: true });
+  
   const [selectedDateOption, setSelectedDateOption] = useState<string>('today'); // 'today', 'yesterday', '2days', 'custom'
   const [customDate, setCustomDate] = useState<string>(''); // Cho custom date picker
   const [data, setData] = useState<any>(null);
@@ -124,13 +127,33 @@ export default function FoodLoggingPage() {
     }
   };
 
+  // Initialize selectedDateOption from URL date on mount
+  useEffect(() => {
+    const today = getLocalDateString();
+    const yesterday = getDaysAgoDateString(1);
+    const twoDaysAgo = getDaysAgoDateString(2);
+
+    if (date === today) {
+      setSelectedDateOption('today');
+    } else if (date === yesterday) {
+      setSelectedDateOption('yesterday');
+    } else if (date === twoDaysAgo) {
+      setSelectedDateOption('2days');
+    } else {
+      setSelectedDateOption('custom');
+      setCustomDate(date);
+    }
+  }, []); // Only run on mount
+
   // Khi selectedDateOption thay đổi, cập nhật date (trừ custom)
   useEffect(() => {
     if (selectedDateOption !== 'custom') {
       const newDate = getDateFromOption(selectedDateOption);
-      setDate(newDate);
+      if (newDate !== date) {
+        setDate(newDate);
+      }
     }
-  }, [selectedDateOption]);
+  }, [selectedDateOption]); // Removed date from deps to avoid infinite loop
 
   // Xử lý khi thay đổi date option
   const handleDateOptionChange = (option: string) => {
@@ -141,6 +164,7 @@ export default function FoodLoggingPage() {
     } else {
       const newDate = getDateFromOption(option);
       setDate(newDate);
+      // URL will be updated automatically by useDateParam hook
     }
   };
 
@@ -148,6 +172,7 @@ export default function FoodLoggingPage() {
   const handleCustomDateChange = (newDate: string) => {
     setCustomDate(newDate);
     setDate(newDate);
+    // URL will be updated automatically by useDateParam hook
   };
 
   if (loading) {
@@ -214,7 +239,10 @@ export default function FoodLoggingPage() {
             <Input
               type="date"
               value={customDate || date}
-              onChange={(e) => handleCustomDateChange(e.target.value)}
+              onChange={(e) => {
+                e.preventDefault();
+                handleCustomDateChange(e.target.value);
+              }}
               className="w-auto"
             />
           )}
@@ -234,7 +262,28 @@ export default function FoodLoggingPage() {
         </div>
       )}
 
-      {/* Nutrient Targets with Progress Bars */}
+      {/* Thêm món ăn - Moved to top for better UX */}
+      <div className="bg-white p-6 rounded-xl shadow">
+        <h3 className="font-bold text-lg mb-4">Thêm món ăn</h3>
+        <FoodQuickAdd />
+      </div>
+
+      {/* Danh sách log */}
+      {data && foodLogs.length > 0 ? (
+        <FoodLogging foodLogs={foodLogs} />
+      ) : data && foodLogs.length === 0 ? (
+        <div className="bg-white rounded-xl shadow p-4">
+          <h3 className="font-bold text-lg mb-4">Bữa ăn {selectedDateOption === 'today' ? 'hôm nay' : selectedDateOption === 'yesterday' ? 'hôm qua' : `ngày ${date}`}</h3>
+          <p className="text-gray-400">Chưa có dữ liệu ăn uống.</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl shadow p-4">
+          <h3 className="font-bold text-lg mb-4">Bữa ăn</h3>
+          <p className="text-gray-400">Đang tải dữ liệu...</p>
+        </div>
+      )}
+
+      {/* Nutrient Targets with Progress Bars - Moved to bottom */}
       {summary && (
         <NutrientTargets
           energy={{
@@ -260,27 +309,6 @@ export default function FoodLoggingPage() {
       {!summary && !error && data && (
         <div className="bg-white p-6 rounded-xl shadow">
           <p className="text-gray-500 text-center">Chưa có dữ liệu dinh dưỡng cho ngày này.</p>
-        </div>
-      )}
-
-      {/* Thêm món ăn */}
-      <div className="bg-white p-6 rounded-xl shadow">
-        <h3 className="font-bold text-lg mb-4">Thêm món ăn</h3>
-        <FoodQuickAdd />
-      </div>
-
-      {/* Danh sách log */}
-      {data && foodLogs.length > 0 ? (
-        <FoodLogging foodLogs={foodLogs} />
-      ) : data && foodLogs.length === 0 ? (
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-bold text-lg mb-4">Bữa ăn {selectedDateOption === 'today' ? 'hôm nay' : selectedDateOption === 'yesterday' ? 'hôm qua' : `ngày ${date}`}</h3>
-          <p className="text-gray-400">Chưa có dữ liệu ăn uống.</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-bold text-lg mb-4">Bữa ăn</h3>
-          <p className="text-gray-400">Đang tải dữ liệu...</p>
         </div>
       )}
     </div>

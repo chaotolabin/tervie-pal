@@ -4,6 +4,7 @@ Pydantic schemas cho Foods module
 - Response schemas: Format dữ liệu trả về client
 """
 from typing import Optional, List
+from datetime import datetime
 import uuid
 from decimal import Decimal
 from pydantic import BaseModel, Field, field_validator
@@ -129,9 +130,17 @@ class FoodDetail(BaseModel):
     food_group: Optional[str] = Field(None, description="Nhóm thực phẩm")
     portions: List[FoodPortionResponse] = Field(..., description="Danh sách portions")
     nutrients: List[FoodNutrientResponse] = Field(..., description="Danh sách nutrients")
+    is_contribution: bool = Field(default=False, description="Có đóng góp cho cộng đồng không")
+    contribution_status: Optional[str] = Field(None, description="Trạng thái đóng góp")
+    created_at: Optional[datetime] = Field(None, description="Ngày tạo")
+    creator_username: Optional[str] = Field(None, description="Tên người tạo")
+    creator_email: Optional[str] = Field(None, description="Email người tạo")
 
     class Config:
         from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v else None
+        }
 
 
 class FoodCreateRequest(BaseModel):
@@ -168,6 +177,10 @@ class FoodCreateRequest(BaseModel):
             {"nutrient_name": "calories", "unit": "kcal", "amount_per_100g": 130.0},
             {"nutrient_name": "protein", "unit": "g", "amount_per_100g": 2.7}
         ]
+    )
+    is_contribution: bool = Field(
+        default=False,
+        description="Có đóng góp cho cộng đồng không"
     )
 
     @field_validator('nutrients')

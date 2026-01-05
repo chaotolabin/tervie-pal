@@ -52,6 +52,18 @@ class Food(Base, TimestampMixin):
         comment="Soft delete timestamp"     # Tránh xóa nhầm và cho phép user xem lại nhật kí món đã xóa
     )
     
+    is_contribution: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        comment="Có phải đóng góp cho cộng đồng không"
+    )
+    
+    contribution_status: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        comment="Trạng thái đóng góp: pending, approved, rejected"
+    )
+    
     # Relationships (Liên hệ với bảng khác)
     portions: Mapped[List["FoodPortion"]] = relationship(
         "FoodPortion",

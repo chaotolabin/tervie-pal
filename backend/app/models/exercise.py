@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Text, BigInteger, Index, Numeric
+from sqlalchemy import Text, BigInteger, Index, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import text
@@ -56,6 +56,18 @@ class Exercise(Base, TimestampMixin):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(
         nullable=True,
         comment="Soft delete timestamp"
+    )
+    
+    is_contribution: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        comment="Có phải đóng góp cho cộng đồng không"
+    )
+    
+    contribution_status: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Trạng thái đóng góp: pending, approved, rejected"
     )
     
     # Indexes & Constraints
