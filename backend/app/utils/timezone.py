@@ -1,10 +1,5 @@
 """
-Timezone utilities - Xử lý timezone cho hệ thống
-
-Vấn đề: Database lưu datetime với UTC timezone, nhưng khi so sánh với date
-hoặc extract date, cần dùng local timezone của user để nhận diện đúng ngày.
-
-Giải pháp: Tạo các utility functions để convert UTC datetime sang local date
+Tạo các utility functions để convert UTC datetime sang local date
 và lấy "today" theo local timezone.
 """
 from datetime import datetime, date, timezone, timedelta
