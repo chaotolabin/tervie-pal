@@ -44,7 +44,7 @@ app = FastAPI(
 # ==================== CORS Configuration ====================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: restrict in production
+    allow_origins=["https://tervie-frontend.onrender.com", "http://localhost", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,8 +1,12 @@
-
 import axios, { AxiosError } from 'axios';
 
+// Detect environment - simple and safe
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8000/api/v1'
+  : 'https://tervie-backend.onrender.com/api/v1';
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/v1', 
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -71,9 +75,13 @@ api.interceptors.response.use(
       }
 
       try {
+        const REFRESH_URL = window.location.hostname === 'localhost'
+          ? 'http://localhost:8000/api/v1/auth/refresh'
+          : 'https://tervie-backend.onrender.com/api/v1/auth/refresh';
+          
         // Gọi API refresh token
         const response = await axios.post(
-          'http://localhost:8000/api/v1/auth/refresh',
+          REFRESH_URL,
           { refresh_token: refreshToken },
           { headers: { 'Content-Type': 'application/json' } }
         );
