@@ -31,7 +31,8 @@ export default function Analytics() {
       setLoading(true);
       try {
         const { AdminService } = await import('../../../service/admin.service');
-        const data = await AdminService.getStreakDashboard('30d', 10);
+        // Lấy tất cả users (top_n = 0) để tính phân bổ chính xác
+        const data = await AdminService.getStreakDashboard('30d', 0);
         
         // Map backend response to frontend format
         const streakStats = data.streak_stats;
@@ -41,19 +42,21 @@ export default function Analytics() {
           total_users_active: streakStats?.users_with_streak || 0
         });
         
-        // Create distribution from top streak users
+        // Create distribution from all streak users 
         if (streakStats?.top_streak_users && streakStats.top_streak_users.length > 0) {
           const dist: StreakDistribution[] = [
-            { range: '0-7 ngày', count: 0 },
-            { range: '8-30 ngày', count: 0 },
-            { range: '30+ ngày', count: 0 }
+            { range: '0-3 ngày', count: 0 },
+            { range: '3-7 ngày', count: 0 },
+            { range: '7-21 ngày', count: 0 },
+            { range: '21+ ngày', count: 0 }
           ];
           
           streakStats.top_streak_users.forEach((user: any) => {
             const streak = user.current_streak || 0;
-            if (streak <= 7) dist[0].count++;
-            else if (streak <= 30) dist[1].count++;
-            else dist[2].count++;
+            if (streak < 3) dist[0].count++;
+            else if (streak < 7) dist[1].count++;
+            else if (streak < 21) dist[2].count++;
+            else dist[3].count++;
           });
           
           setDistribution(dist);
@@ -88,19 +91,26 @@ export default function Analytics() {
     fetchAdminData();
   }, []);
 
-  const COLORS = ['#22c55e', '#eab308', '#94a3b8']; // Green, Yellow, Gray
+  // Hàm lấy màu dựa trên range
+  const getColorByRange = (range: string): string => {
+    if (range === '0-3 ngày') return '#94a3b8'; // Xám
+    if (range === '3-7 ngày') return '#eab308'; // Vàng
+    if (range === '7-21 ngày') return '#22c55e'; // Xanh
+    if (range === '21+ ngày') return '#3b82f6'; // Xanh dương
+    return '#94a3b8'; // Default: xám
+  };
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-96">
       <Loader2 className="animate-spin text-blue-500 size-10 mb-4" />
-      <p className="text-slate-500">Đang tải dữ liệu từ hệ thống Streak...</p>
+      <p className="text-slate-500">Đang tải dữ liệu từ hệ thống...</p>
     </div>
   );
 
   return (
     <div className="space-y-6 p-6">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight">Thống kê Hệ thống</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Thống kê hệ thống</h1>
         <p className="text-muted-foreground">Dữ liệu tổng hợp từ UserStreakState và StreakDayCache</p>
       </header>
 
@@ -110,8 +120,8 @@ export default function Analytics() {
           <CardContent className="pt-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-orange-600 uppercase">Streak TB hiện tại</p>
-                <h3 className="text-3xl font-bold text-orange-700 mt-1">{summary?.avg_current_streak.toFixed(1)}</h3>
+                <p className="text-sm font-medium text-orange-600 uppercase">Số streak trung bình</p>
+                <h3 className="text-3xl font-bold text-orange-700 mt-1">{summary?.avg_current_streak.toFixed(0)}</h3>
               </div>
               <Flame className="size-8 text-orange-500 fill-orange-500" />
             </div>
@@ -122,7 +132,7 @@ export default function Analytics() {
           <CardContent className="pt-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-yellow-600 uppercase">Kỷ lục Hệ thống</p>
+                <p className="text-sm font-medium text-yellow-600 uppercase">Kỷ lục hệ thống</p>
                 <h3 className="text-3xl font-bold text-yellow-700 mt-1">{summary?.max_longest_streak} ngày</h3>
               </div>
               <Trophy className="size-8 text-yellow-500 fill-yellow-500" />
@@ -165,7 +175,7 @@ export default function Analytics() {
                   nameKey="range"
                 >
                   {distribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={getColorByRange(entry.range)} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -179,7 +189,7 @@ export default function Analytics() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="size-5" /> Chất lượng hoàn thành (7 ngày qua)
+              <Calendar className="size-5" /> Chất lượng hoàn thành 7 ngày qua
             </CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">

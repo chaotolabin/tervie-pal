@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { LayoutDashboard, Users, BarChart3, Shield, HelpCircle, LogOut, Menu } from 'lucide-react';
 import { Button } from '../ui/button';
 import AdminHome from './AdminHome';
