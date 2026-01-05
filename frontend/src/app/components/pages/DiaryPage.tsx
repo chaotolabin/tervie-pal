@@ -30,7 +30,7 @@ export default function DiaryPage() {
       <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border p-2 rounded" />
 
       {/* Tóm tắt dinh dưỡng thực tế từ backend */}
-      <div className="grid grid-cols-4 gap-4 bg-white p-6 rounded-xl shadow">
+      <div className="grid grid-cols-4 gap-4 bg-white p-6 shadow">
         <div className="text-center">
           <p className="text-gray-500 text-sm">Nạp vào</p>
           <p className="font-bold text-xl">{data.summary?.total_calories_consumed || 0}</p>
@@ -45,7 +45,7 @@ export default function DiaryPage() {
       {/* Danh sách log chi tiết */}
       <div className="grid md:grid-cols-2 gap-6">
         <FoodLogging foodLogs={data.food_logs} />
-        <div className="bg-white p-4 rounded-xl shadow">
+        <div className="bg-white p-4 shadow">
           <h3 className="font-bold mb-4">Hoạt động thể chất</h3>
           {data.exercise_logs && data.exercise_logs.length > 0 ? (
             data.exercise_logs.map((entry: any) => (
