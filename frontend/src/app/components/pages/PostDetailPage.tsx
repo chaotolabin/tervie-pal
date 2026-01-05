@@ -210,7 +210,7 @@ export default function PostDetailPage({ onBack, postId, currentUserId, onPostDe
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-3">
               <Avatar className="size-12 border-2 border-pink-100">
-                <AvatarFallback className="bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold">
+                <AvatarFallback className="bg-[#f8c6d8] text-gray-800 font-bold">
                   {post.full_name?.substring(0, 2).toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
