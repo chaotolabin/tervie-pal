@@ -37,7 +37,7 @@ export default function MacroSummary({ protein, carbs, fat, showChart = true }: 
   ];
 
   return (
-    <Card className="shadow-sm rounded-xl">
+    <Card className="shadow-sm">
       <CardHeader>
         <CardTitle>Dinh dưỡng đa lượng (Macros)</CardTitle>
       </CardHeader>
@@ -109,7 +109,7 @@ export default function MacroSummary({ protein, carbs, fat, showChart = true }: 
                       <div className="size-3 rounded-full" style={{ backgroundColor: macro.color }} />
                       <span className="font-semibold text-gray-700">{macro.name}</span>
                       <span 
-                        className="text-xs font-bold px-2 py-0.5 rounded-full"
+                        className="text-xs font-bold px-2 py-0.5"
                         style={{ 
                           backgroundColor: macro.color + '20',
                           color: macro.color
@@ -126,9 +126,9 @@ export default function MacroSummary({ protein, carbs, fat, showChart = true }: 
                     </span>
                   </div>
                   
-                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="relative h-2 bg-gray-100 overflow-hidden">
                     <div 
-                      className="h-full rounded-full transition-all duration-300"
+                      className="h-full transition-all duration-300"
                       style={{ 
                         backgroundColor: macro.color,
                         width: `${Math.min(percentage, 100)}%` 

@@ -232,7 +232,7 @@ export default function CreatePostPage({ onBack, onPostCreated, editMode = false
           {mediaList.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {mediaList.map((media, idx) => (
-                <div key={idx} className="relative group rounded-xl overflow-hidden bg-gray-100 aspect-video">
+                <div key={idx} className="relative group overflow-hidden bg-gray-100 aspect-video">
                   {media.media_type === 'video' ? (
                     <video src={media.url} className="w-full h-full object-cover" controls />
                   ) : (
@@ -253,7 +253,7 @@ export default function CreatePostPage({ onBack, onPostCreated, editMode = false
 
           {/* Upload Loading State */}
           {isUploading && (
-            <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg text-sm text-gray-500">
+            <div className="flex items-center justify-center p-4 bg-gray-50 text-sm text-gray-500">
               <Loader2 className="size-4 animate-spin mr-2" />
               Đang tải lên media...
             </div>

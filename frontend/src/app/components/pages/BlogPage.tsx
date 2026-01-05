@@ -20,11 +20,12 @@ interface Author {
 
 interface Post {
   id: number;
+  user_id?: string;
   full_name: string;
   content_text: string;
   title?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   author?: Author; // Optional vì backend không trả về
   like_count: number;
   save_count: number;
@@ -32,11 +33,14 @@ interface Post {
   is_saved: boolean;
   hashtags?: string[];
   media?: Array<{
-    id: string;
+    id: number;
     url: string;
     media_type: string;
+    mime_type?: string;
     width?: number;
     height?: number;
+    size_bytes?: number;
+    sort_order?: number;
   }>;
 }
 
@@ -249,7 +253,7 @@ export default function BlogPage() {
       <div className="flex gap-4 mb-6 pb-4 border-b overflow-x-auto">
         <button 
           onClick={() => setSort('recent')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 font-medium whitespace-nowrap transition-colors ${
             sort === 'recent' ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-100'
           }`}
         >
@@ -258,7 +262,7 @@ export default function BlogPage() {
         </button>
         <button 
           onClick={() => setSort('trending')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 font-medium whitespace-nowrap transition-colors ${
             sort === 'trending' ? 'bg-pink-50 text-pink-600' : 'text-gray-600 hover:bg-gray-100'
           }`}
         >
@@ -267,7 +271,7 @@ export default function BlogPage() {
         </button>
         <button 
           onClick={() => setSavedOnly(!savedOnly)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 font-medium whitespace-nowrap transition-colors ${
             savedOnly ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
           }`}
         >
@@ -276,7 +280,7 @@ export default function BlogPage() {
         </button>
         <button 
           onClick={() => setMyPostsOnly(!myPostsOnly)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 font-medium whitespace-nowrap transition-colors ${
             myPostsOnly ? 'bg-green-50 text-green-600' : 'text-gray-600 hover:bg-gray-100'
           }`}
         >

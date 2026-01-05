@@ -174,7 +174,7 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
       </div>
 
       {/* Calories Summary Card */}
-      <Card className="bg-gradient-to-br from-pink-500 to-purple-600 text-white border-none shadow-lg">
+      <Card className="bg-[#f8c6d8] text-gray-800 border-none shadow-lg">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-white/90 text-lg font-medium">
             <Flame className="size-5" />
@@ -275,7 +275,7 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50">
                   Chưa có dữ liệu cân nặng
                 </div>
               )}
@@ -349,7 +349,7 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50">
                   Chưa có dữ liệu calories
                 </div>
               )}

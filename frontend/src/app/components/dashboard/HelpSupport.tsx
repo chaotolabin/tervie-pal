@@ -140,7 +140,7 @@ export default function HelpSupport() {
           </CardHeader>
           <CardContent className="space-y-3">
             {myTickets.map((ticket) => (
-              <div key={ticket.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={ticket.id} className="flex items-center justify-between p-3 bg-gray-50">
                 <div className="flex-1">
                   <p className="font-semibold text-sm">{ticket.subject}</p>
                   <p className="text-xs text-gray-600">{ticket.date}</p>
