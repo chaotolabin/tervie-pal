@@ -1,11 +1,16 @@
-// src/app/components/chatbot/ChatbotWidget.tsx
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatbotButton } from './ChatbotButton';
 import { ChatbotWindow } from './ChatbotWindow';
+import { useChatbot } from '../../../hooks/useChatbot';
 
 export const ChatbotWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { hasNewMessage, markAsRead } = useChatbot();
+
+  const handleOpen = () => {
+    setIsOpen(true);
+    markAsRead(); // ✅ Clear notification when opening
+  };
 
   return (
     <>
@@ -17,7 +22,10 @@ export const ChatbotWidget: React.FC = () => {
         )}
 
         {!isOpen && (
-          <ChatbotButton onClick={() => setIsOpen(true)} />
+          <ChatbotButton 
+            onClick={handleOpen} 
+            hasNewMessage={hasNewMessage} 
+          />
         )}
       </div>
 
