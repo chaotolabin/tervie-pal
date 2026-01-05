@@ -8,6 +8,7 @@ import ForgotPasswordPage from './components/ForgotPasswordPage';
 import ResetPasswordPage from './components/ResetPasswordPage';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
+import SplashScreen from './components/SplashScreen';
 import api from './components/lib/api';
 import { ChatbotWidget } from './components/chatbot/ChatbotWidget';
 
@@ -15,6 +16,7 @@ type Page = 'landing' | 'login' | 'signup' | 'forgot-password' | 'reset-password
 type UserRole = 'user' | 'admin' | null;
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
@@ -93,15 +95,19 @@ export default function App() {
 
   const handleLogin = (role: string | UserRole = 'user') => {
     const userRole = (role as UserRole) || 'user';
-    setIsAuthenticated(true);
-    setUserRole(userRole);
-    setCurrentPage(userRole === 'admin' ? 'admin' : 'dashboard');
+    setShowSplash(true);
+    setTimeout(() => {
+      setIsAuthenticated(true);
+      setUserRole(userRole);
+      setCurrentPage(userRole === 'admin' ? 'admin' : 'dashboard');
+    }, 100);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole(null);
     setCurrentPage('landing');
+    setShowSplash(true);
   };
 
   const renderPage = () => {
@@ -161,9 +167,15 @@ export default function App() {
 
   return (
     <>
-      {renderPage()}
-      <Toaster />
-      {isAuthenticated && <ChatbotWidget />}
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      
+      {!showSplash && (
+        <>
+          {renderPage()}
+          <Toaster />
+          {isAuthenticated && <ChatbotWidget />}
+        </>
+      )}
     </>
   );
 }
