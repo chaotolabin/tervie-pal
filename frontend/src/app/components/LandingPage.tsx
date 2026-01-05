@@ -1,4 +1,4 @@
-import { Activity, TrendingUp, Target, Heart } from 'lucide-react';
+import { Activity, TrendingUp, Target, Heart, AudioLines } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 
@@ -13,8 +13,8 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
       {/* Header */}
       <header className="container mx-auto px-4 py-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Activity className="size-8 text-pink-600" />
-          <span className="text-2xl font-bold text-gray-900">terviepal</span>
+          <AudioLines className="size-8 text-pink-600" />
+          <span className="text-2xl font-bold text-gray-900">Tervie Pal</span>
         </div>
         <div className="flex gap-3">
           <Button variant="ghost" onClick={onLogin}>Đăng nhập</Button>
@@ -25,7 +25,7 @@ export default function LandingPage({ onLogin, onSignup }: LandingPageProps) {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl font-bold text-gray-900 mb-6">
-          Theo dõi sức khỏe<br />một cách thông minh
+          Tervie Pal
         </h1>
         <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
           Ghi nhận calories, theo dõi cân nặng, quản lý chế độ ăn uống và tập luyện của bạn một cách dễ dàng

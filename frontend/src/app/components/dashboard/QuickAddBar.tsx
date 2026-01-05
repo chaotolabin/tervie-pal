@@ -16,7 +16,7 @@ export default function QuickAddBar({ onClick }: QuickAddBarProps) {
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           {/* Circular Plus Button */}
-          <div className="size-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform shadow-md">
+          <div className="size-12 bg-[#f8c6d8] rounded-full flex items-center justify-center group-hover:scale-105 transition-transform shadow-md">
             <Plus className="size-6 text-white" />
           </div>
           
@@ -26,7 +26,7 @@ export default function QuickAddBar({ onClick }: QuickAddBarProps) {
               Thêm nhanh
             </p>
             <p className="text-sm text-gray-500 group-hover:text-pink-500 transition-colors">
-              Ghi nhận thực phẩm hoặc bài tập mới
+              Ghi nhận thực phẩm, bài tập, hoặc cập nhật cân nặng, chiều cao hiện tại của bạn
             </p>
           </div>
         </div>

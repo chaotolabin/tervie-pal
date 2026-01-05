@@ -287,28 +287,33 @@ class AdminDashboardService:
             if user_state:
                 highest_streak_user = user_state.user_id
         
-        # Top N users
+        # Top N users (nếu top_n = 0 thì lấy tất cả, bao gồm cả streak = 0)
+        # LEFT JOIN từ User để đảm bảo tất cả users đều được bao gồm, kể cả chưa có record trong UserStreakState
         top_streak_query = (
             db.query(
-                UserStreakState,
+                User.id,
                 User.username,
-                User.email
+                User.email,
+                func.coalesce(UserStreakState.current_streak, 0).label('current_streak'),
+                func.coalesce(UserStreakState.longest_streak, 0).label('longest_streak')
             )
-            .join(User, UserStreakState.user_id == User.id)
-            .filter(UserStreakState.current_streak > 0)
-            .order_by(desc(UserStreakState.current_streak))
-            .limit(top_n)
+            .outerjoin(UserStreakState, User.id == UserStreakState.user_id)
+            .order_by(desc(func.coalesce(UserStreakState.current_streak, 0)))
         )
+        
+        # Chỉ limit nếu top_n > 0
+        if top_n > 0:
+            top_streak_query = top_streak_query.limit(top_n)
         
         top_streak_users = [
             StreakUserItem(
-                user_id=state.user_id,
+                user_id=user_id,
                 username=username,
                 email=email,
-                current_streak=state.current_streak,
-                longest_streak=state.longest_streak
+                current_streak=current_streak or 0,
+                longest_streak=longest_streak or 0
             )
-            for state, username, email in top_streak_query.all()
+            for user_id, username, email, current_streak, longest_streak in top_streak_query.all()
         ]
         
         # Users có streak >= 7
@@ -341,35 +346,95 @@ class AdminDashboardService:
             days: Số ngày cần lấy (mặc định 30)
             
         Returns:
-            List[DailyStatItem]: Danh sách stats theo ngày (từ mới đến cũ)
+            List[DailyStatItem]: Danh sách stats theo ngày (từ cũ đến mới)
         """
+        from app.utils.timezone import get_local_today
+        
+        # Lấy ngày hiện tại theo local timezone
+        today = get_local_today()
+        
+        # Tính ngày bắt đầu (days ngày trước, bao gồm cả hôm nay)
+        from datetime import timedelta
+        start_date = today - timedelta(days=days - 1)
+        
+        # Query stats từ start_date đến today
         stats = (
             db.query(DailySystemStat)
-            .order_by(desc(DailySystemStat.date_log))
-            .limit(days)
+            .filter(
+                DailySystemStat.date_log >= start_date,
+                DailySystemStat.date_log <= today
+            )
+            .order_by(DailySystemStat.date_log)  # Sắp xếp tăng dần (cũ -> mới)
             .all()
         )
         
-        return [
-            DailyStatItem(
-                date_log=stat.date_log,
-                total_users=stat.total_users,
-                new_users=stat.new_users,
-                active_users=stat.active_users,
-                active_food_users=stat.active_food_users,
-                active_exercise_users=stat.active_exercise_users,
-                total_food_logs=stat.total_food_logs,
-                total_exercise_logs=stat.total_exercise_logs,
-                new_posts=stat.new_posts,
-                total_likes=stat.total_likes,
-                total_saves=stat.total_saves,
-                new_tickets=stat.new_tickets,
-                users_hit_calorie_target=stat.users_hit_calorie_target,
-                avg_streak_length=stat.avg_streak_length,
-                created_at=stat.created_at
-            )
-            for stat in stats
-        ]
+        # Tạo dict để dễ lookup
+        stats_dict = {stat.date_log: stat for stat in stats}
+        
+        # Đảm bảo có data cho ngày hiện tại (tính toán nếu chưa có)
+        if today not in stats_dict:
+            # Tính toán và lưu stats cho ngày hiện tại
+            try:
+                AdminDashboardService.calculate_and_save_daily_stats(db, today)
+                # Query lại để lấy stats mới
+                today_stat = db.query(DailySystemStat).filter(
+                    DailySystemStat.date_log == today
+                ).first()
+                if today_stat:
+                    stats_dict[today] = today_stat
+            except Exception as e:
+                # Nếu không tính được, tạo empty stat
+                print(f"Warning: Could not calculate stats for today: {e}")
+        
+        # Tạo list kết quả theo thứ tự từ cũ đến mới
+        result = []
+        current_date = start_date
+        while current_date <= today:
+            if current_date in stats_dict:
+                stat = stats_dict[current_date]
+                result.append(
+                    DailyStatItem(
+                        date_log=stat.date_log,
+                        total_users=stat.total_users,
+                        new_users=stat.new_users,
+                        active_users=stat.active_users,
+                        active_food_users=stat.active_food_users,
+                        active_exercise_users=stat.active_exercise_users,
+                        total_food_logs=stat.total_food_logs,
+                        total_exercise_logs=stat.total_exercise_logs,
+                        new_posts=stat.new_posts,
+                        total_likes=stat.total_likes,
+                        total_saves=stat.total_saves,
+                        new_tickets=stat.new_tickets,
+                        users_hit_calorie_target=stat.users_hit_calorie_target,
+                        avg_streak_length=stat.avg_streak_length,
+                        created_at=stat.created_at
+                    )
+                )
+            else:
+                # Nếu không có data, tạo empty stat
+                result.append(
+                    DailyStatItem(
+                        date_log=current_date,
+                        total_users=0,
+                        new_users=0,
+                        active_users=0,
+                        active_food_users=0,
+                        active_exercise_users=0,
+                        total_food_logs=0,
+                        total_exercise_logs=0,
+                        new_posts=0,
+                        total_likes=0,
+                        total_saves=0,
+                        new_tickets=0,
+                        users_hit_calorie_target=0,
+                        avg_streak_length=0,
+                        created_at=datetime.now(timezone.utc)
+                    )
+                )
+            current_date += timedelta(days=1)
+        
+        return result
     
     @staticmethod
     def calculate_and_save_daily_stats(db: Session, target_date: date) -> dict:

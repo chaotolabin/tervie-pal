@@ -177,13 +177,14 @@ def get_daily_stats(
     
     **Security:** Chỉ admin mới có quyền truy cập
     """
-    from datetime import date, timedelta
+    from app.utils.timezone import get_local_today
+    from datetime import timedelta
     
-    # Lấy daily stats
+    # Lấy daily stats (đã được sắp xếp từ cũ đến mới)
     items = AdminDashboardService.get_daily_stats(db, days)
     
-    # Tính date range
-    today = date.today()
+    # Tính date range theo local timezone
+    today = get_local_today()
     date_from = today - timedelta(days=days - 1)
     
     return DailyStatsResponse(
@@ -318,9 +319,9 @@ def get_streak_dashboard(
     ),
     top_n: int = Query(
         10,
-        ge=1,
-        le=50,
-        description="Số lượng users trong top list"
+        ge=0,
+        le=10000,
+        description="Số lượng users trong top list (0 = lấy tất cả users có streak > 0)"
     ),
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_current_admin_user)
