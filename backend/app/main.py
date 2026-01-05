@@ -20,6 +20,7 @@ from app.api.routes import (
     streak,
     goals,
     blog,
+    notifications,
 )
 from app.api.routes import settings as settings_routes
 from app.api.routes.admin import router as admin_router
@@ -80,6 +81,7 @@ app.include_router(streak.router, prefix="/api/v1")
 
 app.include_router(logs.router, prefix="/api/v1/logs")
 app.include_router(support.router, prefix="/api/v1/support")
+app.include_router(notifications.router, prefix="/api/v1")
 
 # Chỉ include chatbot router nếu import thành công
 if chatbot is not None:

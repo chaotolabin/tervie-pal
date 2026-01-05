@@ -63,6 +63,12 @@ from app.models.streak import (
     UserStreakState
 )
 
+# Notification models
+from app.models.notification import (
+    Notification,
+    NotificationType
+)
+
 # Export all models
 __all__ = [
     # Base
@@ -116,4 +122,8 @@ __all__ = [
     "StreakDayCache",
     "StreakStatus",
     "UserStreakState",
+    
+    # Notification
+    "Notification",
+    "NotificationType",
 ]

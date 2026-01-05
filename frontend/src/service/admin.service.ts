@@ -110,6 +110,26 @@ export const AdminService = {
   restorePost: async (postId: number) => {
     const response = await apiClient.post(`/admin/posts/${postId}/restore`);
     return response.data;
+  },
+
+  // Contributions (Foods & Exercises)
+  getPendingContributions: async (type: 'foods' | 'exercises') => {
+    const response = await apiClient.get(`/admin/contributions/${type}`, {
+      params: { status: 'pending' }
+    });
+    return response.data;
+  },
+
+  approveContribution: async (type: 'foods' | 'exercises', id: number) => {
+    const response = await apiClient.post(`/admin/contributions/${type}/${id}/approve`);
+    return response.data;
+  },
+
+  deleteContribution: async (type: 'foods' | 'exercises', id: number, reason?: string) => {
+    const response = await apiClient.delete(`/admin/contributions/${type}/${id}`, {
+      params: reason ? { reason } : undefined
+    });
+    return response.data;
   }
 };
 

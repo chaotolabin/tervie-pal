@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import api from '../lib/api';
 import { LogService } from '../../../service/log.service';
 import { getLocalDateString, getDaysAgoDateString } from '../../../utils/dateUtils';
+import { useDateParam } from '../../../hooks/useDateParam';
 
 // --- Interfaces khớp với Backend ---
 interface ExerciseLog {
@@ -50,14 +51,8 @@ export default function ExerciseLogging() {
   const [activeMainTab, setActiveMainTab] = useState<'history' | 'search'>('history'); // Tab chính: history hoặc search
   const [searchTab, setSearchTab] = useState<'recent' | 'browse'>('browse'); // Tab trong search: recent hoặc browse
   
-  // State cho filter
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  // State cho filter - Use scoped date hook with URL sync enabled for Exercise page
+  const { date: selectedDate, setDate: setSelectedDate } = useDateParam({ enabled: true });
   const [selectedDateOption, setSelectedDateOption] = useState<string>('today'); // 'today', 'yesterday', '2days', 'custom'
   const [customDate, setCustomDate] = useState<string>(''); // Cho custom date picker
   const [selectedMajorHeading, setSelectedMajorHeading] = useState<string>('all');
@@ -235,13 +230,33 @@ export default function ExerciseLogging() {
     isFirstMount.current = false;
   }, []); // Chỉ chạy một lần khi mount
 
+  // Initialize selectedDateOption from URL date on mount
+  useEffect(() => {
+    const today = getLocalDateString();
+    const yesterday = getDaysAgoDateString(1);
+    const twoDaysAgo = getDaysAgoDateString(2);
+
+    if (selectedDate === today) {
+      setSelectedDateOption('today');
+    } else if (selectedDate === yesterday) {
+      setSelectedDateOption('yesterday');
+    } else if (selectedDate === twoDaysAgo) {
+      setSelectedDateOption('2days');
+    } else {
+      setSelectedDateOption('custom');
+      setCustomDate(selectedDate);
+    }
+  }, []); // Only run on mount
+
   // Khi selectedDateOption thay đổi, cập nhật selectedDate
   useEffect(() => {
     if (selectedDateOption !== 'custom') {
       const date = getDateFromOption(selectedDateOption);
-      setSelectedDate(date);
+      if (date !== selectedDate) {
+        setSelectedDate(date);
+      }
     }
-  }, [selectedDateOption]);
+  }, [selectedDateOption]); // Removed selectedDate from deps to avoid infinite loop
 
   // Fetch logs khi selectedDate thay đổi (KHÔNG phải lần mount đầu)
   useEffect(() => {
