@@ -3,7 +3,7 @@ import { Calendar, Flame, TrendingDown, Apple, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import MacroSummary from './MacroSummary';
 import QuickAddBar from './QuickAddBar';
 import api from '../lib/api'; // Đảm bảo import đúng đường dẫn api client
@@ -43,6 +43,7 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
   const [goal, setGoal] = useState<UserGoal | null>(null);
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [currentWeight, setCurrentWeight] = useState<number>(0);
+  const [caloriesHistory, setCaloriesHistory] = useState<any[]>([]);
 
   const fetchDashboardData = async () => {
     try {
@@ -70,6 +71,29 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
       if (bioLogs.length > 0) {
         setCurrentWeight(bioLogs[0].weight_kg); // Lấy cân nặng mới nhất
       }
+
+      // Fetch calories data for last 30 days
+      const caloriesData = [];
+      const currentDate = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(currentDate);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        try {
+          const response = await api.get(`/logs/summary/${dateStr}`);
+          caloriesData.push({
+            date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+            calories: Math.round(response.data.net_calories || 0)
+          });
+        } catch (error) {
+          // Nếu không có dữ liệu cho ngày đó, thêm 0
+          caloriesData.push({
+            date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+            calories: 0
+          });
+        }
+      }
+      setCaloriesHistory(caloriesData);
 
     } catch (error) {
       console.error("Dashboard data error:", error);
@@ -205,57 +229,134 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
         </CardContent>
       </Card>
 
-      {/* Weight Chart */}
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-700">
-            <TrendingDown className="size-5 text-cyan-600" />
-            Theo dõi cân nặng
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6">
-            <p className="text-3xl font-bold text-gray-900">{currentWeight > 0 ? `${currentWeight} kg` : '-- kg'}</p>
-            <p className="text-sm text-gray-500">Biểu đồ 7 lần cân gần nhất</p>
-          </div>
-          
-          <div className="h-[200px] w-full">
-            {weightHistory.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weightHistory}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fontSize: 12, fill: '#9ca3af'}} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    domain={['dataMin - 1', 'dataMax + 1']} 
-                    hide 
-                  />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="weight" 
-                    stroke="#06b6d4" 
-                    strokeWidth={3} 
-                    dot={{fill: '#06b6d4', strokeWidth: 2, r: 4, stroke: '#fff'}}
-                    activeDot={{r: 6}}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
-                Chưa có dữ liệu cân nặng
+      {/* Charts Section: Weight & Calories */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Weight Chart */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-700">
+              <TrendingDown className="size-5 text-cyan-600" />
+              Theo dõi cân nặng
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6">
+              <p className="text-3xl font-bold text-gray-900">{currentWeight > 0 ? `${currentWeight} kg` : '-- kg'}</p>
+              <p className="text-sm text-gray-500">Biểu đồ 7 lần cân gần nhất</p>
+            </div>
+            
+            <div className="h-[200px] w-full">
+              {weightHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weightHistory}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fontSize: 12, fill: '#9ca3af'}} 
+                      dy={10}
+                    />
+                    <YAxis 
+                      domain={['dataMin - 1', 'dataMax + 1']} 
+                      hide 
+                    />
+                    <Tooltip 
+                      contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="weight" 
+                      stroke="#06b6d4" 
+                      strokeWidth={3} 
+                      dot={{fill: '#06b6d4', strokeWidth: 2, r: 4, stroke: '#fff'}}
+                      activeDot={{r: 6}}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
+                  Chưa có dữ liệu cân nặng
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Calories Chart - Last 30 Days */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-700">
+              <Flame className="size-5 text-orange-600" />
+              Dietary Energy
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6">
+              <div className="flex items-center gap-6">
+                <p className="text-xl font-bold text-gray-900">Last 30 Days</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-gray-500">Daily Average:</p>
+                  <p className="text-base font-bold" style={{color: '#F97316'}}>
+                    {Math.round(caloriesHistory.reduce((sum, item) => sum + item.calories, 0) / caloriesHistory.length)} kcal
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-gray-500">Goal:</p>
+                  <p className="text-base font-bold" style={{color: '#84CC16'}}>
+                    {calorieTarget} kcal
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+            
+            <div className="h-[250px] w-full">
+              {caloriesHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={caloriesHistory}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fontSize: 11, fill: '#9ca3af'}} 
+                      dy={10}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{fontSize: 11, fill: '#9ca3af'}}
+                      domain={[0, 1500]}
+                      ticks={[0, 500, 1000, 1500]}
+                    />
+                    <Tooltip 
+                      contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px'}}
+                      formatter={(value: any) => [`${value} kcal`, 'Calories']}
+                    />
+                    <Bar 
+                      dataKey="calories" 
+                      fill="#F97316" 
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={30}
+                    />
+                    <ReferenceLine 
+                      y={calorieTarget} 
+                      stroke="#84CC16" 
+                      strokeWidth={3}
+                      ifOverflow="extendDomain"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
+                  Chưa có dữ liệu calories
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Macros Summary */}
       {/* Truyền dữ liệu thật vào component MacroSummary */}
