@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 interface DashboardHomeProps {
   onQuickAdd: () => void;
+  fullName?: string;
 }
 
 // Định nghĩa kiểu dữ liệu cho State
@@ -36,7 +37,7 @@ interface BiometricLog {
   weight_kg: number;
 }
 
-export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
+export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomeProps) {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [goal, setGoal] = useState<UserGoal | null>(null);
@@ -113,6 +114,13 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
 
   return (
     <div className="space-y-6">
+      {/* Welcome Message */}
+      {fullName && (
+        <div className="mb-4">
+          <p className="text-lg text-gray-600">Xin chào, <span className="font-semibold text-pink-600">{fullName}</span></p>
+        </div>
+      )}
+
       {/* Date Range Selector & Welcome */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">

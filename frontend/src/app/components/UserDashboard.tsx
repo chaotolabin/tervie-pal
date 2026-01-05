@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Utensils, Activity, TrendingUp, MessageCircle, HelpCircle, User as UserIcon } from 'lucide-react';
+import { Home, Utensils, Activity, TrendingUp, MessageCircle, HelpCircle, User as UserIcon, AudioLines } from 'lucide-react';
 import { Button } from './ui/button';
 import DashboardHome from './dashboard/DashboardHome';
 import StreakNavbarWidget from './dashboard/StreakNavbarWidget';
@@ -44,6 +44,7 @@ type Tab = 'home' | 'food' | 'exercise' | 'progress' | 'blog' | 'help' | 'profil
 export default function UserDashboard({ onLogout, userData: userDataProp }: UserDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   
   // State dữ liệu thực
   const [userData, setUserData] = useState<UserMeResponse | null>(userDataProp || null);
@@ -127,7 +128,7 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
       
       case 'home':
         // Truyền dữ liệu xuống DashboardHome nếu component đó hỗ trợ props
-        return <DashboardHome onQuickAdd={() => setShowQuickAdd(true)} />;
+        return <DashboardHome onQuickAdd={() => setShowQuickAdd(true)} fullName={userData?.profile.full_name || userData?.user.username} />;
       
       case 'food':
         return <FoodLoggingPage />;
@@ -153,9 +154,10 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
     <div className="flex h-screen bg-gray-100 flex-col">
       {/* Top Header/Navbar */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <AudioLines className="h-6 w-6 text-pink-600" />
           <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-            terviepal
+            Tervie Pal
           </h1>
         </div>
         
@@ -179,23 +181,29 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <nav className="w-64 bg-white border-r hidden md:block overflow-y-auto">
-          <div className="p-6">
-            <p className="text-sm text-gray-500">Xin chào, {userData?.user.username}</p>
-          </div>
-          <div className="space-y-1 px-3">
+        <nav 
+          className={`${sidebarCollapsed ? 'w-20' : 'w-50'} bg-white border-r hidden md:block overflow-y-auto transition-all duration-300`}
+          onMouseEnter={() => setSidebarCollapsed(false)}
+          onMouseLeave={() => setSidebarCollapsed(true)}
+        >
+          <div className="space-y-1 px-3 pt-6">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as Tab)}
-                className={`flex items-center w-full p-3 rounded-lg transition-colors ${
+                className={`flex items-center ${sidebarCollapsed ? 'justify-center' : ''} w-full p-3 rounded-lg transition-colors ${
                   activeTab === tab.id 
                     ? 'bg-pink-50 text-pink-600 font-medium' 
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
+                title={sidebarCollapsed ? tab.label : ''}
               >
-                <tab.icon className="mr-3 h-5 w-5" />
-                {tab.label}
+                <tab.icon className={`h-5 w-5 ${!sidebarCollapsed ? 'mr-3' : ''} transition-all duration-300`} />
+                <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${
+                  sidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+                }`}>
+                  {tab.label}
+                </span>
               </button>
             ))}
           </div>
