@@ -121,7 +121,7 @@ export default function ProfilePage() {
                 <h2 className="text-2xl font-bold">{userData?.profile?.full_name || userData?.user?.username}</h2>
                 <p className="text-sm opacity-90">{userData?.user?.email}</p>
                 <Badge className="mt-2 bg-white/20 text-white border-white/30 hover:bg-white/30">
-                  Streak: {streak?.current_streak || 0} ngày 🔥
+                  Streak: {streak?.current_streak || 0} ngày
                 </Badge>
               </div>
             </div>
@@ -216,19 +216,19 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="p-4 bg-gray-50 border border-gray-100">
               <p className="text-sm text-gray-500 mb-1">Chiều cao</p>
               <p className="text-2xl font-bold">{height} cm</p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="p-4 bg-gray-50 border border-gray-100">
               <p className="text-sm text-gray-500 mb-1">Cân nặng hiện tại</p>
               <p className="text-2xl font-bold">{currentWeight} kg</p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="p-4 bg-gray-50 border border-gray-100">
               <p className="text-sm text-gray-500 mb-1">Mục tiêu (Giả định)</p>
               <p className="text-2xl font-bold">{goalWeight} kg</p>
             </div>
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="p-4 bg-gray-50 border border-gray-100">
               <p className="text-sm text-gray-500 mb-1">Chênh lệch</p>
               <p className={`text-2xl font-bold ${weightDiff > 0 ? 'text-pink-600' : 'text-green-600'}`}>
                 {weightDiff > 0 ? `+${weightDiff.toFixed(1)}` : weightDiff.toFixed(1)} kg

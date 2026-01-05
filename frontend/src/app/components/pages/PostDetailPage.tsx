@@ -22,7 +22,16 @@ interface PostDetail {
   is_liked: boolean;
   is_saved: boolean;
   hashtags?: string[];
-  media?: { id: string; url: string; media_type: string; width?: number; height?: number }[];
+  media?: Array<{
+    id: number;
+    url: string;
+    media_type: string;
+    mime_type?: string;
+    width?: number;
+    height?: number;
+    size_bytes?: number;
+    sort_order?: number;
+  }>;
 }
 
 interface PostDetailPageProps {
@@ -249,7 +258,7 @@ export default function PostDetailPage({ onBack, postId, currentUserId, onPostDe
           {post.media && post.media.length > 0 && (
             <div className={`grid gap-3 ${post.media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {post.media.map((item, idx) => (
-                <div key={idx} className="rounded-xl overflow-hidden bg-gray-100 border shadow-sm">
+                <div key={idx} className="overflow-hidden bg-gray-100 border shadow-sm">
                   {item.media_type === 'image' ? (
                      <img src={item.url} alt="Post content" className="w-full h-full object-cover max-h-[600px]" />
                   ) : (

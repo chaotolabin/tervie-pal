@@ -310,12 +310,12 @@ export default function NotificationBell({ onNavigate }: NotificationBellProps =
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9 rounded-full hover:bg-gray-100 transition-colors"
+          className="relative h-9 w-9 hover:bg-gray-100 transition-colors"
           aria-label="Thông báo"
         >
           <Bell className="h-5 w-5 text-yellow-500" />
           {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+            <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center bg-red-500 text-[10px] font-bold text-white">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -380,7 +380,7 @@ export default function NotificationBell({ onNavigate }: NotificationBellProps =
                       
                       {/* Unread indicator */}
                       {!notification.isRead && (
-                        <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2" />
+                        <div className="flex-shrink-0 w-2 h-2 bg-blue-500 mt-2" />
                       )}
                     </div>
                   </div>

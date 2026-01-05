@@ -16,7 +16,7 @@ export default function QuickAddBar({ onClick }: QuickAddBarProps) {
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           {/* Circular Plus Button */}
-          <div className="size-12 bg-[#f8c6d8] rounded-full flex items-center justify-center group-hover:scale-105 transition-transform shadow-md">
+          <div className="size-12 bg-[#f8c6d8] flex items-center justify-center group-hover:scale-105 transition-transform shadow-md">
             <Plus className="size-6 text-white" />
           </div>
           
