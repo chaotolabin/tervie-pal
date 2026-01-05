@@ -143,7 +143,9 @@ class ExerciseService:
             major_heading=data.major_heading,
             description=data.description,
             met_value=data.met_value,
-            deleted_at=None
+            deleted_at=None,
+            is_contribution=data.is_contribution,
+            contribution_status='pending' if data.is_contribution else None
         )
         
         db.add(new_exercise)

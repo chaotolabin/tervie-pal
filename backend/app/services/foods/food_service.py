@@ -121,15 +121,28 @@ class FoodService:
             HTTPException 400: Nếu có lỗi logic (duplicate, invalid data...)
         """
         try:
+            # Debug: Log is_contribution value
+            print(f"[DEBUG] Creating food with is_contribution={data.is_contribution}, type={type(data.is_contribution)}")
+            
             # 1. Tạo Food record
+            # data.is_contribution là bool từ Pydantic schema (default=False)
+            is_contrib = data.is_contribution if hasattr(data, 'is_contribution') else False
+            contrib_status = 'pending' if is_contrib else None
+            
+            print(f"[DEBUG] Final values: is_contribution={is_contrib}, contribution_status={contrib_status}")
+            
             db_food = Food(
                 owner_user_id=user_id,  # Custom food của user
                 source_code=data.source_code,
                 name=data.name.strip(),
-                food_group=data.food_group.strip() if data.food_group else None
+                food_group=data.food_group.strip() if data.food_group else None,
+                is_contribution=is_contrib,
+                contribution_status=contrib_status
             )
             db.add(db_food)
             db.flush()  # Flush để có food.id cho FK
+            
+            print(f"[DEBUG] Food created with id={db_food.id}, is_contribution={db_food.is_contribution}, contribution_status={db_food.contribution_status}")
             
             # 2. Tạo FoodPortion records
             for portion_data in data.portions:

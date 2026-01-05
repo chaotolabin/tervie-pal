@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -19,6 +20,7 @@ from app.api.routes import (
     streak,
     goals,
     blog,
+    notifications,
 )
 from app.api.routes import settings as settings_routes
 from app.api.routes.admin import router as admin_router
@@ -31,6 +33,21 @@ except ImportError as e:
     chatbot = None
     print(f"⚠️  Chatbot module not available: {e}")
 
+# ==================== Lifespan Handler ====================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager để xử lý startup và shutdown events.
+    Giúp đóng database connection pool một cách graceful khi server shutdown.
+    """
+    # Startup
+    yield
+    # Shutdown - đóng database connection pool
+    try:
+        engine.dispose()
+    except Exception as e:
+        print(f"⚠️  Error during database pool disposal: {e}")
+
 # ==================== App Init ====================
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -39,6 +56,7 @@ app = FastAPI(
     openapi_url="/api/v1/openapi.json",
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc",
+    lifespan=lifespan,
 )
 
 # ==================== CORS Configuration ====================
@@ -63,6 +81,7 @@ app.include_router(streak.router, prefix="/api/v1")
 
 app.include_router(logs.router, prefix="/api/v1/logs")
 app.include_router(support.router, prefix="/api/v1/support")
+app.include_router(notifications.router, prefix="/api/v1")
 
 # Chỉ include chatbot router nếu import thành công
 if chatbot is not None:

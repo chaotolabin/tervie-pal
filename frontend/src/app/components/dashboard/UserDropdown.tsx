@@ -42,9 +42,6 @@ export default function UserDropdown({
           </Avatar>
           <div className="text-left hidden sm:block">
             <p className="text-sm font-medium text-gray-900">{username}</p>
-            {email && (
-              <p className="text-xs text-gray-500">{email}</p>
-            )}
           </div>
         </Button>
       </DropdownMenuTrigger>
@@ -59,7 +56,7 @@ export default function UserDropdown({
           className="flex items-center gap-3 cursor-pointer"
         >
           <User className="size-4 text-gray-600" />
-          <span className="text-gray-700">Profile</span>
+          <span className="text-gray-700">Cá nhân</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={onLogoutClick}
@@ -67,7 +64,7 @@ export default function UserDropdown({
           className="flex items-center gap-3 cursor-pointer"
         >
           <LogOut className="size-4" />
-          <span className="font-medium">Logout</span>
+          <span className="font-medium">Đăng xuất</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

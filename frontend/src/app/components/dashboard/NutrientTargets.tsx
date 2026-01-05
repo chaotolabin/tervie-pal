@@ -47,28 +47,36 @@ export default function NutrientTargets({
       consumed: energy.consumed,
       target: energy.target,
       unit: 'kcal',
-      color: 'bg-blue-500',
+      color: 'bg-slate-500',
+      trackColor: 'bg-slate-100',
+      textColor: 'text-slate-600',
     },
     {
       label: 'Protein',
       consumed: protein.consumed,
       target: protein.target,
       unit: 'g',
-      color: 'bg-green-500',
+      color: 'bg-rose-500',
+      trackColor: 'bg-rose-100',
+      textColor: 'text-rose-600',
     },
     {
       label: 'Net Carbs',
       consumed: carbs.consumed,
       target: carbs.target,
       unit: 'g',
-      color: 'bg-purple-500',
+      color: 'bg-amber-500',
+      trackColor: 'bg-amber-100',
+      textColor: 'text-amber-600',
     },
     {
       label: 'Fat',
       consumed: fat.consumed,
       target: fat.target,
       unit: 'g',
-      color: 'bg-orange-500',
+      color: 'bg-yellow-500',
+      trackColor: 'bg-yellow-100',
+      textColor: 'text-yellow-600',
     },
   ];
 
@@ -107,21 +115,21 @@ export default function NutrientTargets({
             <div key={nutrient.label} className="space-y-1.5">
               {/* Label */}
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
+                <span className={`text-sm font-medium ${nutrient.textColor}`}>
                   {nutrient.label}
                 </span>
-                <span className="text-xs text-gray-500 font-normal">
+                <span className={`text-xs ${nutrient.textColor} font-normal opacity-80`}>
                   {displayPercentage}%
                 </span>
               </div>
 
               {/* Current / Target text above progress bar */}
-              <div className="text-xs text-gray-600">
+              <div className={`text-xs ${nutrient.textColor} opacity-90`}>
                 {formatValue(nutrient.consumed)} / {formatValue(nutrient.target)} {nutrient.unit}
               </div>
 
               {/* Progress Bar */}
-              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className={`w-full h-1.5 ${nutrient.trackColor} rounded-full overflow-hidden`}>
                 <div
                   className={`h-full ${nutrient.color} transition-all duration-300 ease-out rounded-full`}
                   style={{ width: `${percentage}%` }}

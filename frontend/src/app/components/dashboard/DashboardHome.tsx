@@ -3,7 +3,7 @@ import { Calendar, Flame, TrendingDown, Apple, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import MacroSummary from './MacroSummary';
 import QuickAddBar from './QuickAddBar';
 import api from '../lib/api'; // Đảm bảo import đúng đường dẫn api client
@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 
 interface DashboardHomeProps {
   onQuickAdd: () => void;
+  fullName?: string;
 }
 
 // Định nghĩa kiểu dữ liệu cho State
@@ -36,12 +37,13 @@ interface BiometricLog {
   weight_kg: number;
 }
 
-export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
+export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomeProps) {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [goal, setGoal] = useState<UserGoal | null>(null);
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [currentWeight, setCurrentWeight] = useState<number>(0);
+  const [caloriesHistory, setCaloriesHistory] = useState<any[]>([]);
 
   const fetchDashboardData = async () => {
     try {
@@ -69,6 +71,29 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
       if (bioLogs.length > 0) {
         setCurrentWeight(bioLogs[0].weight_kg); // Lấy cân nặng mới nhất
       }
+
+      // Fetch calories data for last 30 days
+      const caloriesData = [];
+      const currentDate = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(currentDate);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        try {
+          const response = await api.get(`/logs/summary/${dateStr}`);
+          caloriesData.push({
+            date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+            calories: Math.round(response.data.net_calories || 0)
+          });
+        } catch (error) {
+          // Nếu không có dữ liệu cho ngày đó, thêm 0
+          caloriesData.push({
+            date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+            calories: 0
+          });
+        }
+      }
+      setCaloriesHistory(caloriesData);
 
     } catch (error) {
       console.error("Dashboard data error:", error);
@@ -113,25 +138,40 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
 
   return (
     <div className="space-y-6">
-      {/* Date Range Selector & Welcome */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Calendar className="size-5 text-gray-600" />
-          <h2 className="text-xl font-semibold">Hôm nay</h2>
+      {/* Top Section: 2 Columns Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left Column: Welcome Message + QuickAddBar */}
+        <div className="space-y-4 md:col-span-2">
+          {/* Welcome Message */}
+          {fullName && (
+            <div>
+              <p className="text-lg text-gray-600">Xin chào, <span className="font-semibold text-pink-600">{fullName}</span></p>
+            </div>
+          )}
+          
+          {/* Quick Add Bar */}
+          <QuickAddBar onClick={onQuickAdd} />
         </div>
-        <Select defaultValue="today">
-          <SelectTrigger className="w-32 bg-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Hôm nay</SelectItem>
-            {/* Các option khác cần xử lý logic filter sau */}
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Quick Add Bar - Positioned before Calories Net card */}
-      <QuickAddBar onClick={onQuickAdd} />
+        {/* Right Column: Today's Activity Summary */}
+        <Card className="bg-[#f8c6d8] border-none shadow-md">
+          <CardContent className="pt-6 pb-6">
+             <div>
+                <p className="text-sm text-gray-700 mb-3 font-medium">Tiến độ hôm nay</p>
+                <div className="space-y-2">
+                   <p className="font-semibold text-base flex items-center gap-2 text-gray-800">
+                      <Apple className="size-4 text-gray-700" /> 
+                      {caloriesConsumed > 0 ? `Đã ghi nhận ${Math.round(caloriesConsumed)} kcal` : 'Chưa ghi nhận dinh dưỡng'}
+                   </p>
+                   <p className="font-semibold text-base flex items-center gap-2 text-gray-800">
+                       <TrendingDown className="size-4 text-gray-700" />
+                       {caloriesBurned > 0 ? `Đã đốt ${Math.round(caloriesBurned)} kcal` : 'Chưa có hoạt động tập luyện'}
+                   </p>
+                </div>
+             </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Calories Summary Card */}
       <Card className="bg-gradient-to-br from-pink-500 to-purple-600 text-white border-none shadow-lg">
@@ -189,57 +229,134 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
         </CardContent>
       </Card>
 
-      {/* Weight Chart */}
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-gray-700">
-            <TrendingDown className="size-5 text-cyan-600" />
-            Theo dõi cân nặng
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6">
-            <p className="text-3xl font-bold text-gray-900">{currentWeight > 0 ? `${currentWeight} kg` : '-- kg'}</p>
-            <p className="text-sm text-gray-500">Biểu đồ 7 lần cân gần nhất</p>
-          </div>
-          
-          <div className="h-[200px] w-full">
-            {weightHistory.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weightHistory}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fontSize: 12, fill: '#9ca3af'}} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    domain={['dataMin - 1', 'dataMax + 1']} 
-                    hide 
-                  />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="weight" 
-                    stroke="#06b6d4" 
-                    strokeWidth={3} 
-                    dot={{fill: '#06b6d4', strokeWidth: 2, r: 4, stroke: '#fff'}}
-                    activeDot={{r: 6}}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
-                Chưa có dữ liệu cân nặng
+      {/* Charts Section: Weight & Calories */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Weight Chart */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-700">
+              <TrendingDown className="size-5 text-cyan-600" />
+              Theo dõi cân nặng
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6">
+              <p className="text-3xl font-bold text-gray-900">{currentWeight > 0 ? `${currentWeight} kg` : '-- kg'}</p>
+              <p className="text-sm text-gray-500">Biểu đồ 7 lần cân gần nhất</p>
+            </div>
+            
+            <div className="h-[200px] w-full">
+              {weightHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weightHistory}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fontSize: 12, fill: '#9ca3af'}} 
+                      dy={10}
+                    />
+                    <YAxis 
+                      domain={['dataMin - 1', 'dataMax + 1']} 
+                      hide 
+                    />
+                    <Tooltip 
+                      contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="weight" 
+                      stroke="#06b6d4" 
+                      strokeWidth={3} 
+                      dot={{fill: '#06b6d4', strokeWidth: 2, r: 4, stroke: '#fff'}}
+                      activeDot={{r: 6}}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
+                  Chưa có dữ liệu cân nặng
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Calories Chart - Last 30 Days */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-700">
+              <Flame className="size-5 text-orange-600" />
+              Dietary Energy
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6">
+              <div className="flex items-center gap-6">
+                <p className="text-xl font-bold text-gray-900">Last 30 Days</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-gray-500">Daily Average:</p>
+                  <p className="text-base font-bold" style={{color: '#F97316'}}>
+                    {Math.round(caloriesHistory.reduce((sum, item) => sum + item.calories, 0) / caloriesHistory.length)} kcal
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-gray-500">Goal:</p>
+                  <p className="text-base font-bold" style={{color: '#84CC16'}}>
+                    {calorieTarget} kcal
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+            
+            <div className="h-[250px] w-full">
+              {caloriesHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={caloriesHistory}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fontSize: 11, fill: '#9ca3af'}} 
+                      dy={10}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis 
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{fontSize: 11, fill: '#9ca3af'}}
+                      domain={[0, 1500]}
+                      ticks={[0, 500, 1000, 1500]}
+                    />
+                    <Tooltip 
+                      contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px'}}
+                      formatter={(value: any) => [`${value} kcal`, 'Calories']}
+                    />
+                    <Bar 
+                      dataKey="calories" 
+                      fill="#F97316" 
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={30}
+                    />
+                    <ReferenceLine 
+                      y={calorieTarget} 
+                      stroke="#84CC16" 
+                      strokeWidth={3}
+                      ifOverflow="extendDomain"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-400 bg-gray-50 rounded-lg">
+                  Chưa có dữ liệu calories
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Macros Summary */}
       {/* Truyền dữ liệu thật vào component MacroSummary */}
@@ -248,30 +365,6 @@ export default function DashboardHome({ onQuickAdd }: DashboardHomeProps) {
         carbs={{ current: Number(summary?.total_carbs_g) || 0, goal: goal?.carb_grams || 200 }}
         fat={{ current: Number(summary?.total_fat_g) || 0, goal: goal?.fat_grams || 70 }}
       />
-
-      {/* Today's Activity Card */}
-      <Card className="bg-gradient-to-br from-orange-500 to-amber-500 text-white border-none shadow-md">
-        <CardContent className="pt-6 flex flex-col h-full justify-between">
-           <div>
-              <p className="text-sm opacity-90 mb-2 font-medium">Hoạt động hôm nay</p>
-              <div className="space-y-1">
-                 {/* Dữ liệu này có thể lấy chi tiết hơn nếu cần, tạm thời dùng summary */}
-                 <p className="font-bold text-lg flex items-center gap-2">
-                    <Apple className="size-4 opacity-80" /> 
-                    {/* Backend không trả về count món ăn trong summary, có thể bổ sung sau */}
-                    Đã ghi nhận dinh dưỡng
-                 </p>
-                 <p className="font-bold text-lg flex items-center gap-2">
-                     <TrendingDown className="size-4 opacity-80" />
-                     {caloriesBurned > 0 ? 'Đã có tập luyện' : 'Chưa tập luyện'}
-                 </p>
-              </div>
-           </div>
-           <div className="mt-4 pt-4 border-t border-white/20 text-xs opacity-80">
-              Tiếp tục phát huy nhé!
-           </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
