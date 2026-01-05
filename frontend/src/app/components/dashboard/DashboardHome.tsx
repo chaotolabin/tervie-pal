@@ -114,32 +114,40 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
 
   return (
     <div className="space-y-6">
-      {/* Welcome Message */}
-      {fullName && (
-        <div className="mb-4">
-          <p className="text-lg text-gray-600">Xin chào, <span className="font-semibold text-pink-600">{fullName}</span></p>
+      {/* Top Section: 2 Columns Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left Column: Welcome Message + QuickAddBar */}
+        <div className="space-y-4 md:col-span-2">
+          {/* Welcome Message */}
+          {fullName && (
+            <div>
+              <p className="text-lg text-gray-600">Xin chào, <span className="font-semibold text-pink-600">{fullName}</span></p>
+            </div>
+          )}
+          
+          {/* Quick Add Bar */}
+          <QuickAddBar onClick={onQuickAdd} />
         </div>
-      )}
 
-      {/* Date Range Selector & Welcome */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Calendar className="size-5 text-gray-600" />
-          <h2 className="text-xl font-semibold">Hôm nay</h2>
-        </div>
-        <Select defaultValue="today">
-          <SelectTrigger className="w-32 bg-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Hôm nay</SelectItem>
-            {/* Các option khác cần xử lý logic filter sau */}
-          </SelectContent>
-        </Select>
+        {/* Right Column: Today's Activity Summary */}
+        <Card className="bg-[#f8c6d8] border-none shadow-md">
+          <CardContent className="pt-6 pb-6">
+             <div>
+                <p className="text-sm text-gray-700 mb-3 font-medium">Tiến độ hôm nay</p>
+                <div className="space-y-2">
+                   <p className="font-semibold text-base flex items-center gap-2 text-gray-800">
+                      <Apple className="size-4 text-gray-700" /> 
+                      {caloriesConsumed > 0 ? `Đã ghi nhận ${Math.round(caloriesConsumed)} kcal` : 'Chưa ghi nhận dinh dưỡng'}
+                   </p>
+                   <p className="font-semibold text-base flex items-center gap-2 text-gray-800">
+                       <TrendingDown className="size-4 text-gray-700" />
+                       {caloriesBurned > 0 ? `Đã đốt ${Math.round(caloriesBurned)} kcal` : 'Chưa có hoạt động tập luyện'}
+                   </p>
+                </div>
+             </div>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Quick Add Bar - Positioned before Calories Net card */}
-      <QuickAddBar onClick={onQuickAdd} />
 
       {/* Calories Summary Card */}
       <Card className="bg-gradient-to-br from-pink-500 to-purple-600 text-white border-none shadow-lg">
@@ -256,30 +264,6 @@ export default function DashboardHome({ onQuickAdd, fullName }: DashboardHomePro
         carbs={{ current: Number(summary?.total_carbs_g) || 0, goal: goal?.carb_grams || 200 }}
         fat={{ current: Number(summary?.total_fat_g) || 0, goal: goal?.fat_grams || 70 }}
       />
-
-      {/* Today's Activity Card */}
-      <Card className="bg-gradient-to-br from-orange-500 to-amber-500 text-white border-none shadow-md">
-        <CardContent className="pt-6 flex flex-col h-full justify-between">
-           <div>
-              <p className="text-sm opacity-90 mb-2 font-medium">Hoạt động hôm nay</p>
-              <div className="space-y-1">
-                 {/* Dữ liệu này có thể lấy chi tiết hơn nếu cần, tạm thời dùng summary */}
-                 <p className="font-bold text-lg flex items-center gap-2">
-                    <Apple className="size-4 opacity-80" /> 
-                    {/* Backend không trả về count món ăn trong summary, có thể bổ sung sau */}
-                    Đã ghi nhận dinh dưỡng
-                 </p>
-                 <p className="font-bold text-lg flex items-center gap-2">
-                     <TrendingDown className="size-4 opacity-80" />
-                     {caloriesBurned > 0 ? 'Đã có tập luyện' : 'Chưa tập luyện'}
-                 </p>
-              </div>
-           </div>
-           <div className="mt-4 pt-4 border-t border-white/20 text-xs opacity-80">
-              Tiếp tục phát huy nhé!
-           </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
