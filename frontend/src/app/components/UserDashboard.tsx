@@ -153,15 +153,15 @@ export default function UserDashboard({ onLogout, userData: userDataProp }: User
   return (
     <div className="flex h-screen bg-gray-100 flex-col">
       {/* Top Header/Navbar */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between relative z-10">
+      <header className="bg-white border-b border-gray-200 px-6 py-2.5 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-3">
-          <AudioLines className="h-6 w-6 text-pink-600" />
-          <h1 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+          <AudioLines className="h-5 w-5 text-pink-600" />
+          <h1 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
             Tervie Pal
           </h1>
         </div>
         
-        <div className="flex items-center gap-4 relative">
+        <div className="flex items-center gap-3 relative">
           {/* Streak Widget */}
           <div className="relative z-20">
             <StreakNavbarWidget streakData={streakData} />
