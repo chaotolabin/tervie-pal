@@ -31,6 +31,7 @@ Tervie Pal là một hệ thống web hỗ trợ theo dõi sức khỏe cá nhâ
 
 Đây là dự án cuối kỳ môn **Cơ sở dữ liệu Web và Hệ thống thông tin**.
 
+Đường link dẫn tới trang web: https://tervie-pal.duckdns.org/
 ---
 
 ## Tính năng chính
